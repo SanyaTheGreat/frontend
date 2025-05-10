@@ -1,0 +1,46 @@
+.history-wrapper {
+    padding: 20px;
+    background-color: #0d1b2a;
+    color: white;
+    font-family: Arial, sans-serif;
+  }
+  
+  .history-list {
+    margin-top: 20px;
+  }
+  
+  .history-item {
+    background-color: #415a77;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .history-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  .history-details {
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .history-details span {
+    margin-bottom: 5px;
+  }
+  
+  .winner {
+    color: #1ce0f5;
+  }
+  
+  .price, .participants {
+    color: #e0e1dd;
+  }
+  
+  .date {
+    font-style: italic;
+  }
+  

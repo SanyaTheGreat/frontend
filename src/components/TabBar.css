@@ -1,0 +1,24 @@
+/* Таббар */
+.tab-bar {
+    position: fixed;
+    bottom: 20px;
+    width: 90%;
+    left: 50%;
+    transform: translateX(-50%); /* Центрирование по горизонтали */
+    background-color: #1b263b;
+    border-radius: 20px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: 60px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Ссылки в таббаре */
+  .tab-link {
+    color: #e0e1dd;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 16px;
+  }
+  
