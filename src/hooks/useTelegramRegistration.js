@@ -13,7 +13,6 @@ export function useTelegramRegistration() {
     const payload = {
       telegram_id: user.id,
       username: user.username || '',
-      first_name: user.first_name || '',
     };
 
     fetch('https://lottery-server-waif.onrender.com/users/register', {
