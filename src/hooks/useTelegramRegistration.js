@@ -10,21 +10,29 @@ export function useTelegramRegistration() {
       return;
     }
 
+    const payload = {
+      telegram_id: user.id,
+      username: user.username || '',
+      first_name: user.first_name || '',
+    };
+
     fetch('https://lottery-server-waif.onrender.com/users/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        telegram_id: user.id,
-        username: user.username,
-        first_name: user.first_name,
-      }),
+      body: JSON.stringify(payload),
     })
-      .then(res => res.json())
-      .then(data => {
-        console.log('✅ Пользователь зарегистрирован:', data);
+      .then(async (res) => {
+        if (res.status === 201) {
+          console.log('✅ Пользователь зарегистрирован');
+        } else if (res.status === 409) {
+          console.log('ℹ️ Пользователь уже существует');
+        } else {
+          const err = await res.json();
+          console.error('❌ Ошибка регистрации:', err);
+        }
       })
       .catch(err => {
-        console.error('❌ Ошибка при регистрации пользователя:', err);
+        console.error('❌ Сетевая ошибка при регистрации:', err);
       });
   }, []);
 }
