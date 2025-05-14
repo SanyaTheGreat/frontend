@@ -10,7 +10,7 @@ export function useTelegramRegistration() {
       return;
     }
 
-    fetch('http://localhost:3000/users/register', {
+    fetch('https://lottery-server-waif.onrender.com/users/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
