@@ -2,16 +2,20 @@ import { useEffect } from 'react';
 
 export function useTelegramRegistration() {
   useEffect(() => {
-    console.log('[register] Хук useTelegramRegistration сработал');
-
     const tg = window.Telegram?.WebApp;
-    console.log('[register] Telegram.WebApp:', tg);
 
-    const user = tg?.initDataUnsafe?.user;
-    console.log('[register] initDataUnsafe.user:', user);
+    if (!tg) {
+      console.warn('❌ Telegram WebApp object not found');
+      return;
+    }
+
+    const user = tg.initDataUnsafe?.user;
+
+    console.log('🌐 tg.initDataUnsafe:', tg.initDataUnsafe);
+    console.log('👤 Extracted user:', user);
 
     if (!user) {
-      console.warn('[register] ❌ Telegram user data not found');
+      console.warn('⚠️ Telegram user data is undefined — регистрация невозможна');
       return;
     }
 
@@ -20,7 +24,7 @@ export function useTelegramRegistration() {
       username: user.username || '',
     };
 
-    console.log('[register] 📤 Отправка данных:', payload);
+    console.log('📦 Sending payload:', payload);
 
     fetch('https://lottery-server-waif.onrender.com/users/register', {
       method: 'POST',
@@ -28,6 +32,7 @@ export function useTelegramRegistration() {
       body: JSON.stringify(payload),
     })
       .then(async (res) => {
+        console.log('📬 Received response:', res.status);
         if (res.status === 201) {
           console.log('✅ Пользователь зарегистрирован');
         } else if (res.status === 409) {
