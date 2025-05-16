@@ -4,27 +4,31 @@ export function useTelegramRegistration() {
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
 
+    alert("📲 useTelegramRegistration запущен");
+
     if (!tg) {
-      console.warn('❌ Telegram WebApp object not found');
+      alert("❌ Telegram.WebApp не найден");
       return;
     }
 
     const user = tg.initDataUnsafe?.user;
+    const referrer_id = tg.initDataUnsafe?.start_param;
 
-    console.log('🌐 tg.initDataUnsafe:', tg.initDataUnsafe);
-    console.log('👤 Extracted user:', user);
+    alert("🔍 Получен user: " + JSON.stringify(user));
+    alert("🎯 Получен referrer_id: " + referrer_id);
 
     if (!user) {
-      console.warn('⚠️ Telegram user data is undefined — регистрация невозможна');
+      alert("⚠️ Пользователь не найден — регистрация невозможна");
       return;
     }
 
     const payload = {
       telegram_id: user.id,
       username: user.username || '',
+      referrer_id
     };
 
-    console.log('📦 Sending payload:', payload);
+    alert("📦 Отправляю payload: " + JSON.stringify(payload));
 
     fetch('https://lottery-server-waif.onrender.com/users/register', {
       method: 'POST',
@@ -32,18 +36,18 @@ export function useTelegramRegistration() {
       body: JSON.stringify(payload),
     })
       .then(async (res) => {
-        console.log('📬 Received response:', res.status);
+        alert("📬 Ответ от backend: " + res.status);
         if (res.status === 201) {
-          console.log('✅ Пользователь зарегистрирован');
+          alert("✅ Пользователь зарегистрирован");
         } else if (res.status === 409) {
-          console.log('ℹ️ Пользователь уже существует');
+          alert("ℹ️ Пользователь уже существует");
         } else {
           const err = await res.json();
-          console.error('❌ Ошибка регистрации:', err);
+          alert("❌ Ошибка регистрации: " + JSON.stringify(err));
         }
       })
       .catch(err => {
-        console.error('❌ Сетевая ошибка при регистрации:', err);
+        alert("❌ Сетевая ошибка: " + err.message);
       });
   }, []);
 }
