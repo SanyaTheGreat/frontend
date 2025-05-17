@@ -2,52 +2,57 @@ import { useEffect } from 'react';
 
 export function useTelegramRegistration() {
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
+    console.log('📲 useTelegramRegistration запущен');
 
-    alert("📲 useTelegramRegistration запущен");
+    const interval = setInterval(() => {
+      const tg = window.Telegram?.WebApp;
 
-    if (!tg) {
-      alert("❌ Telegram.WebApp не найден");
-      return;
-    }
+      if (!tg) {
+        console.warn('⏳ Telegram.WebApp ещё не загружен');
+        return;
+      }
 
-    const user = tg.initDataUnsafe?.user;
-    const referrer_id = tg.initDataUnsafe?.start_param;
+      clearInterval(interval); // Telegram.WebApp найден
+      console.log('✅ Telegram.WebApp найден');
 
-    alert("🔍 Получен user: " + JSON.stringify(user));
-    alert("🎯 Получен referrer_id: " + referrer_id);
+      const user = tg.initDataUnsafe?.user;
+      console.log('🧩 initDataUnsafe:', tg.initDataUnsafe);
+      console.log('👤 Извлечённый user:', user);
 
-    if (!user) {
-      alert("⚠️ Пользователь не найден — регистрация невозможна");
-      return;
-    }
+      if (!user || !user.id) {
+        console.warn('⚠️ Нет данных пользователя — регистрация невозможна');
+        return;
+      }
 
-    const payload = {
-      telegram_id: user.id,
-      username: user.username || '',
-      referrer_id
-    };
+      const payload = {
+        telegram_id: user.id,
+        username: user.username || '',
+      };
 
-    alert("📦 Отправляю payload: " + JSON.stringify(payload));
+      console.log('📦 Отправляю payload:', payload);
 
-    fetch('https://lottery-server-waif.onrender.com/users/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
-        alert("📬 Ответ от backend: " + res.status);
-        if (res.status === 201) {
-          alert("✅ Пользователь зарегистрирован");
-        } else if (res.status === 409) {
-          alert("ℹ️ Пользователь уже существует");
-        } else {
-          const err = await res.json();
-          alert("❌ Ошибка регистрации: " + JSON.stringify(err));
-        }
+      fetch('https://lottery-server-waif.onrender.com/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
-      .catch(err => {
-        alert("❌ Сетевая ошибка: " + err.message);
-      });
+        .then(async (res) => {
+          console.log('📬 Ответ от backend:', res.status);
+          if (res.status === 201) {
+            console.log('✅ Пользователь зарегистрирован');
+          } else if (res.status === 409) {
+            console.log('ℹ️ Пользователь уже существует');
+          } else {
+            const err = await res.json();
+            console.error('❌ Ошибка регистрации:', err);
+          }
+        })
+        .catch((err) => {
+          console.error('❌ Сетевая ошибка при регистрации:', err);
+        });
+
+    }, 300); // Проверяем каждые 300 мс
+
+    return () => clearInterval(interval);
   }, []);
 }
