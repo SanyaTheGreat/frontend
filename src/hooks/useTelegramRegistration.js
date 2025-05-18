@@ -2,25 +2,25 @@ import { useEffect } from 'react';
 
 export function useTelegramRegistration() {
   useEffect(() => {
-    console.log('📲 useTelegramRegistration запущен');
+    console.log('📲 useTelegramRegistration: хук активирован');
 
     const interval = setInterval(() => {
       const tg = window.Telegram?.WebApp;
 
       if (!tg) {
-        console.warn('⏳ Telegram.WebApp ещё не загружен');
+        console.warn('⏳ [Ожидание] Telegram.WebApp не найден');
         return;
       }
 
-      clearInterval(interval); // Telegram.WebApp найден
-      console.log('✅ Telegram.WebApp найден');
+      clearInterval(interval);
+      console.log('✅ [Найден] Telegram.WebApp доступен');
 
       const user = tg.initDataUnsafe?.user;
-      console.log('🧩 initDataUnsafe:', tg.initDataUnsafe);
-      console.log('👤 Извлечённый user:', user);
+      console.log('🧩 [initDataUnsafe]:', tg.initDataUnsafe);
+      console.log('👤 [User из initDataUnsafe]:', user);
 
       if (!user || !user.id) {
-        console.warn('⚠️ Нет данных пользователя — регистрация невозможна');
+        console.warn('⚠️ [Ошибка] Нет user.id в initDataUnsafe');
         return;
       }
 
@@ -29,7 +29,7 @@ export function useTelegramRegistration() {
         username: user.username || '',
       };
 
-      console.log('📦 Отправляю payload:', payload);
+      console.log('📦 [Payload для отправки]:', payload);
 
       fetch('https://lottery-server-waif.onrender.com/users/register', {
         method: 'POST',
@@ -37,22 +37,25 @@ export function useTelegramRegistration() {
         body: JSON.stringify(payload),
       })
         .then(async (res) => {
-          console.log('📬 Ответ от backend:', res.status);
+          console.log('📬 [Ответ от backend]:', res.status);
           if (res.status === 201) {
-            console.log('✅ Пользователь зарегистрирован');
+            console.log('✅ [Успех] Пользователь зарегистрирован');
           } else if (res.status === 409) {
-            console.log('ℹ️ Пользователь уже существует');
+            console.log('ℹ️ [Инфо] Пользователь уже существует');
           } else {
             const err = await res.json();
-            console.error('❌ Ошибка регистрации:', err);
+            console.error('❌ [Ошибка от backend]:', err);
           }
         })
         .catch((err) => {
-          console.error('❌ Сетевая ошибка при регистрации:', err);
+          console.error('❌ [Сетевая ошибка]:', err);
         });
 
-    }, 300); // Проверяем каждые 300 мс
+    }, 300);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('🧹 useTelegramRegistration: очистка таймера');
+      clearInterval(interval);
+    };
   }, []);
 }
