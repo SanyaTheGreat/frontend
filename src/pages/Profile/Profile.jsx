@@ -21,7 +21,7 @@ export default function Profile() {
     const telegram_id = telegramUser.id;
 
     Promise.all([
-      fetch(`https://lottery-server-waif.onrender.com/users/by-telegram-id/${telegram_id}`).then(res => res.json()),
+      fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
       fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
       fetch(`https://lottery-server-waif.onrender.com/users/sells/${telegram_id}`).then(res => res.json()),
     ])
