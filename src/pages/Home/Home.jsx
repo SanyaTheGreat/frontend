@@ -1,13 +1,18 @@
-import { Link } from 'react-router-dom'; 
-import './Home.css';
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import lottie from 'lottie-web';
+import './Home.css';
 
 function Home() {
   const [wheels, setWheels] = useState([]);
   const [colorsMap, setColorsMap] = useState({});
   const animRefs = useRef({});
+  const navigate = useNavigate();
+
+  const handleOpenLobby = (wheelId) => {
+    navigate(`/lobby/${wheelId}`);
+  };
 
   useEffect(() => {
     async function fetchWheels() {
@@ -58,69 +63,64 @@ function Home() {
           Нет активных розыгрышей
         </p>
       ) : (
-        wheels.map((wheel) => {
-          return (
-            <div key={wheel.id} className="wheel-card">
-              <div className="wheel-title">{wheel.nft_name}</div>
+        wheels.map((wheel) => (
+          <div key={wheel.id} className="wheel-card">
+            <div className="wheel-title">{wheel.nft_name}</div>
 
-              <div className="wheel-content">
+            <div className="wheel-content">
+              <div
+                className="wheel-image"
+                style={{
+                  background: colorsMap[wheel.nft_name]
+                    ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
+                    : '#000',
+                  borderRadius: '12px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
                 <div
-                  className="wheel-image"
-                  style={{
-                    background: colorsMap[wheel.nft_name]
-                      ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
-                      : '#000',
-                    borderRadius: '12px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    ref={(el) => {
-                      if (el && !animRefs.current[wheel.id]) {
-                        animRefs.current[wheel.id] = el;
-                        (() => {
-                          console.log('FETCHING:', `/animations/${wheel.nft_name}.json`);
-                          return fetch(`/animations/${wheel.nft_name}.json`);
-                        })()
-                          .then(res => res.json())
-                          .then(data => {
-                            lottie.loadAnimation({
-                              container: el,
-                              renderer: 'svg',
-                              loop: true,
-                              autoplay: true,
-                              animationData: data
-                            });
+                  ref={(el) => {
+                    if (el && !animRefs.current[wheel.id]) {
+                      animRefs.current[wheel.id] = el;
+                      fetch(`/animations/${wheel.nft_name}.json`)
+                        .then(res => res.json())
+                        .then(data => {
+                          lottie.loadAnimation({
+                            container: el,
+                            renderer: 'svg',
+                            loop: true,
+                            autoplay: true,
+                            animationData: data
                           });
-                      }
-                    }}
-                    style={{
-                      position: 'absolute',
-                      width: '100%',
-                      height: '100%',
-                      top: 0,
-                      left: 0,
-                    }}
-                  ></div>
-                </div>
-
-                <div className="wheel-buttons">
-                  <button className="lobby-button">Lobby</button>
-                  <button className="join-button">JOIN</button>
-                </div>
+                        });
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    top: 0,
+                    left: 0,
+                  }}
+                ></div>
               </div>
 
-              <div className="wheel-info">
-                <span>Participants: {wheel.participants}/{wheel.size}</span>
-                <span>Price: {wheel.price} ticket</span>
+              <div className="wheel-buttons">
+                <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
+                  Lobby
+                </button>
+                <button className="join-button">JOIN</button>
               </div>
             </div>
-          );
-        })
-      )}
 
-      
+            <div className="wheel-info">
+              <span>Participants: {wheel.participants}/{wheel.size}</span>
+              <span>Price: {wheel.price} ticket</span>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
