@@ -7,6 +7,7 @@ import './Home.css';
 function Home() {
   const [wheels, setWheels] = useState([]);
   const [colorsMap, setColorsMap] = useState({});
+  const [loadingId, setLoadingId] = useState(null);
   const animRefs = useRef({});
   const navigate = useNavigate();
 
@@ -14,38 +15,38 @@ function Home() {
     navigate(`/lobby/${wheelId}`);
   };
 
-  useEffect(() => {
-    async function fetchWheels() {
-      const { data, error } = await supabase
-        .from('wheels')
-        .select('*');
+  const fetchWheels = async () => {
+    const { data, error } = await supabase
+      .from('wheels')
+      .select('*');
 
-      if (error) {
-        console.error('Ошибка загрузки колес:', error);
-        return;
-      }
-
-      const activeWheels = data.filter(wheel => wheel.status === 'active');
-
-      const wheelsWithParticipants = await Promise.all(
-        activeWheels.map(async (wheel) => {
-          const { count, error: countError } = await supabase
-            .from('wheel_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('wheel_id', wheel.id);
-
-          if (countError) {
-            console.error('Ошибка подсчета участников:', countError);
-            return { ...wheel, participants: 0 };
-          }
-
-          return { ...wheel, participants: count };
-        })
-      );
-
-      setWheels(wheelsWithParticipants);
+    if (error) {
+      console.error('Ошибка загрузки колес:', error);
+      return;
     }
 
+    const activeWheels = data.filter(wheel => wheel.status === 'active');
+
+    const wheelsWithParticipants = await Promise.all(
+      activeWheels.map(async (wheel) => {
+        const { count, error: countError } = await supabase
+          .from('wheel_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('wheel_id', wheel.id);
+
+        if (countError) {
+          console.error('Ошибка подсчета участников:', countError);
+          return { ...wheel, participants: 0 };
+        }
+
+        return { ...wheel, participants: count };
+      })
+    );
+
+    setWheels(wheelsWithParticipants);
+  };
+
+  useEffect(() => {
     fetchWheels();
   }, []);
 
@@ -55,6 +56,52 @@ function Home() {
       .then((data) => setColorsMap(data))
       .catch((err) => console.error("Ошибка загрузки цветов:", err));
   }, []);
+
+  const handleJoin = async (wheel) => {
+    const tg = window.Telegram?.WebApp;
+    const user = tg?.initDataUnsafe?.user;
+
+    if (!user) {
+      alert("Telegram user not found");
+      return;
+    }
+
+    setLoadingId(wheel.id);
+
+    // Получаем user_id
+    const { data: foundUser, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', user.id)
+      .single();
+
+    if (error || !foundUser) {
+      alert("User not registered");
+      setLoadingId(null);
+      return;
+    }
+
+    // POST на backend
+    const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wheel_id: wheel.id,
+        user_id: foundUser.id,
+        telegram_id: user.id,
+        username: user.username || '',
+      }),
+    });
+
+    if (res.status === 201) {
+      await fetchWheels(); // Обновляем участников
+    } else {
+      const err = await res.json();
+      alert(err.error || "Ошибка вступления");
+    }
+
+    setLoadingId(null);
+  };
 
   return (
     <div className="home-wrapper">
@@ -110,7 +157,13 @@ function Home() {
                 <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
                   Lobby
                 </button>
-                <button className="join-button">JOIN</button>
+                <button
+                  className="join-button"
+                  onClick={() => handleJoin(wheel)}
+                  disabled={loadingId === wheel.id || wheel.participants >= wheel.size}
+                >
+                  {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
+                </button>
               </div>
             </div>
 
