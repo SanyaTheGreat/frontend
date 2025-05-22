@@ -8,76 +8,104 @@ function LobbyPage() {
   const [wheel, setWheel] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchLobbyData() {
-      // Получаем данные о колесе
-      const { data: wheelData, error: wheelError } = await supabase
-        .from('wheels')
-        .select('id, nft_name, size, price, status')
-        .eq('id', id)
-        .single();
-
-      if (wheelError || !wheelData) {
-        console.error('Ошибка загрузки колеса:', wheelError);
-        return;
-      }
-
-      setWheel(wheelData);
-
-      // Получаем список участников
-      const { data: participantData, error: participantError } = await supabase
-        .from('wheel_participants')
-        .select('username')
-        .eq('wheel_id', id);
-
-      if (participantError) {
-        console.error('Ошибка загрузки участников:', participantError);
-        return;
-      }
-
-      setParticipants(participantData || []);
-
-      // Получаем количество участников
-      const { count, error: countError } = await supabase
-        .from('wheel_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('wheel_id', id);
-
-      if (countError) {
-        console.error('Ошибка подсчета участников:', countError);
-        return;
-      }
-
-      setParticipantCount(count || 0);
-    }
-
     fetchLobbyData();
   }, [id]);
+
+  async function fetchLobbyData() {
+    // Получаем данные о колесе
+    const { data: wheelData } = await supabase
+      .from('wheels')
+      .select('id, nft_name, size, price, status')
+      .eq('id', id)
+      .single();
+    setWheel(wheelData);
+
+    // Участники
+    const { data: participantData } = await supabase
+      .from('wheel_participants')
+      .select('username')
+      .eq('wheel_id', id);
+    setParticipants(participantData || []);
+
+    // Счётчик
+    const { count } = await supabase
+      .from('wheel_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('wheel_id', id);
+    setParticipantCount(count || 0);
+  }
+
+  async function handleJoin() {
+    const tg = window.Telegram?.WebApp;
+    const user = tg?.initDataUnsafe?.user;
+
+    if (!user) {
+      alert("Telegram user not found");
+      return;
+    }
+
+    setLoading(true);
+
+    // Получаем user_id из Supabase по telegram_id
+    const { data: foundUser, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', user.id)
+      .single();
+
+    if (error || !foundUser) {
+      alert("User not registered");
+      setLoading(false);
+      return;
+    }
+
+    // POST на backend
+    const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wheel_id: id,
+        user_id: foundUser.id,
+        telegram_id: user.id,
+        username: user.username || '',
+      }),
+    });
+
+    if (res.status === 201) {
+      await fetchLobbyData(); // обновляем участников
+    } else {
+      const err = await res.json();
+      alert(err.error || "Ошибка вступления");
+    }
+
+    setLoading(false);
+  }
 
   if (!wheel) return <div>Loading...</div>;
 
   return (
     <div className="lobby-page">
-      
-        <h2>{wheel.nft_name}</h2>
-        <p>Participants: {participantCount} / {wheel.size}</p>
-        <p>Price: {wheel.price} 🎫</p>
+      <h2>{wheel.nft_name}</h2>
+      <p>Participants: {participantCount} / {wheel.size}</p>
+      <p>Price: {wheel.price} 🎫</p>
 
-        <button
-          className="join-buttonLobby"
-          disabled={participantCount >= wheel.size}
-        >
-          Join 
-        </button>
+      <button
+        className="join-buttonLobby"
+        onClick={handleJoin}
+        disabled={loading || participantCount >= wheel.size}
+      >
+        {loading ? 'Joining...' : 'Join'}
+      </button>
 
-        <ul className="participant-list">
-          {participants.map((p, index) => (
-            <li key={index}>@{p.username}</li>
-          ))}
-        </ul>
-      </div>
-    
+      <ul className="participant-list">
+        {participants.map((p, index) => (
+          <li key={index}>@{p.username}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
