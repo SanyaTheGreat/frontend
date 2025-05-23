@@ -17,7 +17,7 @@ export function useTelegramRegistration() {
 
       tg.ready();       // ✅ сообщаем Telegram, что WebApp готов
       tg.expand();      // ⬆️ открываем Mini App на весь экран
-      tg.show();
+      
 
       const user = tg.initDataUnsafe?.user;
       console.log('🧩 [initDataUnsafe]:', tg.initDataUnsafe);
