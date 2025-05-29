@@ -8,6 +8,19 @@ export default function Profile() {
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (telegram_id) => {
+    const [profileData, referralData, sellsData] = await Promise.all([
+      fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
+      fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
+      fetch(`https://lottery-server-waif.onrender.com/users/sells/${telegram_id}`).then(res => res.json()),
+    ]);
+
+    setProfile(profileData);
+    setReferrals(referralData);
+    setPurchases(sellsData);
+    setLoading(false);
+  };
+
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     const telegramUser = tg?.initDataUnsafe?.user;
@@ -18,24 +31,23 @@ export default function Profile() {
     }
 
     setUser(telegramUser);
-    const telegram_id = telegramUser.id;
-
-    Promise.all([
-      fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
-      fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
-      fetch(`https://lottery-server-waif.onrender.com/users/sells/${telegram_id}`).then(res => res.json()),
-    ])
-      .then(([profileData, referralData, sellsData]) => {
-        setProfile(profileData);
-        setReferrals(referralData);
-        setPurchases(sellsData);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Ошибка при загрузке профиля:', err);
-        setLoading(false);
-      });
+    fetchProfile(telegramUser.id);
   }, []);
+
+  const handleWalletUpdate = async (walletValue) => {
+    await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_id: user.id, wallet: walletValue }),
+    });
+
+    fetchProfile(user.id);
+  };
+
+  const handleCopyRefLink = () => {
+    navigator.clipboard.writeText(`https://t.me/FightForGift_bot?start=${user.id}`);
+    alert('Скопировано!');
+  };
 
   if (loading || !user) {
     return <p className="profile-wrapper">Загрузка профиля...</p>;
@@ -55,7 +67,21 @@ export default function Profile() {
 
       <div className="profile-block">
         <div className="profile-title">💼 TON-кошелёк</div>
-        <div className="profile-row">{profile?.wallet || 'не привязан'}</div>
+        <div className="profile-row">
+          {profile?.wallet || 'не привязан'}
+        </div>
+        <div className="profile-row">
+          {profile?.wallet ? (
+            <button onClick={() => handleWalletUpdate(null)}>Отключить</button>
+          ) : (
+            <button onClick={() => {
+              const address = prompt("Введите ваш TON-адрес:");
+              if (address) handleWalletUpdate(address);
+            }}>
+              Привязать TON-кошелёк
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="profile-block">
@@ -66,13 +92,16 @@ export default function Profile() {
 
       <div className="profile-block">
         <div className="profile-title">🔗 Ваша реферальная ссылка</div>
-        <input
-          type="text"
-          readOnly
-          className="profile-ref-link"
-          value={`https://t.me/FightForGift_bot?start=${user.id}`}
-          onClick={(e) => e.target.select()}
-        />
+        <div className="profile-ref-wrapper">
+          <input
+            type="text"
+            readOnly
+            className="profile-ref-link"
+            value={`https://t.me/FightForGift_bot?start=${user.id}`}
+            onClick={(e) => e.target.select()}
+          />
+          <button onClick={handleCopyRefLink} className="copy-btn">Скопировать 🔗</button>
+        </div>
       </div>
 
       <div className="profile-block">

@@ -25,13 +25,33 @@
   margin-bottom: 6px;
 }
 
+.profile-ref-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .profile-ref-link {
-  width: 100%;
+  flex: 1;
   padding: 8px;
   border-radius: 8px;
   border: none;
   background-color: #1b263b;
   color: white;
+}
+
+.copy-btn {
+  padding: 6px 12px;
+  background-color: #778da9;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.copy-btn:hover {
+  background-color: #a9bcd0;
 }
 
 .profile-history-list {
