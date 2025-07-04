@@ -102,12 +102,14 @@ export default function Profile() {
                 return;
               }
 
+              const nanoTON = (amount * 1e9).toFixed(0); // ← переводим в наносекунды
+
               tonConnectUI.sendTransaction({
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [
                   {
                     address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
-                    amount: (1e9).toFixed(0), // в nanoTON
+                    amount: nanoTON
                   },
                 ],
               });
