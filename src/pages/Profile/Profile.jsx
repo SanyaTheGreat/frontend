@@ -3,13 +3,14 @@ import './Profile.css';
 import { TonConnectUI } from '@tonconnect/ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 
+
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [referrals, setReferrals] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  
   const tonConnect = useMemo(() => {
     return new TonConnectUI({
       manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
@@ -69,7 +70,7 @@ export default function Profile() {
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🎟 Билеты</div>
+        <div className="profile-title">🎟 TON </div>
         <div className="profile-row">{profile?.tickets ?? '—'}</div>
       </div>
 
@@ -82,7 +83,12 @@ export default function Profile() {
           {profile?.wallet ? (
             <button onClick={() => handleWalletUpdate(null)}>Отключить</button>
           ) : (
-            <TonConnectButton />
+            <button onClick={() => {
+              const address = prompt("Введите ваш TON-адрес:");
+              if (address) handleWalletUpdate(address);
+            }}>
+              Привязать TON-кошелёк
+            </button>
           )}
         </div>
       </div>
@@ -108,6 +114,12 @@ export default function Profile() {
       </div>
 
       <div className="profile-block">
+        <div className="profile-title">Подключение TON Connect</div>
+        <TonConnectButton />
+      </div>
+
+
+      <div className="profile-block">
         <div className="profile-title">🕘 История покупок билетов</div>
         <ul className="profile-history-list">
           {purchases.length === 0 && <li>История пуста</li>}
@@ -119,5 +131,6 @@ export default function Profile() {
         </ul>
       </div>
     </div>
+
   );
 }
