@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import './Profile.css';
+import { TonConnectUI } from '@tonconnect/ui';
+
 
 export default function Profile() {
   const [user, setUser] = useState(null);
