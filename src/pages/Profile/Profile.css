@@ -67,3 +67,10 @@
   margin-bottom: 10px;
   font-size: 14px;
 }
+
+button.ton-connect-button {
+  position: relative !important;
+  z-index: 1;
+  width: 100% !important;
+  max-width: 300px;
+}
