@@ -90,24 +90,7 @@ export default function Profile() {
         <div className="profile-row">{profile?.tickets ?? '—'}</div>
       </div>
 
-      <div className="profile-block">
-        <div className="profile-title">💼 TON-кошелёк</div>
-        <div className="profile-row">
-          {profile?.wallet || 'не привязан'}
-        </div>
-        <div className="profile-row">
-          {profile?.wallet ? (
-            <button onClick={() => handleWalletUpdate(null)}></button>
-          ) : (
-            <button onClick={() => {
-              const address = prompt("Введите ваш TON-адрес:");
-              if (address) handleWalletUpdate(address);
-            }}>
-              Привязать TON-кошелёк
-            </button>
-          )}
-        </div>
-      </div>
+      
 
       <div className="profile-block">
         <div className="profile-title">👥 Рефералы</div>
