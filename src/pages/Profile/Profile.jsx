@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
-import { toUserFriendlyAddress } from '@tonconnect/sdk'; // ← добавлен импорт
+import { toUserFriendlyAddress } from '@tonconnect/sdk';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -39,13 +39,12 @@ export default function Profile() {
     fetchProfile(telegramUser.id);
   }, []);
 
-  // Автообновление кошелька при подключении
   useEffect(() => {
     if (!tonWallet?.account?.address || !user || !profile) return;
 
     const walletFromServer = profile.wallet;
     const rawAddress = tonWallet.account.address;
-    const friendlyAddress = toUserFriendlyAddress(rawAddress, tonWallet.account.chain === 'testnet'); // 💡 преобразование
+    const friendlyAddress = toUserFriendlyAddress(rawAddress, tonWallet.account.chain === 'testnet');
 
     if (friendlyAddress && friendlyAddress !== walletFromServer) {
       handleWalletUpdate(friendlyAddress);
@@ -90,7 +89,52 @@ export default function Profile() {
         <div className="profile-row">{profile?.tickets ?? '—'}</div>
       </div>
 
-      
+      <div className="profile-block">
+        <div className="profile-title">💳 Пополнение и вывод TON</div>
+        <div className="profile-row">
+          <button
+            onClick={() => {
+              tonConnectUI.sendTransaction({
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [
+                  {
+                    address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
+                    amount: (1e9).toString(), // 1 TON
+                  },
+                ],
+              });
+            }}
+          >
+            Пополнить 1 TON
+          </button>
+        </div>
+
+        <div className="profile-row">
+          <button
+            onClick={() => {
+              const address = prompt('Введите адрес TON-кошелька для вывода:');
+              const amount = prompt('Введите сумму для вывода (TON):');
+
+              if (!address || !amount) return;
+
+              fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  telegram_id: user.id,
+                  address,
+                  amount: parseFloat(amount),
+                }),
+              })
+                .then((res) => res.json())
+                .then((data) => alert(data.message || 'Запрос на вывод отправлен'))
+                .catch(() => alert('Ошибка при отправке запроса'));
+            }}
+          >
+            Вывести
+          </button>
+        </div>
+      </div>
 
       <div className="profile-block">
         <div className="profile-title">👥 Рефералы</div>
