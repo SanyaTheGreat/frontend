@@ -113,11 +113,6 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="profile-block">
-        <div className="profile-title">Подключение TON Connect</div>
-        <TonConnectButton />
-      </div>
-
 
       <div className="profile-block">
         <div className="profile-title">🕘 История покупок билетов</div>
