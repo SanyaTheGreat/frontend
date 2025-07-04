@@ -9,6 +9,7 @@ export default function Profile() {
   const [referrals, setReferrals] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const tonConnect = new TonConnectUI({
     manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
   });
