@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import './Profile.css';
 import { TonConnectUI } from '@tonconnect/ui';
 
@@ -10,9 +10,11 @@ export default function Profile() {
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const tonConnect = new TonConnectUI({
-    manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
-  });
+  const tonConnect = useMemo(() => {
+    return new TonConnectUI({
+      manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
+    });
+  }, []);
 
   const fetchProfile = async (telegram_id) => {
     const [profileData, referralData, sellsData] = await Promise.all([
