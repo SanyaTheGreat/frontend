@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import './Profile.css';
+import { TonConnectUI } from '@tonconnect/ui';
+
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -7,6 +9,9 @@ export default function Profile() {
   const [referrals, setReferrals] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const tonConnect = new TonConnectUI({
+  manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
+  });
 
   const fetchProfile = async (telegram_id) => {
     const [profileData, referralData, sellsData] = await Promise.all([
@@ -74,10 +79,13 @@ export default function Profile() {
           {profile?.wallet ? (
             <button onClick={() => handleWalletUpdate(null)}>Отключить</button>
           ) : (
-            <button onClick={() => {
-              const address = prompt("Введите ваш TON-адрес:");
+            <button
+             onClick={async () => {
+              const connection = await tonConnect.connectWallet();
+              const address = connection?.account?.address;
               if (address) handleWalletUpdate(address);
-            }}>
+            }}
+            >
               Привязать TON-кошелёк
             </button>
           )}
