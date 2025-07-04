@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import './Profile.css';
 import { TonConnectUI } from '@tonconnect/ui';
-
+import { TonConnectButton } from '@tonconnect/ui-react';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -9,7 +9,7 @@ export default function Profile() {
   const [referrals, setReferrals] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const tonConnect = useMemo(() => {
     return new TonConnectUI({
       manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
@@ -82,12 +82,7 @@ export default function Profile() {
           {profile?.wallet ? (
             <button onClick={() => handleWalletUpdate(null)}>Отключить</button>
           ) : (
-            <button onClick={() => {
-              const address = prompt("Введите ваш TON-адрес:");
-              if (address) handleWalletUpdate(address);
-            }}>
-              Привязать TON-кошелёк
-            </button>
+            <TonConnectButton />
           )}
         </div>
       </div>
