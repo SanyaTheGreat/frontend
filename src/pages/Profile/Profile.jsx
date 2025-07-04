@@ -97,7 +97,7 @@ export default function Profile() {
         </div>
         <div className="profile-row">
           {profile?.wallet ? (
-            <button onClick={() => handleWalletUpdate(null)}>Отключить</button>
+            <button onClick={() => handleWalletUpdate(null)}></button>
           ) : (
             <button onClick={() => {
               const address = prompt("Введите ваш TON-адрес:");
