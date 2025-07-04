@@ -94,18 +94,26 @@ export default function Profile() {
         <div className="profile-row">
           <button
             onClick={() => {
+              const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
+              const amount = parseFloat(amountInput);
+
+              if (isNaN(amount) || amount <= 0) {
+                alert('Введите корректную сумму.');
+                return;
+              }
+
               tonConnectUI.sendTransaction({
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [
                   {
                     address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
-                    amount: (1e9).toString(), // 1 TON
+                    amount: (1e9).toFixed(0), // в nanoTON
                   },
                 ],
               });
             }}
           >
-            Пополнить 1 TON
+            Пополнить TON
           </button>
         </div>
 
