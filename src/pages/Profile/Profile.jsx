@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { toUserFriendlyAddress } from '@tonconnect/sdk'; // ← добавлен импорт
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -38,15 +39,16 @@ export default function Profile() {
     fetchProfile(telegramUser.id);
   }, []);
 
-  // Автоматически обновляет кошелёк при подключении через TonConnect
+  // Автообновление кошелька при подключении
   useEffect(() => {
     if (!tonWallet?.account?.address || !user || !profile) return;
 
     const walletFromServer = profile.wallet;
-    const connectedWallet = tonWallet.account.address;
+    const rawAddress = tonWallet.account.address;
+    const friendlyAddress = toUserFriendlyAddress(rawAddress, tonWallet.account.chain === 'testnet'); // 💡 преобразование
 
-    if (connectedWallet && connectedWallet !== walletFromServer) {
-      handleWalletUpdate(connectedWallet);
+    if (friendlyAddress && friendlyAddress !== walletFromServer) {
+      handleWalletUpdate(friendlyAddress);
     }
   }, [tonWallet, user, profile]);
 
