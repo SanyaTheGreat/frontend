@@ -3,13 +3,14 @@ import './Profile.css';
 import { TonConnectUI } from '@tonconnect/ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 
+
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [referrals, setReferrals] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  
   const tonConnect = useMemo(() => {
     return new TonConnectUI({
       manifestUrl: 'https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json',
@@ -69,13 +70,15 @@ export default function Profile() {
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🎟 TON</div>
+        <div className="profile-title">🎟 TON </div>
         <div className="profile-row">{profile?.tickets ?? '—'}</div>
       </div>
 
       <div className="profile-block">
         <div className="profile-title">💼 TON-кошелёк</div>
-        <div className="profile-row">{profile?.wallet || 'не привязан'}</div>
+        <div className="profile-row">
+          {profile?.wallet || 'не привязан'}
+        </div>
         <div className="profile-row">
           {profile?.wallet ? (
             <button onClick={() => handleWalletUpdate(null)}>Отключить</button>
@@ -83,15 +86,10 @@ export default function Profile() {
             <button onClick={() => {
               const address = prompt("Введите ваш TON-адрес:");
               if (address) handleWalletUpdate(address);
-            }}>Привязать TON-кошелёк</button>
+            }}>
+              Привязать TON-кошелёк
+            </button>
           )}
-        </div>
-      </div>
-
-      <div className="profile-block">
-        <div className="profile-title">🔌 Подключение TON Connect</div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <TonConnectButton className="ton-connect-button" />
         </div>
       </div>
 
@@ -115,6 +113,7 @@ export default function Profile() {
         </div>
       </div>
 
+
       <div className="profile-block">
         <div className="profile-title">🕘 История покупок билетов</div>
         <ul className="profile-history-list">
@@ -127,5 +126,6 @@ export default function Profile() {
         </ul>
       </div>
     </div>
+
   );
 }
