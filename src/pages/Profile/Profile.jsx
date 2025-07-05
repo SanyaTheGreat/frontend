@@ -4,6 +4,9 @@ import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
 import { beginCell } from '@ton-core';
 
+
+//// 
+
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
