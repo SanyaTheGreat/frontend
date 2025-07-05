@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
+import { beginCell } from '@ton/core';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -102,14 +103,21 @@ export default function Profile() {
                 return;
               }
 
-              const nanoTON = (amount * 1e9).toFixed(0); // ← переводим в наносекунды
+              const nanoTON = (amount * 1e9).toFixed(0);
+
+              const payload = beginCell()
+                .storeUint(user.id, 64)
+                .endCell()
+                .toBoc()
+                .toString('base64');
 
               tonConnectUI.sendTransaction({
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [
                   {
                     address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
-                    amount: nanoTON
+                    amount: nanoTON,
+                    payload,
                   },
                 ],
               });
