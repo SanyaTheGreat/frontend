@@ -14,6 +14,7 @@ export default function Profile() {
   const tonWallet = useTonWallet();
 
   const fetchProfile = async (telegram_id) => {
+    console.log('📡 Запрашиваем профиль пользователя...');
     const [profileData, referralData, sellsData] = await Promise.all([
       fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
       fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
@@ -24,6 +25,7 @@ export default function Profile() {
     setReferrals(referralData);
     setPurchases(sellsData);
     setLoading(false);
+    console.log('✅ Профиль получен:', profileData);
   };
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function Profile() {
       return;
     }
 
+    console.log('👤 Telegram пользователь:', telegramUser);
     setUser(telegramUser);
     fetchProfile(telegramUser.id);
   }, []);
@@ -52,6 +55,7 @@ export default function Profile() {
   }, [tonWallet, user, profile]);
 
   const handleWalletUpdate = async (walletValue) => {
+    console.log('🔄 Обновляем TON-кошелек:', walletValue);
     await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -103,17 +107,26 @@ export default function Profile() {
               }
 
               const nanoTON = (amount * 1e9).toFixed(0);
+              const comment = profile?.payload || '';
+              console.log('📤 Отправляем транзакцию с комментарием:', comment);
 
-              tonConnectUI.sendTransaction({
-                validUntil: Math.floor(Date.now() / 1000) + 600,
-                messages: [
-                  {
-                    address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
-                    amount: nanoTON,
-                    text_comment: `tg:${user.id}`,
-                  },
-                ],
-              });
+              try {
+                await tonConnectUI.sendTransaction({
+                  validUntil: Math.floor(Date.now() / 1000) + 600,
+                  messages: [
+                    {
+                      address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
+                      amount: nanoTON,
+                      payload: undefined,
+                      text: comment,
+                    },
+                  ],
+                });
+                console.log('✅ Транзакция отправлена');
+              } catch (error) {
+                console.error('❌ Ошибка при отправке транзакции:', error);
+                alert('Ошибка при отправке TON');
+              }
             }}
           >
             Пополнить TON
