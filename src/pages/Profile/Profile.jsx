@@ -2,10 +2,6 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
-import { beginCell } from '@ton/core';
-
-
-//// 
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -70,14 +66,6 @@ export default function Profile() {
     alert('Скопировано!');
   };
 
-  const encodePayload = (telegramId) => {
-    const boc = beginCell()
-      .storeUint(telegramId, 64)
-      .endCell()
-      .toBoc();
-    return btoa(String.fromCharCode(...boc));
-  };
-
   if (loading || !user) {
     return <p className="profile-wrapper">Загрузка профиля...</p>;
   }
@@ -115,7 +103,12 @@ export default function Profile() {
               }
 
               const nanoTON = (amount * 1e9).toFixed(0);
-              const payload = encodePayload(user.id);
+              const payload = profile?.payload;
+
+              if (!payload) {
+                alert('Ошибка: payload отсутствует.');
+                return;
+              }
 
               tonConnectUI.sendTransaction({
                 validUntil: Math.floor(Date.now() / 1000) + 600,
