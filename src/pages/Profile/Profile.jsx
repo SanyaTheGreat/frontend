@@ -67,6 +67,14 @@ export default function Profile() {
     alert('Скопировано!');
   };
 
+  const encodePayload = (telegramId) => {
+    const boc = beginCell()
+      .storeUint(telegramId, 64)
+      .endCell()
+      .toBoc();
+    return btoa(String.fromCharCode(...boc));
+  };
+
   if (loading || !user) {
     return <p className="profile-wrapper">Загрузка профиля...</p>;
   }
@@ -104,12 +112,7 @@ export default function Profile() {
               }
 
               const nanoTON = (amount * 1e9).toFixed(0);
-
-              const payload = beginCell()
-                .storeUint(user.id, 64)
-                .endCell()
-                .toBoc()
-                .toString('base64');
+              const payload = encodePayload(user.id);
 
               tonConnectUI.sendTransaction({
                 validUntil: Math.floor(Date.now() / 1000) + 600,
