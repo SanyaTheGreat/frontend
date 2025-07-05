@@ -93,7 +93,7 @@ export default function Profile() {
         <div className="profile-title">💳 Пополнение и вывод TON</div>
         <div className="profile-row">
           <button
-            onClick={() => {
+            onClick={async () => {
               const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
               const amount = parseFloat(amountInput);
 
@@ -103,12 +103,6 @@ export default function Profile() {
               }
 
               const nanoTON = (amount * 1e9).toFixed(0);
-              const payload = profile?.payload;
-
-              if (!payload) {
-                alert('Ошибка: payload отсутствует.');
-                return;
-              }
 
               tonConnectUI.sendTransaction({
                 validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -116,7 +110,7 @@ export default function Profile() {
                   {
                     address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
                     amount: nanoTON,
-                    payload,
+                    text_comment: `tg:${user.id}`,
                   },
                 ],
               });
