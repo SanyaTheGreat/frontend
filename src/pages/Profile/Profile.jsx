@@ -4,10 +4,6 @@ import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
 import { beginCell } from '@ton/ton';
 
-// В Telegram WebApp нет глобального Buffer, поэтому добавляем его
-if (typeof window !== 'undefined' && !window.Buffer) {
-  window.Buffer = Buffer;
-}
 
 export default function Profile() {
   const [user, setUser] = useState(null);
