@@ -3,6 +3,8 @@ import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
 import { beginCell } from '@ton/ton'; // убедись, что у тебя '@ton/ton' установлен и импорт рабочий
+import { Buffer } from 'buffer';
+
 
 export default function Profile() {
   const [user, setUser] = useState(null);
