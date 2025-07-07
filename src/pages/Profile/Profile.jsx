@@ -110,7 +110,7 @@ export default function Profile() {
 
               // Берём payload как готовую строку, кодируем base64
               const comment = profile?.payload || '';
-              const payloadBase64 = comment ? btoa(comment) : undefined;
+              const payloadBase64 = comment || undefined;
 
               console.log('📤 Отправляем транзакцию с payload (Base64):', payloadBase64);
 
