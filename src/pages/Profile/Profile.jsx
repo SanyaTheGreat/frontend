@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnect } from '@tonconnect/sdk';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
-import { toNano, beginCell } from '@ton/core';
+import { toNano, beginCell } from '@ton/ton';
 
 const connector = new TonConnect();
 
