@@ -1,3 +1,7 @@
+import { Buffer } from 'buffer';
+window.Buffer = Buffer;
+
+
 import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
