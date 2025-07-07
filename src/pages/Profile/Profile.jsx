@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
+import { beginCell } from '@ton/ton';
+import { Buffer } from 'buffer';
+
+// В Telegram WebApp нет глобального Buffer, поэтому добавляем его
+if (typeof window !== 'undefined' && !window.Buffer) {
+  window.Buffer = Buffer;
+}
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -65,6 +72,16 @@ export default function Profile() {
     fetchProfile(user.id);
   };
 
+  // Функция создания payload с комментарием для TON
+  const createCommentPayload = (comment) => {
+    return beginCell()
+      .storeUint(0, 32)         // 32-битный opcode для комментария = 0
+      .storeStringTail(comment) // сам комментарий
+      .endCell()
+      .toBoc()
+      .toString('base64');
+  };
+
   const handleCopyRefLink = () => {
     navigator.clipboard.writeText(`https://t.me/FightForGift_bot?start=${user.id}`);
     alert('Скопировано!');
@@ -107,8 +124,10 @@ export default function Profile() {
               }
 
               const nanoTON = (amount * 1e9).toFixed(0);
-              const comment = profile?.payload || '';
-              console.log('📤 Отправляем транзакцию с комментарием:', comment);
+              const comment = `tg:${user.id}`;
+              const payload = createCommentPayload(comment);
+
+              console.log('📤 Отправляем транзакцию с payload (комментарием):', comment);
 
               try {
                 await tonConnectUI.sendTransaction({
@@ -117,8 +136,7 @@ export default function Profile() {
                     {
                       address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
                       amount: nanoTON,
-                      payload: undefined,
-                      text: comment,
+                      payload,
                     },
                   ],
                 });

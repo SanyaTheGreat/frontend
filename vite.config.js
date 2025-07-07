@@ -13,6 +13,7 @@ export default defineConfig({
       plugins: [
         NodeGlobalsPolyfillPlugin({
           buffer: true,
+          process: true, // добавлено для process
         }),
       ],
     },
@@ -23,6 +24,9 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+      process: 'process/browser',          // добавлено для process
+      crypto: 'crypto-browserify',         // добавлено для crypto
+      stream: 'stream-browserify',         // добавлено для stream
     },
   },
   server: {

@@ -19,11 +19,13 @@
     "@tonconnect/ui": "^2.2.0",
     "@tonconnect/ui-react": "^2.2.0",
     "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "lottie-web": "^5.12.2",
     "process": "^0.11.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.2",
+    "stream-browserify": "^3.0.0",
     "ton-core": "^0.53.0"
   },
   "devDependencies": {
