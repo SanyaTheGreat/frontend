@@ -4,8 +4,10 @@ import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
 import { Buffer } from 'buffer';  // импортируем Buffer для payload
 
-function stringToHex(str) {
-  return Buffer.from(str, 'utf8').toString('hex');
+// Конвертация строки в Base64Url для TON payload
+function stringToBase64Url(str) {
+  const base64 = Buffer.from(str, 'utf8').toString('base64');
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export default function Profile() {
@@ -113,14 +115,14 @@ export default function Profile() {
 
               const nanoTON = (amount * 1e9).toFixed(0);
 
-              // Формируем payload из строки profile.payload
+              // Формируем payload из строки profile.payload в Base64Url
               const comment = profile?.payload || '';
-              let payloadHex = '';
+              let payloadBase64Url = undefined;
               if (comment) {
-                payloadHex = stringToHex(comment);
+                payloadBase64Url = stringToBase64Url(comment);
               }
 
-              console.log('📤 Отправляем транзакцию с payload (HEX):', payloadHex);
+              console.log('📤 Отправляем транзакцию с payload (Base64Url):', payloadBase64Url);
 
               try {
                 await tonConnectUI.sendTransaction({
@@ -129,7 +131,7 @@ export default function Profile() {
                     {
                       address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
                       amount: nanoTON,
-                      payload: payloadHex || undefined,
+                      payload: payloadBase64Url,
                       text: undefined,
                     },
                   ],
