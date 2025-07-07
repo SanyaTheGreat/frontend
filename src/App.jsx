@@ -1,3 +1,4 @@
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useTelegramRegistration } from './hooks/useTelegramRegistration';
 import Home from './pages/Home/Home';
@@ -5,7 +6,11 @@ import History from './pages/History/History';
 import LobbyPage from './pages/Lobby/LobbyPage';
 import Profile from './pages/Profile/Profile';
 import TabBar from './components/TabBar';
-import { TonConnectUIProvider } from '@tonconnect/ui-react';  
+import { TonConnectUIProvider } from '@tonconnect/ui-react';
+
+// Импортируем Buffer полифилл и назначаем в глобальный объект
+import { Buffer } from 'buffer';
+window.Buffer = window.Buffer || Buffer;
 
 function App() {
   useTelegramRegistration();

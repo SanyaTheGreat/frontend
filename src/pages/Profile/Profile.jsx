@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
+import { Buffer } from 'buffer';  // импортируем Buffer для payload
+
+function stringToHex(str) {
+  return Buffer.from(str, 'utf8').toString('hex');
+}
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -107,8 +112,15 @@ export default function Profile() {
               }
 
               const nanoTON = (amount * 1e9).toFixed(0);
+
+              // Формируем payload из строки profile.payload
               const comment = profile?.payload || '';
-              console.log('📤 Отправляем транзакцию с комментарием:', comment);
+              let payloadHex = '';
+              if (comment) {
+                payloadHex = stringToHex(comment);
+              }
+
+              console.log('📤 Отправляем транзакцию с payload (HEX):', payloadHex);
 
               try {
                 await tonConnectUI.sendTransaction({
@@ -117,8 +129,8 @@ export default function Profile() {
                     {
                       address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
                       amount: nanoTON,
-                      payload: undefined,
-                      text: comment,
+                      payload: payloadHex || undefined,
+                      text: undefined,
                     },
                   ],
                 });
