@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
-import { Buffer } from 'buffer';  // для конвертации строки
+import { Buffer } from 'buffer';
 
-// Конвертация строки в Uint8Array
-function stringToUint8Array(str) {
-  return Uint8Array.from(Buffer.from(str, 'utf8'));
+function stringToBase64(str) {
+  return Buffer.from(str, 'utf8').toString('base64');
 }
 
 export default function Profile() {
@@ -114,14 +113,14 @@ export default function Profile() {
 
               const nanoTON = (amount * 1e9).toFixed(0);
 
-              // Конвертируем payload в Uint8Array
+              // Корректно конвертируем payload в base64 (с паддингом)
               const comment = profile?.payload || '';
-              let payloadBinary = undefined;
+              let payloadBase64 = undefined;
               if (comment) {
-                payloadBinary = stringToUint8Array(comment);
+                payloadBase64 = stringToBase64(comment);
               }
 
-              console.log('📤 Отправляем транзакцию с payload (Uint8Array):', payloadBinary);
+              console.log('📤 Отправляем транзакцию с payload (Base64):', payloadBase64);
 
               try {
                 await tonConnectUI.sendTransaction({
@@ -130,7 +129,7 @@ export default function Profile() {
                     {
                       address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
                       amount: nanoTON,
-                      payload: payloadBinary,
+                      payload: payloadBase64,
                       text: undefined,
                     },
                   ],
