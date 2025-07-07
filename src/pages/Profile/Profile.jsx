@@ -3,7 +3,6 @@ import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
 import { beginCell } from '@ton/ton';
-import { Buffer } from 'buffer';
 
 // В Telegram WebApp нет глобального Buffer, поэтому добавляем его
 if (typeof window !== 'undefined' && !window.Buffer) {
