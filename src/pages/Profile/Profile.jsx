@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
-//import { beginCell } from '@ton/core';  // Добавлен импорт
+import { beginCell } from '@ton/ton';  // Добавлен импорт
 
 export default function Profile() {
   const [user, setUser] = useState(null);
