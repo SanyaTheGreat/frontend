@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './Profile.css';
-import { TonConnect } from '@tonconnect/sdk';
+import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
-//import { toNano, beginCell } from '@ton/ton';
-
-const connector = new TonConnect();
+//import { beginCell } from '@ton/core';  // Добавлен импорт
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -12,7 +10,9 @@ export default function Profile() {
   const [referrals, setReferrals] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [walletAddress, setWalletAddress] = useState(null);
+
+  const [tonConnectUI] = useTonConnectUI();
+  const tonWallet = useTonWallet();
 
   const fetchProfile = async (telegram_id) => {
     console.log('📡 Запрашиваем профиль пользователя...');
@@ -44,78 +44,26 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    if (!walletAddress && profile?.wallet) {
-      setWalletAddress(profile.wallet);
+    if (!tonWallet?.account?.address || !user || !profile) return;
+
+    const walletFromServer = profile.wallet;
+    const rawAddress = tonWallet.account.address;
+    const friendlyAddress = toUserFriendlyAddress(rawAddress, tonWallet.account.chain === 'testnet');
+
+    if (friendlyAddress && friendlyAddress !== walletFromServer) {
+      handleWalletUpdate(friendlyAddress);
     }
-  }, [profile]);
+  }, [tonWallet, user, profile]);
 
-  // Подключаем кошелек TonConnect при нажатии кнопки
-  const connectWallet = async () => {
-    try {
-      await connector.connect();
-      const account = connector.accounts[0];
-      console.log('Кошелек подключен:', account);
-      setWalletAddress(account.address);
+  const handleWalletUpdate = async (walletValue) => {
+    console.log('🔄 Обновляем TON-кошелек:', walletValue);
+    await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_id: user.id, wallet: walletValue }),
+    });
 
-      // Если адрес кошелька отличается от серверного, обновляем
-      if (account.address !== profile.wallet) {
-        await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telegram_id: user.id, wallet: account.address }),
-        });
-        fetchProfile(user.id);
-      }
-    } catch (error) {
-      console.error('Ошибка подключения кошелька:', error);
-    }
-  };
-
-  // Отправка транзакции с payload
-  const sendTransaction = async () => {
-    const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
-    const amount = parseFloat(amountInput);
-
-    if (isNaN(amount) || amount <= 0) {
-      alert('Введите корректную сумму.');
-      return;
-    }
-
-    if (!walletAddress) {
-      alert('Подключите кошелек TON!');
-      return;
-    }
-
-    // Формируем payload через beginCell
-    const comment = profile?.payload || '';
-    let payloadBase64;
-    if (comment) {
-      const cell = beginCell()
-        .storeUint(0, 32)
-        .storeStringTail(comment)
-        .endCell();
-
-      payloadBase64 = cell.toBoc().toString("base64");
-    }
-
-    console.log('📤 Отправляем транзакцию с payload (Base64):', payloadBase64);
-
-    try {
-      await connector.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 360,
-        messages: [
-          {
-            address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
-            amount: toNano(amount).toString(),
-            payload: payloadBase64,
-          },
-        ],
-      });
-      console.log('✅ Транзакция отправлена');
-    } catch (error) {
-      console.error('❌ Ошибка при отправке транзакции:', error);
-      alert('Ошибка при отправке TON');
-    }
+    fetchProfile(user.id);
   };
 
   const handleCopyRefLink = () => {
@@ -137,8 +85,7 @@ export default function Profile() {
       <div className="profile-block">
         <div className="profile-title">🔌 Подключение TON Connect</div>
         <div className="profile-row ton-button-row">
-          <button onClick={connectWallet}>Подключить TON кошелек</button>
-          <div>Текущий адрес: {walletAddress || 'не подключен'}</div>
+          <TonConnectButton />
         </div>
       </div>
 
@@ -150,7 +97,53 @@ export default function Profile() {
       <div className="profile-block">
         <div className="profile-title">💳 Пополнение и вывод TON</div>
         <div className="profile-row">
-          <button onClick={sendTransaction}>Пополнить TON</button>
+          <button
+            onClick={async () => {
+              const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
+              const amount = parseFloat(amountInput);
+
+              if (isNaN(amount) || amount <= 0) {
+                alert('Введите корректную сумму.');
+                return;
+              }
+
+              const nanoTON = (amount * 1e9).toFixed(0);
+
+              const comment = profile?.payload || '';
+
+              let payloadBase64;
+              if (comment) {
+                // Формируем payload в виде сериализованной ячейки TON
+                const cell = beginCell()
+                  .storeUint(0, 32) // префикс (32 нуля)
+                  .storeStringTail(comment)
+                  .endCell();
+
+                payloadBase64 = cell.toBoc().toString("base64");
+              }
+
+              console.log('📤 Отправляем транзакцию с payload (Base64):', payloadBase64);
+
+              try {
+                await tonConnectUI.sendTransaction({
+                  validUntil: Math.floor(Date.now() / 1000) + 600,
+                  messages: [
+                    {
+                      address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
+                      amount: nanoTON,
+                      payload: payloadBase64,
+                    },
+                  ],
+                });
+                console.log('✅ Транзакция отправлена');
+              } catch (error) {
+                console.error('❌ Ошибка при отправке транзакции:', error);
+                alert('Ошибка при отправке TON');
+              }
+            }}
+          >
+            Пополнить TON
+          </button>
         </div>
 
         <div className="profile-row">
@@ -196,9 +189,7 @@ export default function Profile() {
             value={`https://t.me/FightForGift_bot?start=${user.id}`}
             onClick={(e) => e.target.select()}
           />
-          <button onClick={handleCopyRefLink} className="copy-btn">
-            Скопировать 🔗
-          </button>
+          <button onClick={handleCopyRefLink} className="copy-btn">Скопировать 🔗</button>
         </div>
       </div>
 
