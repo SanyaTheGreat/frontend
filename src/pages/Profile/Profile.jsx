@@ -108,8 +108,8 @@ export default function Profile() {
 
               const nanoTON = (amount * 1e9).toFixed(0);
 
+              // Берём payload как готовую строку, кодируем base64
               const comment = profile?.payload || '';
-              // Простое base64 кодирование текста
               const payloadBase64 = comment ? btoa(comment) : undefined;
 
               console.log('📤 Отправляем транзакцию с payload (Base64):', payloadBase64);
