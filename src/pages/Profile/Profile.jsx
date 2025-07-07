@@ -125,7 +125,7 @@ export default function Profile() {
                     {
                       address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
                       amount: nanoTON,
-                      payload: payloadBase64Url,
+                      //payload: payloadBase64Url,
                       text: undefined,
                     },
                   ],
