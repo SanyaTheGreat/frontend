@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 20px; /* Отступы между карточками */
   background-color: #0d1b2a;
   min-height: 100vh;
   width: 100%;
@@ -25,6 +26,11 @@
   color: white;
 }
 
+.wheel-card.grayscale {
+  filter: grayscale(100%);
+  opacity: 0.6;
+}
+
 .wheel-title {
   font-weight: bold;
   font-size: 20px;
@@ -43,6 +49,8 @@
   width: 120px;
   height: 120px;
   background: #000;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .go-button {
@@ -71,6 +79,16 @@
   justify-content: space-between;
   font-size: 14px;
   color: white;
+}
+
+.separator {
+  color: #ccc;
+  font-weight: bold;
+  font-size: 16px;
+  margin: 20px 0 10px 0;
+  width: 90%;
+  max-width: 360px;
+  text-align: center;
 }
 
 .no-wheels {
