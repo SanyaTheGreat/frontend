@@ -5,6 +5,7 @@ import Home from './pages/Home/Home';
 import History from './pages/History/History';
 import LobbyPage from './pages/Lobby/LobbyPage';
 import Profile from './pages/Profile/Profile';
+import InGame from './pages/InGame/InGame.jsx';
 import TabBar from './components/TabBar';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
@@ -31,8 +32,6 @@ function App() {
   );
 }
 
-function InGame() {
-  return <h1>В игре</h1>;
-}
+
 
 export default App;
