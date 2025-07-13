@@ -15,21 +15,26 @@ export default function WheelPage() {
   const [loading, setLoading] = useState(true);
   const [animStarted, setAnimStarted] = useState(false);
   const timerRef = useRef(null);
+  const [status, setStatus] = useState(null); // active или completed
 
-  // Загрузка данных колеса: участников и статуса
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Получаем участников из wheel_participants
+      // Получаем участников
       const partRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
 
-      // Получаем статус колеса и победителя
-      const statusRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/status`);
-      if (!statusRes.ok) throw new Error(`Ошибка запроса статуса: ${statusRes.status}`);
-      const statusData = await statusRes.json();
+      // Получаем активные колёса
+      const activeRes = await fetch(`${API_BASE_URL}/wheels/active`);
+      if (!activeRes.ok) throw new Error(`Ошибка запроса активных колес: ${activeRes.status}`);
+      const activeData = await activeRes.json();
+
+      // Получаем завершённые колёса
+      const completedRes = await fetch(`${API_BASE_URL}/wheels/completed`);
+      if (!completedRes.ok) throw new Error(`Ошибка запроса завершённых колес: ${completedRes.status}`);
+      const completedData = await completedRes.json();
 
       // Фильтрация уникальных участников по user_id и сортировка по joined_at
       const participantsRaw = partData.participants || [];
@@ -39,7 +44,6 @@ export default function WheelPage() {
         if (!uniqueMap.has(p.user_id)) {
           uniqueMap.set(p.user_id, p);
         } else {
-          // Если уже есть участник, проверим дату joined_at и обновим, если нужно
           const existing = uniqueMap.get(p.user_id);
           if (new Date(p.joined_at) < new Date(existing.joined_at)) {
             uniqueMap.set(p.user_id, p);
@@ -47,7 +51,6 @@ export default function WheelPage() {
         }
       });
 
-      // Преобразуем и сортируем по joined_at
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
         .map(p => ({
@@ -55,8 +58,27 @@ export default function WheelPage() {
         }));
 
       setParticipants(uniqueParticipants);
-      setWinner(statusData.winnerUsername || null);
-      setCompletedAt(statusData.completedAt || null);
+
+      // Поиск колеса в активных
+      const wheelActive = activeData.wheels.find(w => w.id === wheelId);
+
+      if (wheelActive) {
+        setStatus('active');
+        setWinner(null);
+        setCompletedAt(null);
+      } else {
+        // Поиск колеса в завершённых
+        const wheelCompleted = completedData.completed_wheels.find(w => w.id === wheelId);
+        if (wheelCompleted) {
+          setStatus('completed');
+          setWinner(wheelCompleted.winner.username || null);
+          setCompletedAt(wheelCompleted.completed_at || null);
+        } else {
+          setStatus(null);
+          setWinner(null);
+          setCompletedAt(null);
+        }
+      }
     } catch (e) {
       console.error('Ошибка загрузки данных колеса:', e);
     } finally {
@@ -98,6 +120,7 @@ export default function WheelPage() {
     <div className="wheel-page-wrapper">
       <h2>Колесо №{wheelId}</h2>
       <p>Участников: {participants.length}</p>
+      <p>Статус: {status || 'Неизвестен'}</p>
       <Wheel
         participants={participants}
         winnerUsername={winner}
