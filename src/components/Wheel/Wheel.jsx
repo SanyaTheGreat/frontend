@@ -5,45 +5,49 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const wheelRef = useRef(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
+  // Угол сектора (360 / wheelSize)
   const sectorAngle = wheelSize ? 360 / wheelSize : 0;
-  const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'open' });
 
-  // Цвета из палитр для секторов
-  const primaryColors = ['#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9'];
-  const secondaryColorsA = ['#4711AE', '#482A83', '#2A0671', '#7746D7', '#906CD7'];
-  const secondaryColorsB = ['#0F4DA8', '#284B7E', '#052F6D', '#437DD4', '#6A94D4'];
+  // Цвета секторов (пример)
+  const colors = [
+    '#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9', 
+    '#4711AE', '#482A83', '#2A0671', '#7746D7', '#906CD7', 
+    '#0F4DA8', '#284B7E', '#052F6D', '#437DD4', '#6A94D4'
+  ];
 
-  // Выбор палитры в зависимости от количества секторов
-  // Для <=5 секторов — primaryColors, 6-10 — secondaryColorsA, >10 — secondaryColorsB
-  let colors;
-  if (wheelSize <= 5) {
-    colors = primaryColors;
-  } else if (wheelSize <= 10) {
-    colors = secondaryColorsA;
-  } else {
-    colors = secondaryColorsB;
-  }
+  // Генерация SVG path для сектора
+  const createSectorPath = (index) => {
+    const radius = 150; // половина ширины/высоты SVG (300x300)
+    const startAngle = sectorAngle * index;
+    const endAngle = startAngle + sectorAngle;
 
-  // Функция для выбора цвета с учётом индекса и длины палитры
-  const getColor = (index) => colors[index % colors.length];
+    // Перевод градусов в радианы
+    const startRad = (Math.PI / 180) * startAngle;
+    const endRad = (Math.PI / 180) * endAngle;
 
-  useEffect(() => {
-    console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
-    sectors.forEach((p, i) => {
-      const angleStart = i * sectorAngle;
-      const angleEnd = angleStart + sectorAngle;
-      console.log(`Сектор ${i + 1} - диапазон: ${angleStart}° - ${angleEnd}°`);
-    });
-  }, [sectors, sectorAngle]);
+    // Координаты начала и конца дуги
+    const x1 = radius + radius * Math.cos(startRad);
+    const y1 = radius + radius * Math.sin(startRad);
+    const x2 = radius + radius * Math.cos(endRad);
+    const y2 = radius + radius * Math.sin(endRad);
 
+    // Большая ли дуга (если сектор больше 180 градусов)
+    const largeArcFlag = sectorAngle > 180 ? 1 : 0;
+
+    // Формируем путь
+    return `M ${radius} ${radius} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+  };
+
+  // Автостарт анимации
   const spinWheel = () => {
-    if (isSpinning || sectors.length === 0 || !winnerUsername) return;
+    if (isSpinning || wheelSize === 0 || !winnerUsername) return;
 
     setIsSpinning(true);
 
-    const winnerIndex = sectors.findIndex(p => p.username === winnerUsername);
+    // Индекс победителя
+    const winnerIndex = participants.findIndex(p => p.username === winnerUsername);
     if (winnerIndex === -1) {
-      console.warn('Winner not found among participants');
+      console.warn('Winner not found');
       setIsSpinning(false);
       return;
     }
@@ -64,41 +68,58 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   };
 
   useEffect(() => {
-    if (winnerUsername && !isSpinning) {
-      spinWheel();
-    }
+    if (winnerUsername && !isSpinning) spinWheel();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winnerUsername, sectors.length]);
+  }, [winnerUsername, wheelSize]);
 
   return (
     <div className="wheel-container">
       <div className="arrow-indicator" />
-      <div className="wheel" ref={wheelRef}>
-        {sectors.map((p, i) => {
-          const rotation = i * sectorAngle;
-          const isWinner = p.username === winnerUsername;
-          const isPlaceholder = p.username === 'open';
+      <svg
+        className="wheel"
+        width="300"
+        height="300"
+        viewBox="0 0 300 300"
+        ref={wheelRef}
+      >
+        {Array.from({ length: wheelSize }).map((_, i) => {
+          const participant = participants[i] || { username: 'open' };
+          const isWinner = participant.username === winnerUsername;
+          const fillColor = colors[i % colors.length];
+
+          // Позиция текста - средний угол сектора
+          const midAngle = sectorAngle * i + sectorAngle / 2;
+          const textRadius = 100; // радиус для текста
+          const textRad = (Math.PI / 180) * midAngle;
+          const textX = 150 + textRadius * Math.cos(textRad);
+          const textY = 150 + textRadius * Math.sin(textRad);
 
           return (
-            <div
-              key={i}
-              className={`wheel-sector${isWinner ? ' winner' : ''}${isPlaceholder ? ' placeholder' : ''}`}
-              style={{
-                transform: `rotate(${rotation}deg) skewY(${90 - sectorAngle}deg)`,
-                backgroundColor: getColor(i),
-              }}
-              title={isPlaceholder ? 'Open sector' : p.username}
-            >
-              <span
-                className="sector-label"
-                style={{ transform: `skewY(-${90 - sectorAngle}deg) rotate(${sectorAngle / 2}deg)` }}
+            <g key={i}>
+              <path
+                d={createSectorPath(i)}
+                fill={fillColor}
+                stroke="#22334f"
+                strokeWidth="1"
+                className={isWinner ? 'winner' : ''}
+              />
+              <text
+                x={textX}
+                y={textY}
+                fill={isWinner ? '#fff' : '#e0e1dd'}
+                fontWeight={isWinner ? 'bold' : '600'}
+                fontSize="14"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                pointerEvents="none"
+                style={{ userSelect: 'none' }}
               >
-                {isPlaceholder ? 'open' : `@${p.username}`}
-              </span>
-            </div>
+                {participant.username === 'open' ? 'open' : `@${participant.username}`}
+              </text>
+            </g>
           );
         })}
-      </div>
+      </svg>
     </div>
   );
 }

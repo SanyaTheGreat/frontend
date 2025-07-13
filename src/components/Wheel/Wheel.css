@@ -11,68 +11,26 @@
 }
 
 .wheel {
-  position: relative;
-  width: 300px;
-  height: 300px;
   border-radius: 50%;
-  border: 6px solid #415a77;
-  overflow: hidden;
-  transform-origin: center center;
   box-shadow: 0 0 20px rgba(65, 90, 119, 0.7);
+  cursor: pointer;
+  transform-origin: 50% 50%;
+  overflow: visible;
 }
 
-/* Сектора круга */
-.wheel-sector {
-  position: absolute;
-  width: 300px;
-  height: 300px;
-  top: 0;
-  left: 0;
-  transform-origin: 50% 100%;
-  border: 1px solid #22334f;
-  box-sizing: border-box;
-  cursor: default;
-  transition: background-color 0.3s;
-  clip-path: polygon(50% 50%, 100% 0, 100% 100%);
-  color: #e0e1dd;
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+/* Победитель подсвечен */
+.wheel .winner {
+  filter: drop-shadow(0 0 10px #23a6d5);
 }
 
-/* Разные цвета для секторов */
-.wheel-sector:nth-child(even) {
-  /* Цвета теперь задаются inline из палитры */
-}
-
-/* Победитель выделяется */
-.wheel-sector.winner {
-  box-shadow: 0 0 15px 3px #23a6d5;
-  color: white !important;
-  font-weight: bold;
-}
-
-/* Текст внутри секторов */
-.sector-label {
-  position: absolute;
-  top: 50%;
-  left: 70%;
-  transform-origin: 0 50%;
-  white-space: nowrap;
+/* Текст секторов */
+.wheel text {
+  font-family: 'Arial', sans-serif;
   pointer-events: none;
-  transform: rotate(90deg);
+  user-select: none;
 }
 
-/* Пустой сектор (заглушка) */
-.wheel-sector.placeholder {
-  opacity: 0.5;
-  font-style: italic;
-  color: #999;
-}
-
-/* Стрелка */
+/* Стрелка сверху */
 .arrow-indicator {
   position: absolute;
   top: 5px;
