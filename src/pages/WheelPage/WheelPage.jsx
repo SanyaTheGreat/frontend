@@ -6,7 +6,7 @@ import './WheelPage.css';
 const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
 
 export default function WheelPage() {
-  const { wheel_id } = useParams(); // Используем wheel_id как параметр из URL
+  const { id: wheel_id } = useParams();
   const navigate = useNavigate();
 
   const [participants, setParticipants] = useState([]);
@@ -19,6 +19,7 @@ export default function WheelPage() {
   const [status, setStatus] = useState('active'); // по умолчанию active
 
   const fetchData = async () => {
+    console.log('🚀 fetchData start');
     try {
       setLoading(true);
 
@@ -26,6 +27,7 @@ export default function WheelPage() {
       const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
+      console.log(`✅ Найдено участников: ${partData.participants?.length || 0}`);
 
       // Фильтрация уникальных участников по user_id и сортировка по joined_at
       const participantsRaw = partData.participants || [];
@@ -42,7 +44,10 @@ export default function WheelPage() {
       });
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
-        .map(p => ({ username: p.username || `user${p.user_id}` }));
+        .map(p => {
+          console.log(`👤 Участник: ${p.username || `user${p.user_id}`}`);
+          return { username: p.username || `user${p.user_id}` };
+        });
 
       setParticipants(uniqueParticipants);
 
@@ -50,34 +55,36 @@ export default function WheelPage() {
       const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`);
       if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
       const wheelData = await wheelRes.json();
+      console.log(`🎡 Колесо найдено. Размер: ${wheelData.size}`);
       setWheelSize(wheelData.size || 0);
 
-      // Получаем результаты розыгрыша (победителя) по wheel_id
+      // Получаем результат розыгрыша (победителя) по wheel_id
       const resultRes = await fetch(`${API_BASE_URL}/results`);
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
-      // Находим результат с совпадением wheel_id (с приведением к строке для безопасности)
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
-
       if (thisResult) {
+        console.log(`🏆 Победитель: ${thisResult.winner} (завершено: ${thisResult.completed_at})`);
         setWinner(thisResult.winner || null);
         setCompletedAt(thisResult.completed_at || null);
         setStatus('completed');
       } else {
+        console.log('⚙️ Колесо ещё активно, победитель не определён');
         setWinner(null);
         setCompletedAt(null);
         setStatus('active');
       }
     } catch (e) {
-      console.error('Ошибка загрузки данных колеса:', e);
+      console.error('❌ Ошибка загрузки данных колеса:', e);
+      alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
     } finally {
       setLoading(false);
+      console.log('🚀 fetchData end');
     }
   };
 
   useEffect(() => {
-    if (!wheel_id) return; // Защита от undefined
     fetchData();
   }, [wheel_id]);
 
@@ -89,6 +96,8 @@ export default function WheelPage() {
     const completedTime = new Date(completedAt).getTime();
     const elapsed = now - completedTime;
     const delay = 60000 - elapsed; // 60 секунд
+
+    console.log(`⏳ Ожидание запуска анимации, задержка: ${delay} мс`);
 
     if (delay <= 0) {
       setAnimStarted(true);
@@ -102,7 +111,7 @@ export default function WheelPage() {
   }, [completedAt, winner]);
 
   const handleAnimFinish = () => {
-    alert(`Победитель: ${winner}`);
+    alert(`🎉 Победитель: ${winner}`);
   };
 
   if (loading) return <div>Загрузка...</div>;
@@ -110,7 +119,7 @@ export default function WheelPage() {
   return (
     <div className="wheel-page-wrapper">
       <h2>Колесо №{wheel_id}</h2>
-      <p>Участников: {participants.length} / {wheelSize}</p>
+      <p>Участников: {participants.length}</p>
       <p>Статус: {status}</p>
       <Wheel
         participants={participants}
