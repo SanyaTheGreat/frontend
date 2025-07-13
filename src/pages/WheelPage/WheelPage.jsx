@@ -16,20 +16,25 @@ export default function WheelPage() {
   const [animStarted, setAnimStarted] = useState(false);
   const timerRef = useRef(null);
 
-  // Загрузка данных колеса
+  // Загрузка данных колеса: участников и статуса
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Получаем участников
+      // Получаем участников из wheel_participants
       const partRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/participants`);
       const partData = await partRes.json();
 
-      // Получаем статус и победителя
+      // Получаем статус колеса и победителя
       const statusRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/status`);
       const statusData = await statusRes.json();
 
-      setParticipants(partData.participants || []);
+      // Участники — массив с { user_id, username, joined_at }, оставим только username для колеса
+      const participantsList = (partData.participants || []).map(p => ({
+        username: p.username || `user${p.user_id}`
+      }));
+
+      setParticipants(participantsList);
       setWinner(statusData.winnerUsername || null);
       setCompletedAt(statusData.completedAt || null);
     } catch (e) {
