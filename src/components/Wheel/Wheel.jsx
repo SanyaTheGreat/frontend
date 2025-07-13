@@ -1,58 +1,48 @@
 import React, { useEffect, useRef, useState } from 'react';
-import './Wheel.css';
 
 function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration = 18000, onFinish }) {
   const wheelRef = useRef(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
-  // Угол сектора (360 / wheelSize)
+  const radius = 150; // радиус круга (половина размера SVG)
+  const center = radius; // центр по X и Y, тк SVG квадратный 300x300
+
+  // Угол сектора в градусах
   const sectorAngle = wheelSize ? 360 / wheelSize : 0;
 
-  // Цвета секторов (пример)
-  const colors = [
-    '#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9', 
-    '#4711AE', '#482A83', '#2A0671', '#7746D7', '#906CD7', 
-    '#0F4DA8', '#284B7E', '#052F6D', '#437DD4', '#6A94D4'
-  ];
+  // Массив секторов с участниками или заглушками
+  const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'open' });
 
-  // Генерация SVG path для сектора
-  const createSectorPath = (index) => {
-    const radius = 150; // половина ширины/высоты SVG (300x300)
-    const startAngle = sectorAngle * index;
-    const endAngle = startAngle + sectorAngle;
+  // Функция для генерации пути сектора по углам
+  function describeSector(cx, cy, r, startAngle, endAngle) {
+    const startRadians = (startAngle * Math.PI) / 180;
+    const endRadians = (endAngle * Math.PI) / 180;
 
-    // Перевод градусов в радианы
-    const startRad = (Math.PI / 180) * startAngle;
-    const endRad = (Math.PI / 180) * endAngle;
+    const x1 = cx + r * Math.cos(startRadians);
+    const y1 = cy + r * Math.sin(startRadians);
+    const x2 = cx + r * Math.cos(endRadians);
+    const y2 = cy + r * Math.sin(endRadians);
 
-    // Координаты начала и конца дуги
-    const x1 = radius + radius * Math.cos(startRad);
-    const y1 = radius + radius * Math.sin(startRad);
-    const x2 = radius + radius * Math.cos(endRad);
-    const y2 = radius + radius * Math.sin(endRad);
+    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
 
-    // Большая ли дуга (если сектор больше 180 градусов)
-    const largeArcFlag = sectorAngle > 180 ? 1 : 0;
+    return `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArcFlag} 1 ${x2},${y2} Z`;
+  }
 
-    // Формируем путь
-    return `M ${radius} ${radius} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
-  };
-
-  // Автостарт анимации
+  // Запуск анимации вращения
   const spinWheel = () => {
-    if (isSpinning || wheelSize === 0 || !winnerUsername) return;
+    if (isSpinning || sectors.length === 0 || !winnerUsername) return;
 
     setIsSpinning(true);
 
-    // Индекс победителя
-    const winnerIndex = participants.findIndex(p => p.username === winnerUsername);
+    const winnerIndex = sectors.findIndex(p => p.username === winnerUsername);
     if (winnerIndex === -1) {
-      console.warn('Winner not found');
+      console.warn('Winner not found among participants');
       setIsSpinning(false);
       return;
     }
 
     const spins = 5;
+    // Останавливаемся по часовой стрелке: поворот на угол сдвига + полный оборот
     const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
@@ -67,54 +57,68 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     }
   };
 
+  // Автоматический старт анимации при наличии победителя
   useEffect(() => {
-    if (winnerUsername && !isSpinning) spinWheel();
+    if (winnerUsername && !isSpinning) {
+      spinWheel();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winnerUsername, wheelSize]);
+  }, [winnerUsername, sectors.length]);
 
   return (
-    <div className="wheel-container">
-      <div className="arrow-indicator" />
+    <div style={{ width: 300, height: 300, margin: '0 auto', position: 'relative' }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: 5,
+          left: '50%',
+          marginLeft: -12,
+          width: 0,
+          height: 0,
+          borderLeft: '12px solid transparent',
+          borderRight: '12px solid transparent',
+          borderBottom: '20px solid #23a6d5',
+          zIndex: 10,
+          filter: 'drop-shadow(0 0 5px #23a6d5)',
+        }}
+      />
       <svg
-        className="wheel"
-        width="300"
-        height="300"
-        viewBox="0 0 300 300"
+        width={300}
+        height={300}
+        viewBox={`0 0 ${radius * 2} ${radius * 2}`}
         ref={wheelRef}
+        style={{ borderRadius: '50%', boxShadow: '0 0 20px rgba(65, 90, 119, 0.7)' }}
       >
-        {Array.from({ length: wheelSize }).map((_, i) => {
-          const participant = participants[i] || { username: 'open' };
-          const isWinner = participant.username === winnerUsername;
+        {sectors.map((p, i) => {
+          const startAngle = i * sectorAngle - 90; // начинаем с верхней точки ( -90 градусов)
+          const endAngle = startAngle + sectorAngle;
+
+          // Цвета секторов (можно расширить)
+          const colors = ['#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9'];
           const fillColor = colors[i % colors.length];
 
-          // Позиция текста - средний угол сектора
-          const midAngle = sectorAngle * i + sectorAngle / 2;
-          const textRadius = 100; // радиус для текста
-          const textRad = (Math.PI / 180) * midAngle;
-          const textX = 150 + textRadius * Math.cos(textRad);
-          const textY = 150 + textRadius * Math.sin(textRad);
+          // Центр текста по углу сектора
+          const textAngle = (startAngle + endAngle) / 2;
+          const textRadius = radius * 0.65; // радиус текста (от центра)
+
+          // Координаты текста (от центра круга)
+          const textX = center + textRadius * Math.cos((textAngle * Math.PI) / 180);
+          const textY = center + textRadius * Math.sin((textAngle * Math.PI) / 180);
 
           return (
             <g key={i}>
-              <path
-                d={createSectorPath(i)}
-                fill={fillColor}
-                stroke="#22334f"
-                strokeWidth="1"
-                className={isWinner ? 'winner' : ''}
-              />
+              <path d={describeSector(center, center, radius, startAngle, endAngle)} fill={fillColor} />
               <text
                 x={textX}
                 y={textY}
-                fill={isWinner ? '#fff' : '#e0e1dd'}
-                fontWeight={isWinner ? 'bold' : '600'}
-                fontSize="14"
+                fill="#e0e1dd"
+                fontWeight={p.username === winnerUsername ? 'bold' : '600'}
+                fontSize={14}
                 textAnchor="middle"
-                dominantBaseline="middle"
-                pointerEvents="none"
-                style={{ userSelect: 'none' }}
+                alignmentBaseline="middle"
+                style={{ userSelect: 'none', pointerEvents: 'none' }}
               >
-                {participant.username === 'open' ? 'open' : `@${participant.username}`}
+                {p.username === 'open' ? 'open' : `@${p.username}`}
               </text>
             </g>
           );
