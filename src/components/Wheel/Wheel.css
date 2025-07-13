@@ -34,6 +34,7 @@
   box-sizing: border-box;
   cursor: default;
   transition: background-color 0.3s;
+  clip-path: polygon(0 0, 100% 0, 0 100%); /* Вырезаем сектор треугольником */
 }
 
 /* Разные цвета для секторов */
