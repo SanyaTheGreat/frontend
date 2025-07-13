@@ -15,31 +15,20 @@ export default function WheelPage() {
   const [loading, setLoading] = useState(true);
   const [animStarted, setAnimStarted] = useState(false);
   const timerRef = useRef(null);
-  const [status, setStatus] = useState(null); // active или completed
+  const [status, setStatus] = useState('active'); // по умолчанию active
 
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Получаем участников
+      // Получаем участников по wheelId
       const partRes = await fetch(`${API_BASE_URL}/${wheelId}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
 
-      // Получаем активные колёса
-      const activeRes = await fetch(`${API_BASE_URL}/active`);
-      if (!activeRes.ok) throw new Error(`Ошибка запроса активных колес: ${activeRes.status}`);
-      const activeData = await activeRes.json();
-
-      // Получаем завершённые колёса
-      const completedRes = await fetch(`${API_BASE_URL}/completed`);
-      if (!completedRes.ok) throw new Error(`Ошибка запроса завершённых колес: ${completedRes.status}`);
-      const completedData = await completedRes.json();
-
       // Фильтрация уникальных участников по user_id и сортировка по joined_at
       const participantsRaw = partData.participants || [];
       const uniqueMap = new Map();
-
       participantsRaw.forEach(p => {
         if (!uniqueMap.has(p.user_id)) {
           uniqueMap.set(p.user_id, p);
@@ -50,34 +39,27 @@ export default function WheelPage() {
           }
         }
       });
-
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
-        .map(p => ({
-          username: p.username || `user${p.user_id}`
-        }));
+        .map(p => ({ username: p.username || `user${p.user_id}` }));
 
       setParticipants(uniqueParticipants);
 
-      // Поиск колеса в активных
-      const wheelActive = activeData.wheels.find(w => w.id === wheelId);
+      // Получаем результат розыгрыша (победителя) по wheelId
+      const resultRes = await fetch(`${API_BASE_URL}/results`);
+      if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
+      const resultData = await resultRes.json();
 
-      if (wheelActive) {
-        setStatus('active');
+      const thisResult = resultData.results.find(r => r.wheel_id === wheelId);
+
+      if (thisResult) {
+        setWinner(thisResult.winner || null);
+        setCompletedAt(thisResult.completed_at || null);
+        setStatus('completed');
+      } else {
         setWinner(null);
         setCompletedAt(null);
-      } else {
-        // Поиск колеса в завершённых
-        const wheelCompleted = completedData.completed_wheels.find(w => w.id === wheelId);
-        if (wheelCompleted) {
-          setStatus('completed');
-          setWinner(wheelCompleted.winner.username || null);
-          setCompletedAt(wheelCompleted.completed_at || null);
-        } else {
-          setStatus(null);
-          setWinner(null);
-          setCompletedAt(null);
-        }
+        setStatus('active');
       }
     } catch (e) {
       console.error('Ошибка загрузки данных колеса:', e);
@@ -90,14 +72,14 @@ export default function WheelPage() {
     fetchData();
   }, [wheelId]);
 
-  // Таймер запуска анимации через 30 секунд после completedAt
+  // Таймер запуска анимации через 60 секунд после completedAt
   useEffect(() => {
     if (!completedAt || !winner) return;
 
     const now = Date.now();
     const completedTime = new Date(completedAt).getTime();
     const elapsed = now - completedTime;
-    const delay = 30000 - elapsed;
+    const delay = 60000 - elapsed; // 60 секунд
 
     if (delay <= 0) {
       setAnimStarted(true);
@@ -120,13 +102,13 @@ export default function WheelPage() {
     <div className="wheel-page-wrapper">
       <h2>Колесо №{wheelId}</h2>
       <p>Участников: {participants.length}</p>
-      <p>Статус: {status || 'Неизвестен'}</p>
+      <p>Статус: {status}</p>
       <Wheel
         participants={participants}
         winnerUsername={winner}
         spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
         onFinish={handleAnimFinish}
-        key={animStarted ? 'spin' : 'stop'} // перезапуск анимации при запуске
+        key={animStarted ? 'spin' : 'stop'}
       />
       <button onClick={() => navigate('/')}>Главное меню</button>
     </div>

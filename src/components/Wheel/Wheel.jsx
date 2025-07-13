@@ -7,8 +7,10 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
 
   const sectorAngle = participants.length ? 360 / participants.length : 0;
 
+  // Функция запуска анимации вращения
   const spinWheel = () => {
-    if (isSpinning || participants.length === 0) return;
+    if (isSpinning || participants.length === 0 || !winnerUsername) return;
+
     setIsSpinning(true);
 
     const winnerIndex = participants.findIndex(p => p.username === winnerUsername);
@@ -18,7 +20,8 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
       return;
     }
 
-    const spins = 5;
+    const spins = 5; // количество полных оборотов перед остановкой
+    // Высчитываем угол остановки на победителе (сдвиг для центрирования сектора)
     const stopAngle = 360 - winnerIndex * sectorAngle - sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
@@ -33,7 +36,13 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
     }
   };
 
-  // Автоматический старт анимации можно вызвать извне, например, из WheelPage
+  // Запускаем анимацию автоматически, когда есть победитель и ещё не крутится
+  useEffect(() => {
+    if (winnerUsername && !isSpinning) {
+      spinWheel();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winnerUsername, participants.length]);
 
   return (
     <div className="wheel-container">
