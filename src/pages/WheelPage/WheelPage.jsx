@@ -6,7 +6,7 @@ import './WheelPage.css';
 const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
 
 export default function WheelPage() {
-  const { wheel_id } = useParams();
+  const { wheel_id } = useParams(); // Используем wheel_id как параметр из URL
   const navigate = useNavigate();
 
   const [participants, setParticipants] = useState([]);
@@ -52,11 +52,12 @@ export default function WheelPage() {
       const wheelData = await wheelRes.json();
       setWheelSize(wheelData.size || 0);
 
-      // Получаем результат розыгрыша (победителя) по wheel_id
+      // Получаем результаты розыгрыша (победителя) по wheel_id
       const resultRes = await fetch(`${API_BASE_URL}/results`);
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
+      // Находим результат с совпадением wheel_id (с приведением к строке для безопасности)
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
 
       if (thisResult) {
@@ -76,6 +77,7 @@ export default function WheelPage() {
   };
 
   useEffect(() => {
+    if (!wheel_id) return; // Защита от undefined
     fetchData();
   }, [wheel_id]);
 
@@ -108,7 +110,7 @@ export default function WheelPage() {
   return (
     <div className="wheel-page-wrapper">
       <h2>Колесо №{wheel_id}</h2>
-      <p>Участников: {participants.length}</p>
+      <p>Участников: {participants.length} / {wheelSize}</p>
       <p>Статус: {status}</p>
       <Wheel
         participants={participants}
