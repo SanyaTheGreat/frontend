@@ -7,6 +7,15 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
 
   const sectorAngle = participants.length ? 360 / participants.length : 0;
 
+  // Логируем углы секторов при каждом рендере
+  useEffect(() => {
+    console.log(`Сектора отрисованы, всего участников: ${participants.length}`);
+    participants.forEach((p, i) => {
+      const angle = i * sectorAngle;
+      console.log(`Сектор ${i + 1} - угол: ${angle}°`);
+    });
+  }, [participants, sectorAngle]);
+
   // Запуск анимации вращения
   const spinWheel = () => {
     if (isSpinning || participants.length === 0 || !winnerUsername) return;
@@ -21,12 +30,10 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
     }
 
     const spins = 5; // Полных оборотов
-    // Поворот по часовой стрелке: считаем угол с положительным знаком
     const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
     if (wheelRef.current) {
-      // Плавный переход и поворот по часовой стрелке
       wheelRef.current.style.transition = `transform ${spinDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
       wheelRef.current.style.transform = `rotate(${totalRotation}deg)`;
 
@@ -37,7 +44,6 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
     }
   };
 
-  // Автостарт анимации при наличии победителя
   useEffect(() => {
     if (winnerUsername && !isSpinning) {
       spinWheel();
@@ -56,7 +62,6 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
             <div
               key={i}
               className={`wheel-sector${isWinner ? ' winner' : ''}`}
-              // По часовой стрелке — поворот без отрицательного skewY
               style={{ transform: `rotate(${rotation}deg) skewY(${90 - sectorAngle}deg)` }}
               title={p.username}
             >
