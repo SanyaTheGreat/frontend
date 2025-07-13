@@ -8,6 +8,25 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const sectorAngle = wheelSize ? 360 / wheelSize : 0;
   const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'open' });
 
+  // Цвета из палитр для секторов
+  const primaryColors = ['#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9'];
+  const secondaryColorsA = ['#4711AE', '#482A83', '#2A0671', '#7746D7', '#906CD7'];
+  const secondaryColorsB = ['#0F4DA8', '#284B7E', '#052F6D', '#437DD4', '#6A94D4'];
+
+  // Выбор палитры в зависимости от количества секторов
+  // Для <=5 секторов — primaryColors, 6-10 — secondaryColorsA, >10 — secondaryColorsB
+  let colors;
+  if (wheelSize <= 5) {
+    colors = primaryColors;
+  } else if (wheelSize <= 10) {
+    colors = secondaryColorsA;
+  } else {
+    colors = secondaryColorsB;
+  }
+
+  // Функция для выбора цвета с учётом индекса и длины палитры
+  const getColor = (index) => colors[index % colors.length];
+
   useEffect(() => {
     console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
     sectors.forEach((p, i) => {
@@ -48,6 +67,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     if (winnerUsername && !isSpinning) {
       spinWheel();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winnerUsername, sectors.length]);
 
   return (
@@ -63,10 +83,16 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
             <div
               key={i}
               className={`wheel-sector${isWinner ? ' winner' : ''}${isPlaceholder ? ' placeholder' : ''}`}
-              style={{ transform: `rotate(${rotation}deg)` }}
+              style={{
+                transform: `rotate(${rotation}deg) skewY(${90 - sectorAngle}deg)`,
+                backgroundColor: getColor(i),
+              }}
               title={isPlaceholder ? 'Open sector' : p.username}
             >
-              <span className="sector-label">
+              <span
+                className="sector-label"
+                style={{ transform: `skewY(-${90 - sectorAngle}deg) rotate(${sectorAngle / 2}deg)` }}
+              >
                 {isPlaceholder ? 'open' : `@${p.username}`}
               </span>
             </div>

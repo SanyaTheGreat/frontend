@@ -21,45 +21,58 @@
   box-shadow: 0 0 20px rgba(65, 90, 119, 0.7);
 }
 
+/* Сектора круга */
 .wheel-sector {
   position: absolute;
-  width: 150px; /* половина диаметра */
-  height: 150px; 
-  top: 50%;
-  left: 50%;
-  transform-origin: 0% 0%; /* левый верхний угол */
-  background-color: #2e3f5f;
+  width: 300px;
+  height: 300px;
+  top: 0;
+  left: 0;
+  transform-origin: 50% 100%;
   border: 1px solid #22334f;
   box-sizing: border-box;
   cursor: default;
   transition: background-color 0.3s;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  clip-path: polygon(50% 50%, 100% 0, 100% 100%);
+  color: #e0e1dd;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
+/* Разные цвета для секторов */
 .wheel-sector:nth-child(even) {
-  background-color: #415a77;
+  /* Цвета теперь задаются inline из палитры */
 }
 
+/* Победитель выделяется */
 .wheel-sector.winner {
-  background-color: #23a6d5 !important;
   box-shadow: 0 0 15px 3px #23a6d5;
-  color: white;
+  color: white !important;
   font-weight: bold;
 }
 
+/* Текст внутри секторов */
 .sector-label {
   position: absolute;
   top: 50%;
   left: 70%;
   transform-origin: 0 50%;
   white-space: nowrap;
-  color: #e0e1dd;
-  font-weight: 600;
-  font-size: 14px;
   pointer-events: none;
-  transform: translateY(-50%) rotate(90deg);
+  transform: rotate(90deg);
 }
 
+/* Пустой сектор (заглушка) */
+.wheel-sector.placeholder {
+  opacity: 0.5;
+  font-style: italic;
+  color: #999;
+}
+
+/* Стрелка */
 .arrow-indicator {
   position: absolute;
   top: 5px;
