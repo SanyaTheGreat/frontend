@@ -6,8 +6,7 @@ import './WheelPage.css';
 const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
 
 export default function WheelPage() {
-  // Получаем параметр wheel_id из URL и переименовываем в wheelId
-  const { wheel_id: wheelId } = useParams();
+  const { wheel_id } = useParams();
   const navigate = useNavigate();
 
   const [participants, setParticipants] = useState([]);
@@ -23,8 +22,8 @@ export default function WheelPage() {
     try {
       setLoading(true);
 
-      // Получаем участников по wheelId
-      const partRes = await fetch(`${API_BASE_URL}/${wheelId}/participants`);
+      // Получаем участников по wheel_id
+      const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
 
@@ -48,18 +47,17 @@ export default function WheelPage() {
       setParticipants(uniqueParticipants);
 
       // Получаем данные о колесе, чтобы знать wheelSize
-      const wheelRes = await fetch(`${API_BASE_URL}/${wheelId}`);
+      const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`);
       if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
       const wheelData = await wheelRes.json();
       setWheelSize(wheelData.size || 0);
 
-      // Получаем результат розыгрыша (победителя) по wheelId
+      // Получаем результат розыгрыша (победителя) по wheel_id
       const resultRes = await fetch(`${API_BASE_URL}/results`);
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
-      // Найдём результат по wheel_id (строке или числу)
-      const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheelId));
+      const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
 
       if (thisResult) {
         setWinner(thisResult.winner || null);
@@ -79,7 +77,7 @@ export default function WheelPage() {
 
   useEffect(() => {
     fetchData();
-  }, [wheelId]);
+  }, [wheel_id]);
 
   // Таймер запуска анимации через 60 секунд после completedAt
   useEffect(() => {
@@ -109,7 +107,7 @@ export default function WheelPage() {
 
   return (
     <div className="wheel-page-wrapper">
-      <h2>Колесо №{wheelId}</h2>
+      <h2>Колесо №{wheel_id}</h2>
       <p>Участников: {participants.length}</p>
       <p>Статус: {status}</p>
       <Wheel
