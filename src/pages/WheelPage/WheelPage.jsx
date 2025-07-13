@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Wheel from '../../components/Wheel/Wheel';
 import './WheelPage.css';
 
-const API_BASE_URL = 'https://lottery-server-waif.onrender.com';
+const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
 
 export default function WheelPage() {
   const { id: wheelId } = useParams();
@@ -22,17 +22,17 @@ export default function WheelPage() {
       setLoading(true);
 
       // Получаем участников
-      const partRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/participants`);
+      const partRes = await fetch(`${API_BASE_URL}/${wheelId}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
 
       // Получаем активные колёса
-      const activeRes = await fetch(`${API_BASE_URL}/wheels/active`);
+      const activeRes = await fetch(`${API_BASE_URL}/active`);
       if (!activeRes.ok) throw new Error(`Ошибка запроса активных колес: ${activeRes.status}`);
       const activeData = await activeRes.json();
 
       // Получаем завершённые колёса
-      const completedRes = await fetch(`${API_BASE_URL}/wheels/completed`);
+      const completedRes = await fetch(`${API_BASE_URL}/completed`);
       if (!completedRes.ok) throw new Error(`Ошибка запроса завершённых колес: ${completedRes.status}`);
       const completedData = await completedRes.json();
 
