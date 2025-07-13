@@ -6,7 +6,8 @@ import './WheelPage.css';
 const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
 
 export default function WheelPage() {
-  const { id: wheelId } = useParams();
+  // Получаем параметр wheel_id из URL и переименовываем в wheelId
+  const { wheel_id: wheelId } = useParams();
   const navigate = useNavigate();
 
   const [participants, setParticipants] = useState([]);
@@ -57,7 +58,7 @@ export default function WheelPage() {
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
-      // Найдём результат по числовому wheel_id (если id строка — привести к числу)
+      // Найдём результат по wheel_id (строке или числу)
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheelId));
 
       if (thisResult) {
