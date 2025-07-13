@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Wheel from '../../components/Wheel/Wheel';
 import './WheelPage.css';
 
+const API_BASE_URL = 'https://lottery-server-waif.onrender.com';
+
 export default function WheelPage() {
   const { id: wheelId } = useParams();
   const navigate = useNavigate();
@@ -20,11 +22,11 @@ export default function WheelPage() {
       setLoading(true);
 
       // Получаем участников
-      const partRes = await fetch(`/api/wheel/${wheelId}/participants`);
+      const partRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/participants`);
       const partData = await partRes.json();
 
       // Получаем статус и победителя
-      const statusRes = await fetch(`/api/wheel/${wheelId}/status`);
+      const statusRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/status`);
       const statusData = await statusRes.json();
 
       setParticipants(partData.participants || []);
