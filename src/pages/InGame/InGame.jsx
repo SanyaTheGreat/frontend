@@ -4,11 +4,12 @@ import { supabase } from '../../supabaseClient';
 import lottie from 'lottie-web';
 import './InGame.css';
 
-function WheelCard({ wheel, grayscale }) {
+function WheelCard({ wheel, grayscale, colorsMap, onGo }) {
   const animRef = useRef(null);
 
   useEffect(() => {
     if (!animRef.current) return;
+
     fetch(`/animations/${wheel.nft_name}.json`)
       .then(res => res.json())
       .then(data => {
@@ -19,8 +20,15 @@ function WheelCard({ wheel, grayscale }) {
           autoplay: true,
           animationData: data,
         });
+      })
+      .catch(() => {
+        // Ошибка загрузки анимации — можно логировать
       });
   }, [wheel.nft_name]);
+
+  const backgroundStyle = colorsMap[wheel.nft_name]
+    ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
+    : '#000';
 
   return (
     <div className={`wheel-card ${grayscale ? 'grayscale' : ''}`}>
@@ -29,9 +37,15 @@ function WheelCard({ wheel, grayscale }) {
         <div
           className="wheel-image"
           ref={animRef}
-          style={{ borderRadius: '12px', overflow: 'hidden' }}
+          style={{
+            borderRadius: '12px',
+            overflow: 'hidden',
+            background: backgroundStyle,
+          }}
         ></div>
-        <button className="go-button">Go</button>
+        <button className="go-button" onClick={onGo}>
+          Go
+        </button>
       </div>
       <div className="wheel-info">
         <span>Status: {wheel.status}</span>
@@ -43,6 +57,7 @@ function WheelCard({ wheel, grayscale }) {
 
 function InGame() {
   const [wheels, setWheels] = useState([]);
+  const [colorsMap, setColorsMap] = useState({});
   const navigate = useNavigate();
 
   const fetchUserWheels = async () => {
@@ -97,6 +112,15 @@ function InGame() {
     fetchUserWheels();
   }, []);
 
+  useEffect(() => {
+    fetch('/animations/colors.json')
+      .then(res => res.json())
+      .then(setColorsMap)
+      .catch(() => {
+        // Ошибка загрузки цветов — можно логировать
+      });
+  }, []);
+
   const activeWheels = wheels.filter(w => w.status === 'active');
   const completedWheels = wheels.filter(w => w.status === 'completed');
 
@@ -111,6 +135,7 @@ function InGame() {
           key={wheel.id}
           wheel={wheel}
           grayscale={false}
+          colorsMap={colorsMap}
           onGo={() => handleGo(wheel.id)}
         />
       ))}
@@ -124,6 +149,7 @@ function InGame() {
           key={wheel.id}
           wheel={wheel}
           grayscale={true}
+          colorsMap={colorsMap}
           onGo={() => handleGo(wheel.id)}
         />
       ))}
