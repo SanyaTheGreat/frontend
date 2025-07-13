@@ -10,6 +10,7 @@ export default function WheelPage() {
   const navigate = useNavigate();
 
   const [participants, setParticipants] = useState([]);
+  const [wheelSize, setWheelSize] = useState(0);
   const [winner, setWinner] = useState(null);
   const [completedAt, setCompletedAt] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,12 +46,19 @@ export default function WheelPage() {
 
       setParticipants(uniqueParticipants);
 
+      // Получаем данные о колесе, чтобы знать wheelSize
+      const wheelRes = await fetch(`${API_BASE_URL}/${wheelId}`);
+      if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
+      const wheelData = await wheelRes.json();
+      setWheelSize(wheelData.size || 0);
+
       // Получаем результат розыгрыша (победителя) по wheelId
       const resultRes = await fetch(`${API_BASE_URL}/results`);
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
-      const thisResult = resultData.results.find(r => r.wheel_id === wheelId);
+      // Найдём результат по числовому wheel_id (если id строка — привести к числу)
+      const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheelId));
 
       if (thisResult) {
         setWinner(thisResult.winner || null);
@@ -105,6 +113,7 @@ export default function WheelPage() {
       <p>Статус: {status}</p>
       <Wheel
         participants={participants}
+        wheelSize={wheelSize}
         winnerUsername={winner}
         spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
         onFinish={handleAnimFinish}
