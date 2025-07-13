@@ -7,6 +7,7 @@
   border-radius: 20px;
   width: 340px;
   user-select: none;
+  position: relative; /* чтобы стрелка позиционировалась внутри */
 }
 
 .wheel {
@@ -20,6 +21,7 @@
   box-shadow: 0 0 20px rgba(65, 90, 119, 0.7);
 }
 
+/* Сектора круга */
 .wheel-sector {
   position: absolute;
   width: 50%;
@@ -34,10 +36,12 @@
   transition: background-color 0.3s;
 }
 
+/* Разные цвета для секторов */
 .wheel-sector:nth-child(even) {
   background-color: #415a77;
 }
 
+/* Победитель выделяется */
 .wheel-sector.winner {
   background-color: #23a6d5 !important;
   box-shadow: 0 0 15px 3px #23a6d5;
@@ -45,14 +49,31 @@
   font-weight: bold;
 }
 
+/* Текст внутри секторов */
 .sector-label {
   position: absolute;
   top: 50%;
-  left: 100%;
+  left: 70%; /* сдвинул ближе к сектору */
   transform-origin: 0 50%;
   white-space: nowrap;
   color: #e0e1dd;
   font-weight: 600;
   font-size: 14px;
   pointer-events: none;
+  transform: rotate(90deg); /* повернём текст чтобы он был горизонтально */
+}
+
+/* Добавляем стрелку, указывающую вверх, на центр колеса */
+.arrow-indicator {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  margin-left: -12px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 20px solid #23a6d5;
+  z-index: 10;
+  filter: drop-shadow(0 0 5px #23a6d5);
 }

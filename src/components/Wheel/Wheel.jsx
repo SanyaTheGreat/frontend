@@ -26,7 +26,7 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
     const totalRotation = 360 * spins + stopAngle;
 
     if (wheelRef.current) {
-      // Убираем минус у skewY, чтобы сектор правильно повернулся по часовой стрелке
+      // Плавный переход и поворот по часовой стрелке
       wheelRef.current.style.transition = `transform ${spinDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
       wheelRef.current.style.transform = `rotate(${totalRotation}deg)`;
 
