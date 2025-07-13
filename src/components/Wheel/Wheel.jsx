@@ -7,7 +7,7 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
 
   const sectorAngle = participants.length ? 360 / participants.length : 0;
 
-  // Функция запуска анимации вращения
+  // Запуск анимации вращения
   const spinWheel = () => {
     if (isSpinning || participants.length === 0 || !winnerUsername) return;
 
@@ -20,12 +20,13 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
       return;
     }
 
-    const spins = 5; // количество полных оборотов перед остановкой
-    // Высчитываем угол остановки на победителе (сдвиг для центрирования сектора)
-    const stopAngle = 360 - winnerIndex * sectorAngle - sectorAngle / 2;
+    const spins = 5; // Полных оборотов
+    // Поворот по часовой стрелке: считаем угол с положительным знаком
+    const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
     if (wheelRef.current) {
+      // Убираем минус у skewY, чтобы сектор правильно повернулся по часовой стрелке
       wheelRef.current.style.transition = `transform ${spinDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
       wheelRef.current.style.transform = `rotate(${totalRotation}deg)`;
 
@@ -36,7 +37,7 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
     }
   };
 
-  // Запускаем анимацию автоматически, когда есть победитель и ещё не крутится
+  // Автостарт анимации при наличии победителя
   useEffect(() => {
     if (winnerUsername && !isSpinning) {
       spinWheel();
@@ -46,6 +47,7 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
 
   return (
     <div className="wheel-container">
+      <div className="arrow-indicator" /> {/* Стрелка */}
       <div className="wheel" ref={wheelRef}>
         {participants.map((p, i) => {
           const rotation = i * sectorAngle;
@@ -54,12 +56,13 @@ function Wheel({ participants = [], winnerUsername, spinDuration = 18000, onFini
             <div
               key={i}
               className={`wheel-sector${isWinner ? ' winner' : ''}`}
-              style={{ transform: `rotate(${rotation}deg) skewY(-${90 - sectorAngle}deg)` }}
+              // По часовой стрелке — поворот без отрицательного skewY
+              style={{ transform: `rotate(${rotation}deg) skewY(${90 - sectorAngle}deg)` }}
               title={p.username}
             >
               <span
                 className="sector-label"
-                style={{ transform: `skewY(${90 - sectorAngle}deg) rotate(${sectorAngle / 2}deg)` }}
+                style={{ transform: `skewY(-${90 - sectorAngle}deg) rotate(${sectorAngle / 2}deg)` }}
               >
                 @{p.username}
               </span>
