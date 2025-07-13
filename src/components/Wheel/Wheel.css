@@ -24,18 +24,19 @@
 /* Сектора круга */
 .wheel-sector {
   position: absolute;
-  width: 50%;
-  height: 50%;
-  top: 50%;
-  left: 50%;
-  transform-origin: 0% 0%;
+  width: 300px; /* равна диаметру колеса */
+  height: 300px;
+  top: 0;
+  left: 0;
+  transform-origin: 50% 100%; /* центр нижней части блока (центр колеса) */
   background-color: #2e3f5f;
   border: 1px solid #22334f;
   box-sizing: border-box;
   cursor: default;
   transition: background-color 0.3s;
-  clip-path: polygon(0 0, 100% 0, 0 100%); /* Вырезаем сектор треугольником */
+  clip-path: polygon(50% 50%, 100% 0, 100% 100%);
 }
+
 
 /* Разные цвета для секторов */
 .wheel-sector:nth-child(even) {
