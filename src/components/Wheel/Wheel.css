@@ -1,0 +1,58 @@
+.wheel-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0d1b2a;
+  padding: 20px;
+  border-radius: 20px;
+  width: 340px;
+  user-select: none;
+}
+
+.wheel {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 6px solid #415a77;
+  overflow: hidden;
+  transform-origin: center center;
+  box-shadow: 0 0 20px rgba(65, 90, 119, 0.7);
+}
+
+.wheel-sector {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  top: 50%;
+  left: 50%;
+  transform-origin: 0% 0%;
+  background-color: #2e3f5f;
+  border: 1px solid #22334f;
+  box-sizing: border-box;
+  cursor: default;
+  transition: background-color 0.3s;
+}
+
+.wheel-sector:nth-child(even) {
+  background-color: #415a77;
+}
+
+.wheel-sector.winner {
+  background-color: #23a6d5 !important;
+  box-shadow: 0 0 15px 3px #23a6d5;
+  color: white;
+  font-weight: bold;
+}
+
+.sector-label {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform-origin: 0 50%;
+  white-space: nowrap;
+  color: #e0e1dd;
+  font-weight: 600;
+  font-size: 14px;
+  pointer-events: none;
+}
