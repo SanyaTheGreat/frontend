@@ -5,13 +5,9 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const wheelRef = useRef(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
-  // Угол сектора рассчитываем от максимального размера колеса
   const sectorAngle = wheelSize ? 360 / wheelSize : 0;
-
-  // Формируем массив секторов нужной длины: либо с участниками, либо с заглушками
   const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'open' });
 
-  // Логируем углы секторов при каждом рендере
   useEffect(() => {
     console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
     sectors.forEach((p, i) => {
@@ -21,7 +17,6 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     });
   }, [sectors, sectorAngle]);
 
-  // Запуск анимации вращения
   const spinWheel = () => {
     if (isSpinning || sectors.length === 0 || !winnerUsername) return;
 
@@ -34,7 +29,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
       return;
     }
 
-    const spins = 5; // Полных оборотов
+    const spins = 5;
     const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
@@ -49,17 +44,15 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     }
   };
 
-  // Автоматический старт анимации при наличии победителя
   useEffect(() => {
     if (winnerUsername && !isSpinning) {
       spinWheel();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winnerUsername, sectors.length]);
 
   return (
     <div className="wheel-container">
-      <div className="arrow-indicator" /> {/* Стрелка */}
+      <div className="arrow-indicator" />
       <div className="wheel" ref={wheelRef}>
         {sectors.map((p, i) => {
           const rotation = i * sectorAngle;
@@ -70,13 +63,10 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
             <div
               key={i}
               className={`wheel-sector${isWinner ? ' winner' : ''}${isPlaceholder ? ' placeholder' : ''}`}
-              style={{ transform: `rotate(${rotation}deg) skewY(${90 - sectorAngle}deg)` }}
+              style={{ transform: `rotate(${rotation}deg)` }}
               title={isPlaceholder ? 'Open sector' : p.username}
             >
-              <span
-                className="sector-label"
-                style={{ transform: `skewY(-${90 - sectorAngle}deg) rotate(${sectorAngle / 2}deg)` }}
-              >
+              <span className="sector-label">
                 {isPlaceholder ? 'open' : `@${p.username}`}
               </span>
             </div>
