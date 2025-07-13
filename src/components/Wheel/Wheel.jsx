@@ -12,7 +12,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'Пусто' });
 
   // Логируем углы секторов при каждом рендере
-  UseEffect(() => {
+  useEffect(() => {
   console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
   sectors.forEach((p, i) => {
     const angle = i * sectorAngle;
