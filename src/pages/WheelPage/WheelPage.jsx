@@ -23,18 +23,38 @@ export default function WheelPage() {
 
       // Получаем участников из wheel_participants
       const partRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/participants`);
+      if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
 
       // Получаем статус колеса и победителя
       const statusRes = await fetch(`${API_BASE_URL}/wheel/${wheelId}/status`);
+      if (!statusRes.ok) throw new Error(`Ошибка запроса статуса: ${statusRes.status}`);
       const statusData = await statusRes.json();
 
-      // Участники — массив с { user_id, username, joined_at }, оставим только username для колеса
-      const participantsList = (partData.participants || []).map(p => ({
-        username: p.username || `user${p.user_id}`
-      }));
+      // Фильтрация уникальных участников по user_id и сортировка по joined_at
+      const participantsRaw = partData.participants || [];
+      const uniqueMap = new Map();
 
-      setParticipants(participantsList);
+      participantsRaw.forEach(p => {
+        if (!uniqueMap.has(p.user_id)) {
+          uniqueMap.set(p.user_id, p);
+        } else {
+          // Если уже есть участник, проверим дату joined_at и обновим, если нужно
+          const existing = uniqueMap.get(p.user_id);
+          if (new Date(p.joined_at) < new Date(existing.joined_at)) {
+            uniqueMap.set(p.user_id, p);
+          }
+        }
+      });
+
+      // Преобразуем и сортируем по joined_at
+      const uniqueParticipants = Array.from(uniqueMap.values())
+        .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
+        .map(p => ({
+          username: p.username || `user${p.user_id}`
+        }));
+
+      setParticipants(uniqueParticipants);
       setWinner(statusData.winnerUsername || null);
       setCompletedAt(statusData.completedAt || null);
     } catch (e) {
