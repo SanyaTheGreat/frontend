@@ -9,16 +9,17 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const sectorAngle = wheelSize ? 360 / wheelSize : 0;
 
   // Формируем массив секторов нужной длины: либо с участниками, либо с заглушками
-  const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'Пусто' });
+  const sectors = Array.from({ length: wheelSize }, (_, i) => participants[i] || { username: 'open' });
 
   // Логируем углы секторов при каждом рендере
   useEffect(() => {
-  console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
-  sectors.forEach((p, i) => {
-    const angle = i * sectorAngle;
-    console.log(`Сектор ${i + 1} - диапазон: ${angle}° - ${angle + sectorAngle}°`);
-  });
-}, [sectors, sectorAngle]);
+    console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
+    sectors.forEach((p, i) => {
+      const angleStart = i * sectorAngle;
+      const angleEnd = angleStart + sectorAngle;
+      console.log(`Сектор ${i + 1} - диапазон: ${angleStart}° - ${angleEnd}°`);
+    });
+  }, [sectors, sectorAngle]);
 
   // Запуск анимации вращения
   const spinWheel = () => {
@@ -63,20 +64,20 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
         {sectors.map((p, i) => {
           const rotation = i * sectorAngle;
           const isWinner = p.username === winnerUsername;
-          const isPlaceholder = p.username === 'Пусто';
+          const isPlaceholder = p.username === 'open';
 
           return (
             <div
               key={i}
               className={`wheel-sector${isWinner ? ' winner' : ''}${isPlaceholder ? ' placeholder' : ''}`}
               style={{ transform: `rotate(${rotation}deg) skewY(${90 - sectorAngle}deg)` }}
-              title={isPlaceholder ? 'Пустой сектор' : p.username}
+              title={isPlaceholder ? 'Open sector' : p.username}
             >
               <span
                 className="sector-label"
                 style={{ transform: `skewY(-${90 - sectorAngle}deg) rotate(${sectorAngle / 2}deg)` }}
               >
-                {isPlaceholder ? 'Пусто' : `@${p.username}`}
+                {isPlaceholder ? 'open' : `@${p.username}`}
               </span>
             </div>
           );
