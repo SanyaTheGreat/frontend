@@ -42,7 +42,6 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     }
 
     const spins = 5;
-    // Останавливаемся по часовой стрелке: поворот на угол сдвига + полный оборот
     const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
@@ -57,12 +56,10 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     }
   };
 
-  // Автоматический старт анимации при наличии победителя
   useEffect(() => {
     if (winnerUsername && !isSpinning) {
       spinWheel();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winnerUsername, sectors.length]);
 
   return (
@@ -90,33 +87,32 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
         style={{ borderRadius: '50%', boxShadow: '0 0 20px rgba(65, 90, 119, 0.7)' }}
       >
         {sectors.map((p, i) => {
-          const startAngle = i * sectorAngle - 90; // начинаем с верхней точки ( -90 градусов)
+          const startAngle = i * sectorAngle - 90; // стартуем с верхней точки
           const endAngle = startAngle + sectorAngle;
 
-          // Цвета секторов (можно расширить)
           const colors = ['#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9'];
           const fillColor = colors[i % colors.length];
 
-          // Центр текста по углу сектора
           const textAngle = (startAngle + endAngle) / 2;
-          const textRadius = radius * 0.65; // радиус текста (от центра)
+          const textRadius = radius * 0.65;
 
-          // Координаты текста (от центра круга)
-          const textX = center + textRadius * Math.cos((textAngle * Math.PI) / 180);
-          const textY = center + textRadius * Math.sin((textAngle * Math.PI) / 180);
-
+          // Для текста делаем трансформацию:
+          // Сначала поворачиваем на angle сектора вокруг центра
+          // Затем смещаем по радиусу вверх (вдоль оси Y SVG)
+          // Затем поворачиваем обратно, чтобы текст был горизонтальным
           return (
             <g key={i}>
               <path d={describeSector(center, center, radius, startAngle, endAngle)} fill={fillColor} />
               <text
-                x={textX}
-                y={textY}
+                x={center}
+                y={center}
                 fill="#e0e1dd"
                 fontWeight={p.username === winnerUsername ? 'bold' : '600'}
                 fontSize={14}
                 textAnchor="middle"
                 alignmentBaseline="middle"
                 style={{ userSelect: 'none', pointerEvents: 'none' }}
+                transform={`rotate(${textAngle} ${center} ${center}) translate(0, -${textRadius}) rotate(-${textAngle})`}
               >
                 {p.username === 'open' ? 'open' : `@${p.username}`}
               </text>
