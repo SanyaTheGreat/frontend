@@ -11,9 +11,26 @@
 }
 
 .wheel {
+  border-radius: 50%;
   box-shadow: 0 0 20px rgba(65, 90, 119, 0.7);
+  cursor: pointer;
+  transform-origin: 50% 50%;
+  overflow: visible;
 }
 
+/* Победитель подсвечен */
+.wheel .winner {
+  filter: drop-shadow(0 0 10px #23a6d5);
+}
+
+/* Текст секторов */
+.wheel text {
+  font-family: 'Arial', sans-serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Стрелка сверху */
 .arrow-indicator {
   position: absolute;
   top: 5px;
