@@ -32,12 +32,9 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const spinWheel = () => {
     if (isSpinning || sectors.length === 0 || !winnerUsername) return;
 
-    setIsSpinning(true);
-
     const winnerIndex = sectors.findIndex(p => p.username === winnerUsername);
     if (winnerIndex === -1) {
       console.warn('Winner not found among participants');
-      setIsSpinning(false);
       return;
     }
 
@@ -45,12 +42,17 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2;
     const totalRotation = 360 * spins + stopAngle;
 
+    console.log(`Колесо запущено! Победитель: @${winnerUsername}, сектор: ${winnerIndex + 1}, остановится на угле: ${totalRotation}°`);
+
+    setIsSpinning(true);
+
     if (wheelRef.current) {
       wheelRef.current.style.transition = `transform ${spinDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
       wheelRef.current.style.transform = `rotate(${totalRotation}deg)`;
 
       setTimeout(() => {
         setIsSpinning(false);
+        console.log(`Колесо остановилось на угле: ${totalRotation}°, победитель: @${winnerUsername}`);
         if (onFinish) onFinish();
       }, spinDuration);
     }
