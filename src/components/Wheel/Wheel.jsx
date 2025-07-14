@@ -112,8 +112,9 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
           const textX = center + textRadius * Math.cos((textAngle * Math.PI) / 180);
           const textY = center + textRadius * Math.sin((textAngle * Math.PI) / 180);
 
-          // Поворот текста: ровно по центру сектора, текст не перевёрнут
-          const rotateAngle = textAngle + 90;
+          // Поворот текста: ровно по центру сектора, без переворота, повернем на (textAngle - 90)
+          // чтобы текст шел от центра к краю
+          const rotateAngle = textAngle - 90;
 
           return (
             <g key={i}>
