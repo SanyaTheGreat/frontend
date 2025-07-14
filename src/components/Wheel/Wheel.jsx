@@ -114,7 +114,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
 
           // Поворот текста: ровно по центру сектора, без переворота, повернем на (textAngle - 90)
           // чтобы текст шел от центра к краю
-          const rotateAngle = textAngle - 90;
+          const rotateAngle = textAngle - 1;
 
           return (
             <g key={i}>
