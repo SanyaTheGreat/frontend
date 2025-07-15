@@ -46,11 +46,16 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
 
     const spins = 5;
 
-    // Смещение -90 градусов, если участников ровно 2, иначе 0
-    // const offsetAngle = sectors.length === 2 ? -90 : 0;
-    const offsetAngle = 0; // отключено, всегда 0
+    // Новое смещение для того, чтобы 0° был справа (3 часа)
+    // Нам нужно сдвинуть колесо на -90°, чтобы сектор 1 начинался сверху,
+    // но так как 0° визуально справа, при вращении компенсируем это в обратную сторону:
+    const offsetAngle = 90;
 
-    const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2 - offsetAngle;
+    // Вычисляем угол остановки так, чтобы середина сектора победителя была на 0° справа
+    // Формула: (360 - (winnerIndex * sectorAngle + sectorAngle / 2) + offsetAngle)
+    // где offsetAngle=90, чтобы учесть, что 0° визуально справа
+    const stopAngle = (360 - (winnerIndex * sectorAngle + sectorAngle / 2) + offsetAngle) % 360;
+
     const totalRotation = 360 * spins + stopAngle;
 
     console.log(`Колесо запущено! Победитель: @${winnerUsername}, сектор: ${winnerIndex + 1}, остановится на угле: ${totalRotation}°`);
@@ -72,8 +77,8 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   // Логи по секторам и пользователям
   useEffect(() => {
     console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
-    // const offsetAngle = sectors.length === 2 ? -90 : 0;
-    const offsetAngle = 0; // отключено, всегда 0
+    // Отрисовка секторов без смещения — 0° на правом краю круга
+    const offsetAngle = 0;
     sectors.forEach((p, i) => {
       const angleStart = i * sectorAngle + offsetAngle;
       const angleEnd = angleStart + sectorAngle;
@@ -91,23 +96,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
 
   return (
     <div style={{ width: 300, height: 300, margin: '0 auto', position: 'relative' }}>
-      {/*
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: 5,
-          marginTop: -12,
-          width: 0,
-          height: 0,
-          borderLeft: '12px solid transparent',
-          borderRight: '12px solid transparent',
-          borderBottom: '20px solid #23a6d5',
-          zIndex: 10,
-          filter: 'drop-shadow(0 0 5px #23a6d5)',
-        }}
-      />
-      */}
+      {/* Стрелка убрана */}
       <svg
         width={300}
         height={300}
@@ -116,9 +105,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
         style={{ borderRadius: '50%', boxShadow: '0 0 20px rgba(65, 90, 119, 0.7)' }}
       >
         {sectors.map((p, i) => {
-          // При отрисовке секторов тоже учитываем смещение для правильного отображения
-          // const offsetAngle = sectors.length === 2 ? -90 : 0;
-          const offsetAngle = 0; // отключено, всегда 0
+          const offsetAngle = 0; // без смещения секторов
           const startAngle = i * sectorAngle + offsetAngle;
           const endAngle = startAngle + sectorAngle;
 
