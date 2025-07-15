@@ -32,7 +32,13 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   const spinWheel = () => {
     if (isSpinning || sectors.length === 0 || !winnerUsername) return;
 
-    const winnerIndex = sectors.findIndex(p => p.username === winnerUsername);
+    // Сравнение username без '@' для корректного поиска победителя
+    const winnerIndex = sectors.findIndex(p => {
+      const pName = p.username.startsWith('@') ? p.username.slice(1) : p.username;
+      const wName = winnerUsername.startsWith('@') ? winnerUsername.slice(1) : winnerUsername;
+      return pName === wName;
+    });
+
     if (winnerIndex === -1) {
       console.warn('Winner not found among participants');
       return;

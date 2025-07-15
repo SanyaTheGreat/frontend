@@ -137,7 +137,7 @@ export default function WheelPage() {
         winnerUsername={winner}
         spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
         onFinish={handleAnimFinish}
-        key={animStarted ? 'spin' : 'stop'}
+        // Убрали ключ, чтобы не было перерисовки и сброса состояния анимации
       />
       <button onClick={() => navigate('/')}>Главное меню</button>
     </div>
