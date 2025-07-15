@@ -45,8 +45,11 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     }
 
     const spins = 5;
-    // Сдвиг на -90 градусов для корректного позиционирования стрелки
-    const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2 - 90;
+
+    // Смещение -90 градусов, если участников ровно 2, иначе 0
+    const offsetAngle = sectors.length === 2 ? -90 : 0;
+
+    const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2 + offsetAngle;
     const totalRotation = 360 * spins + stopAngle;
 
     console.log(`Колесо запущено! Победитель: @${winnerUsername}, сектор: ${winnerIndex + 1}, остановится на угле: ${totalRotation}°`);
@@ -68,8 +71,9 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   // Логи по секторам и пользователям
   useEffect(() => {
     console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
+    const offsetAngle = sectors.length === 2 ? -90 : 0;
     sectors.forEach((p, i) => {
-      const angleStart = i * sectorAngle - 90;
+      const angleStart = i * sectorAngle + offsetAngle;
       const angleEnd = angleStart + sectorAngle;
       console.log(`Сектор ${i + 1} - диапазон: ${angleStart}° - ${angleEnd}°, username: ${p.username}`);
     });
@@ -108,7 +112,9 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
         style={{ borderRadius: '50%', boxShadow: '0 0 20px rgba(65, 90, 119, 0.7)' }}
       >
         {sectors.map((p, i) => {
-          const startAngle = i * sectorAngle - 90;
+          // При отрисовке секторов тоже учитываем смещение для правильного отображения
+          const offsetAngle = sectors.length === 2 ? -90 : 0;
+          const startAngle = i * sectorAngle + offsetAngle;
           const endAngle = startAngle + sectorAngle;
 
           const colors = ['#1D1AB2', '#323086', '#0B0974', '#514ED9', '#7573D9'];
