@@ -49,7 +49,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     // Смещение -90 градусов, если участников ровно 2, иначе 0
     const offsetAngle = sectors.length === 2 ? -90 : 0;
 
-    const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2 + offsetAngle;
+    const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2 - offsetAngle;
     const totalRotation = 360 * spins + stopAngle;
 
     console.log(`Колесо запущено! Победитель: @${winnerUsername}, сектор: ${winnerIndex + 1}, остановится на угле: ${totalRotation}°`);
