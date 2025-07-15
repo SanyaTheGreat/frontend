@@ -47,7 +47,8 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     const spins = 5;
 
     // Смещение -90 градусов, если участников ровно 2, иначе 0
-    const offsetAngle = sectors.length === 2 ? -90 : 0;
+    // const offsetAngle = sectors.length === 2 ? -90 : 0;
+    const offsetAngle = 0; // отключено, всегда 0
 
     const stopAngle = winnerIndex * sectorAngle + sectorAngle / 2 - offsetAngle;
     const totalRotation = 360 * spins + stopAngle;
@@ -71,7 +72,8 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
   // Логи по секторам и пользователям
   useEffect(() => {
     console.log(`Сектора отрисованы, всего секторов: ${sectors.length}`);
-    const offsetAngle = sectors.length === 2 ? -90 : 0;
+    // const offsetAngle = sectors.length === 2 ? -90 : 0;
+    const offsetAngle = 0; // отключено, всегда 0
     sectors.forEach((p, i) => {
       const angleStart = i * sectorAngle + offsetAngle;
       const angleEnd = angleStart + sectorAngle;
@@ -89,6 +91,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
 
   return (
     <div style={{ width: 300, height: 300, margin: '0 auto', position: 'relative' }}>
+      {/*
       <div
         style={{
           position: 'absolute',
@@ -104,6 +107,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
           filter: 'drop-shadow(0 0 5px #23a6d5)',
         }}
       />
+      */}
       <svg
         width={300}
         height={300}
@@ -113,7 +117,8 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
       >
         {sectors.map((p, i) => {
           // При отрисовке секторов тоже учитываем смещение для правильного отображения
-          const offsetAngle = sectors.length === 2 ? -90 : 0;
+          // const offsetAngle = sectors.length === 2 ? -90 : 0;
+          const offsetAngle = 0; // отключено, всегда 0
           const startAngle = i * sectorAngle + offsetAngle;
           const endAngle = startAngle + sectorAngle;
 
