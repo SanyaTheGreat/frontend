@@ -45,9 +45,8 @@ export default function WheelPage() {
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
         .map(p => {
-          const usernameWithoutAt = (p.username || `user${p.user_id}`).replace(/^@/, ''); // убираем @
-          console.log(`👤 Участник: ${usernameWithoutAt}`);
-          return { username: usernameWithoutAt };
+          console.log(`👤 Участник: ${p.username || `user${p.user_id}`}`);
+          return { username: p.username || `user${p.user_id}` };
         });
 
       setParticipants(uniqueParticipants);
@@ -63,6 +62,9 @@ export default function WheelPage() {
       const resultRes = await fetch(`${API_BASE_URL}/results`);
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
+
+      console.log('🎲 Все wheel_id в результатах:', resultData.results.map(r => r.wheel_id));
+      console.log('🔍 Текущий wheel_id:', wheel_id);
 
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
@@ -91,7 +93,7 @@ export default function WheelPage() {
 
     const intervalId = setInterval(() => {
       fetchData();
-    }, 50000); // обновляем каждые 5 секунд
+    }, 5000); // обновляем каждые 5 секунд
 
     return () => clearInterval(intervalId);
   }, [wheel_id]);
