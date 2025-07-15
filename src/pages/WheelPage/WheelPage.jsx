@@ -91,7 +91,7 @@ export default function WheelPage() {
 
     const intervalId = setInterval(() => {
       fetchData();
-    }, 5000); // обновляем каждые 5 секунд
+    }, 50000); // обновляем каждые 5 секунд
 
     return () => clearInterval(intervalId);
   }, [wheel_id]);
