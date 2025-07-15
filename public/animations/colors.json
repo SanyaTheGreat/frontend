@@ -28,5 +28,35 @@
     "edge_color": "#c5675f",
     "pattern_color": "#ad0e00",
     "text_color": "#ffe4d7"
+  },
+  "BDayCandle-236005": {
+    "center_color": "#b77a77",
+    "edge_color": "#814c52",
+    "pattern_color": "#551c22",
+    "text_color": "#edcacd"
+  },
+  "BDayCandle-195277": {
+    "center_color": "#a980f3",
+    "edge_color": "#5b62d8",
+    "pattern_color": "#3722ab",
+    "text_color": "#d8d8ff"
+  },
+  "BDayCandle-105122": {
+    "center_color": "#b1907e",
+    "edge_color": "#7c6356",
+    "pattern_color": "#4a3226",
+    "text_color": "#ebd4c8"
+  },
+  "BDayCandle-55813": {
+    "center_color": "#b17da5",
+    "edge_color": "#8c577a",
+    "pattern_color": "#652852",
+    "text_color": "#f0c4e2"
+  },
+  "BDayCandle-176006": {
+    "center_color": "#e28ab6",
+    "edge_color": "#a4588b",
+    "pattern_color": "#8e054e",
+    "text_color": "#ffc7eb"
   }
 }
