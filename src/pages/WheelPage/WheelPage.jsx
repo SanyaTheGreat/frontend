@@ -45,8 +45,9 @@ export default function WheelPage() {
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
         .map(p => {
-          console.log(`👤 Участник: ${p.username || `user${p.user_id}`}`);
-          return { username: p.username || `user${p.user_id}` };
+          const usernameWithoutAt = (p.username || `user${p.user_id}`).replace(/^@/, ''); // убираем @
+          console.log(`👤 Участник: ${usernameWithoutAt}`);
+          return { username: usernameWithoutAt };
         });
 
       setParticipants(uniqueParticipants);
@@ -65,8 +66,9 @@ export default function WheelPage() {
 
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
-        console.log(`🏆 Победитель: ${thisResult.winner} (завершено: ${thisResult.completed_at})`);
-        setWinner(thisResult.winner || null);
+        const winnerNormalized = thisResult.winner.replace(/^@/, ''); // убираем @ если есть
+        console.log(`🏆 Победитель: ${winnerNormalized} (завершено: ${thisResult.completed_at})`);
+        setWinner(winnerNormalized || null);
         setCompletedAt(thisResult.completed_at || null);
         setStatus('completed');
       } else {
