@@ -86,6 +86,12 @@ export default function WheelPage() {
 
   useEffect(() => {
     fetchData();
+
+    const intervalId = setInterval(() => {
+      fetchData();
+    }, 5000); // обновляем каждые 5 секунд
+
+    return () => clearInterval(intervalId);
   }, [wheel_id]);
 
   // Таймер запуска анимации через 60 секунд после completedAt
