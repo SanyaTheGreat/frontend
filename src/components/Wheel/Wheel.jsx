@@ -92,9 +92,9 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
       <div
         style={{
           position: 'absolute',
-          top: 5,
-          left: '50%',
-          marginLeft: -12,
+          top: '50%',
+          left: 5,
+          marginTop: -12,
           width: 0,
           height: 0,
           borderLeft: '12px solid transparent',
