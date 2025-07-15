@@ -93,29 +93,21 @@ export default function WheelPage() {
 
     const intervalId = setInterval(() => {
       fetchData();
-    }, 50000); // обновляем каждые 5 секунд
+    }, 50000); // обновляем каждые 50 секунд
 
     return () => clearInterval(intervalId);
   }, [wheel_id]);
 
-  // Таймер запуска анимации через 60 секунд после completedAt
+  // Таймер запуска анимации через 15 секунд после заполнения completedAt
   useEffect(() => {
     if (!completedAt || !winner) return;
 
-    const now = Date.now();
-    const completedTime = new Date(completedAt).getTime();
-    const elapsed = now - completedTime;
-    const delay = 60000 - elapsed; // 60 секунд
+    console.log('⏳ Запуск таймера на 15 секунд перед анимацией');
 
-    console.log(`⏳ Ожидание запуска анимации, задержка: ${delay} мс`);
-
-    if (delay <= 0) {
+    timerRef.current = setTimeout(() => {
+      console.log('🚀 Таймер завершён, запускаем анимацию');
       setAnimStarted(true);
-    } else {
-      timerRef.current = setTimeout(() => {
-        setAnimStarted(true);
-      }, delay);
-    }
+    }, 15000);
 
     return () => clearTimeout(timerRef.current);
   }, [completedAt, winner]);
@@ -134,10 +126,9 @@ export default function WheelPage() {
       <Wheel
         participants={participants}
         wheelSize={wheelSize}
-        winnerUsername={winner}
+        winnerUsername={animStarted ? winner : null} // анимация запускается только если animStarted=true
         spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
         onFinish={handleAnimFinish}
-        // Убрали ключ, чтобы не было перерисовки и сброса состояния анимации
       />
       <button onClick={() => navigate('/')}>Главное меню</button>
     </div>
