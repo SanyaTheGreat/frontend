@@ -17,6 +17,7 @@ export default function WheelPage() {
   const [animStarted, setAnimStarted] = useState(false);
   const timerRef = useRef(null);
   const [status, setStatus] = useState('active'); // по умолчанию active
+  const [timeLeft, setTimeLeft] = useState(null);
 
   const fetchData = async () => {
     console.log('🚀 fetchData start');
@@ -98,19 +99,29 @@ export default function WheelPage() {
     return () => clearInterval(intervalId);
   }, [wheel_id]);
 
-  // Таймер запуска анимации через 15 секунд после заполнения completedAt
+  // Таймер запуска анимации через 15 секунд после completedAt и статуса completed
   useEffect(() => {
-    if (!completedAt || !winner) return;
+    if (status !== 'completed' || !completedAt || !winner) {
+      setTimeLeft(null);
+      return;
+    }
 
-    console.log('⏳ Запуск таймера на 15 секунд перед анимацией');
+    let remaining = 15;
+    setTimeLeft(remaining);
 
-    timerRef.current = setTimeout(() => {
-      console.log('🚀 Таймер завершён, запускаем анимацию');
-      setAnimStarted(true);
-    }, 15000);
+    timerRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining < 0) {
+        clearInterval(timerRef.current);
+        setTimeLeft(null);
+        setAnimStarted(true);
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 1000);
 
-    return () => clearTimeout(timerRef.current);
-  }, [completedAt, winner]);
+    return () => clearInterval(timerRef.current);
+  }, [status, completedAt, winner]);
 
   const handleAnimFinish = () => {
     alert(`🎉 Победитель: ${winner}`);
@@ -122,7 +133,11 @@ export default function WheelPage() {
     <div className="wheel-page-wrapper">
       <h2>Колесо №{wheel_id}</h2>
       <p>Участников: {participants.length}</p>
-      <p>Статус: {status}</p>
+
+      {status === 'active' && <p>Набор участников</p>}
+
+      {status === 'completed' && timeLeft !== null && <p>Запуск через: {timeLeft} сек.</p>}
+
       <Wheel
         participants={participants}
         wheelSize={wheelSize}
@@ -130,6 +145,7 @@ export default function WheelPage() {
         spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
         onFinish={handleAnimFinish}
       />
+
       <button onClick={() => navigate('/')}>Главное меню</button>
     </div>
   );
