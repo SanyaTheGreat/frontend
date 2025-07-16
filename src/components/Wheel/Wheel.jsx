@@ -49,7 +49,7 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
     // Новое смещение для того, чтобы 0° был справа (3 часа)
     // Нам нужно сдвинуть колесо на -90°, чтобы сектор 1 начинался сверху,
     // но так как 0° визуально справа, при вращении компенсируем это в обратную сторону:
-    const offsetAngle = 90;
+    const offsetAngle = 0;
 
     // Вычисляем угол остановки так, чтобы середина сектора победителя была на 0° справа
     // Формула: (360 - (winnerIndex * sectorAngle + sectorAngle / 2) + offsetAngle)
