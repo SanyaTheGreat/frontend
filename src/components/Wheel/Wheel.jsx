@@ -53,7 +53,6 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
 
     // Вычисляем угол остановки так, чтобы середина сектора победителя была на 0° справа
     // Формула: (360 - (winnerIndex * sectorAngle + sectorAngle / 2) + offsetAngle)
-    // где offsetAngle=90, чтобы учесть, что 0° визуально справа
     const stopAngle = (360 - (winnerIndex * sectorAngle + sectorAngle / 2) + offsetAngle) % 360;
 
     const totalRotation = 360 * spins + stopAngle;
@@ -96,7 +95,22 @@ function Wheel({ participants = [], wheelSize = 0, winnerUsername, spinDuration 
 
   return (
     <div style={{ width: 300, height: 300, margin: '0 auto', position: 'relative' }}>
-      {/* Стрелка убрана */}
+      {/* Стрелка справа, указывающая влево (на 0° — 3 часа) */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          right: 0,
+          marginTop: -12,
+          width: 0,
+          height: 0,
+          borderTop: '12px solid transparent',
+          borderBottom: '12px solid transparent',
+          borderLeft: '20px solid #23a6d5',
+          zIndex: 10,
+          filter: 'drop-shadow(0 0 5px #23a6d5)',
+        }}
+      />
       <svg
         width={300}
         height={300}
