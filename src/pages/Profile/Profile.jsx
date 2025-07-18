@@ -13,31 +13,25 @@ export default function Profile() {
   const [tonConnectUI] = useTonConnectUI();
   const tonWallet = useTonWallet();
 
+  // Получение профиля, рефералов, покупок
   const fetchProfile = async (telegram_id) => {
-    console.log('📡 Запрашиваем профиль пользователя...');
     const [profileData, referralData, sellsData] = await Promise.all([
       fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
       fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
       fetch(`https://lottery-server-waif.onrender.com/users/sells/${telegram_id}`).then(res => res.json()),
     ]);
-
     setProfile(profileData);
     setReferrals(referralData);
     setPurchases(sellsData);
     setLoading(false);
-    console.log('✅ Профиль получен:', profileData);
   };
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     const telegramUser = tg?.initDataUnsafe?.user;
 
-    if (!telegramUser || !telegramUser.id) {
-      console.warn('Telegram user not found');
-      return;
-    }
+    if (!telegramUser || !telegramUser.id) return;
 
-    console.log('👤 Telegram пользователь:', telegramUser);
     setUser(telegramUser);
     fetchProfile(telegramUser.id);
   }, []);
@@ -55,13 +49,11 @@ export default function Profile() {
   }, [tonWallet, user, profile]);
 
   const handleWalletUpdate = async (walletValue) => {
-    console.log('🔄 Обновляем TON-кошелек:', walletValue);
     await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ telegram_id: user.id, wallet: walletValue }),
     });
-
     fetchProfile(user.id);
   };
 
@@ -74,11 +66,16 @@ export default function Profile() {
     return <p className="profile-wrapper">Загрузка профиля...</p>;
   }
 
+  // Получаем первую букву ника для заглушки аватара
+  const avatarLetter = user.username ? user.username[0].toUpperCase() : '?';
+
   return (
     <div className="profile-wrapper">
-      <div className="profile-block">
-        <div className="profile-title">👤 Привет, {user.first_name}!</div>
-        <div className="profile-row">@{user.username}</div>
+
+      <div className="profile-avatar-block">
+        {/* Если есть photo_url, можно заменить на <img src={user.photo_url} /> */}
+        <div className="avatar-placeholder">{avatarLetter}</div>
+        <div className="username-text">@{user.username}</div>
       </div>
 
       <div className="profile-block">
@@ -100,20 +97,13 @@ export default function Profile() {
             onClick={async () => {
               const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
               const amount = parseFloat(amountInput);
-
               if (isNaN(amount) || amount <= 0) {
                 alert('Введите корректную сумму.');
                 return;
               }
-
               const nanoTON = (amount * 1e9).toFixed(0);
-
-              // Берём payload как готовую строку, кодируем base64
               const comment = profile?.payload || '';
               const payloadBase64 = comment || undefined;
-
-              console.log('📤 Отправляем транзакцию с payload (Base64):', payloadBase64);
-
               try {
                 await tonConnectUI.sendTransaction({
                   validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -125,9 +115,8 @@ export default function Profile() {
                     },
                   ],
                 });
-                console.log('✅ Транзакция отправлена');
+                alert('Транзакция отправлена');
               } catch (error) {
-                console.error('❌ Ошибка при отправке транзакции:', error);
                 alert('Ошибка при отправке TON');
               }
             }}
@@ -141,9 +130,7 @@ export default function Profile() {
             onClick={() => {
               const address = prompt('Введите адрес TON-кошелька для вывода:');
               const amount = prompt('Введите сумму для вывода (TON):');
-
               if (!address || !amount) return;
-
               fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

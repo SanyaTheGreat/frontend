@@ -80,3 +80,30 @@ button.ton-connect-button {
   justify-content: center;
   padding-top: 10px;
 }
+
+.profile-avatar-block {
+  background-color: #385274; /* текущий синий фон */
+  border-radius: 12px;
+  padding: 20px 0;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background-color: #2e4a6d; /* чуть темнее */
+  color: #f0f0f0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 80px;
+  user-select: none;
+}
+
+.username-text {
+  color: #fff;
+  font-weight: 700;
+  font-size: 24px;
+}
