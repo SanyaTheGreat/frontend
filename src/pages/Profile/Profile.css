@@ -30,13 +30,12 @@
   margin-bottom: 20px;
 }
 
-/* Убрали контейнер вокруг TON Connect и заголовка, стилизуем кнопку */
+/* Центрируем кнопку TON Connect */
 button.ton-connect-button, .profile-block > div.ton-button-row {
   width: 100% !important;
   max-width: 300px;
-  margin: 0 auto 20px;
-  display: flex !important;
-  justify-content: center !important;
+  margin: 0 auto 20px;  /* горизонтальное центрирование */
+  display: block !important; /* меняем с flex на block */
   padding-top: 0;
 }
 
