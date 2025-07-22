@@ -121,7 +121,7 @@ export default function Profile() {
       <div className="username-text">@{user.username}</div>
 
       {/* Центрируем кнопку TonConnect */}
-      <div className="ton-connect-center">
+      <div className="ton-connect-wrapper">
         <TonConnectButton />
       </div>
 
