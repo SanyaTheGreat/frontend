@@ -1,6 +1,8 @@
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
+import { ToastContainer, toast } from 'react-toastify'; // импорт
+import 'react-toastify/dist/ReactToastify.css'; // стили
 import './LobbyPage.css';
 
 function LobbyPage() {
@@ -15,27 +17,47 @@ function LobbyPage() {
   }, [id]);
 
   async function fetchLobbyData() {
-    // Получаем данные о колесе
-    const { data: wheelData } = await supabase
-      .from('wheels')
-      .select('id, nft_name, size, price, status')
-      .eq('id', id)
-      .single();
-    setWheel(wheelData);
+    try {
+      // Получаем данные о колесе
+      const { data: wheelData, error: wheelError } = await supabase
+        .from('wheels')
+        .select('id, nft_name, size, price, status')
+        .eq('id', id)
+        .single();
 
-    // Участники
-    const { data: participantData } = await supabase
-      .from('wheel_participants')
-      .select('username')
-      .eq('wheel_id', id);
-    setParticipants(participantData || []);
+      if (wheelError) {
+        toast.error('Ошибка загрузки данных колеса');
+        return;
+      }
+      setWheel(wheelData);
 
-    // Счётчик
-    const { count } = await supabase
-      .from('wheel_participants')
-      .select('*', { count: 'exact', head: true })
-      .eq('wheel_id', id);
-    setParticipantCount(count || 0);
+      // Участники
+      const { data: participantData, error: participantsError } = await supabase
+        .from('wheel_participants')
+        .select('username')
+        .eq('wheel_id', id);
+
+      if (participantsError) {
+        toast.error('Ошибка загрузки участников');
+        return;
+      }
+      setParticipants(participantData || []);
+
+      // Счётчик
+      const { count, error: countError } = await supabase
+        .from('wheel_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('wheel_id', id);
+
+      if (countError) {
+        toast.error('Ошибка подсчёта участников');
+        return;
+      }
+      setParticipantCount(count || 0);
+    } catch (e) {
+      toast.error('Ошибка загрузки данных');
+      console.error(e);
+    }
   }
 
   async function handleJoin() {
@@ -43,7 +65,12 @@ function LobbyPage() {
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      alert("Telegram user not found");
+      toast.error("Telegram пользователь не найден");
+      return;
+    }
+
+    if (participantCount >= (wheel?.size || 0)) {
+      toast.warn("Колесо уже заполнено");
       return;
     }
 
@@ -57,7 +84,7 @@ function LobbyPage() {
       .single();
 
     if (error || !foundUser) {
-      alert("User not registered");
+      toast.error("Пользователь не зарегистрирован");
       setLoading(false);
       return;
     }
@@ -75,10 +102,11 @@ function LobbyPage() {
     });
 
     if (res.status === 201) {
+      toast.success("Вы успешно присоединились к розыгрышу!");
       await fetchLobbyData(); // обновляем участников
     } else {
       const err = await res.json();
-      alert(err.error || "Ошибка вступления");
+      toast.error(err.error || "Ошибка вступления");
     }
 
     setLoading(false);
@@ -105,6 +133,20 @@ function LobbyPage() {
           <li key={index}>@{p.username}</li>
         ))}
       </ul>
+
+      {/* Toast контейнер для уведомлений */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 }
