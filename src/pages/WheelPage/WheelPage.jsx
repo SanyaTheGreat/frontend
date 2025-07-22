@@ -16,11 +16,13 @@ export default function WheelPage() {
   const [loading, setLoading] = useState(true);
   const [animStarted, setAnimStarted] = useState(false);
   const timerRef = useRef(null);
-  const [status, setStatus] = useState('active'); // по умолчанию active
+  const [status, setStatus] = useState('active');
   const [timeLeft, setTimeLeft] = useState(null);
 
+  // Новые состояния для модалки победителя
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+
   const fetchData = async () => {
-    console.log('🚀 fetchData start');
     try {
       setLoading(true);
 
@@ -28,9 +30,7 @@ export default function WheelPage() {
       const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
-      console.log(`✅ Найдено участников: ${partData.participants?.length || 0}`);
 
-      // Фильтрация уникальных участников по user_id и сортировка по joined_at
       const participantsRaw = partData.participants || [];
       const uniqueMap = new Map();
       participantsRaw.forEach(p => {
@@ -45,10 +45,7 @@ export default function WheelPage() {
       });
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
-        .map(p => {
-          console.log(`👤 Участник: ${p.username || `user${p.user_id}`}`);
-          return { username: p.username || `user${p.user_id}` };
-        });
+        .map(p => ({ username: p.username || `user${p.user_id}` }));
 
       setParticipants(uniqueParticipants);
 
@@ -56,7 +53,6 @@ export default function WheelPage() {
       const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`);
       if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
       const wheelData = await wheelRes.json();
-      console.log(`🎡 Колесо найдено. Размер: ${wheelData.size}`);
       setWheelSize(wheelData.size || 0);
 
       // Получаем результат розыгрыша (победителя) по wheel_id
@@ -64,28 +60,21 @@ export default function WheelPage() {
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
-      console.log('🎲 Все wheel_id в результатах:', resultData.results.map(r => r.wheel_id));
-      console.log('🔍 Текущий wheel_id:', wheel_id);
-
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
-        const winnerNormalized = thisResult.winner.replace(/^@/, ''); // убираем @ если есть
-        console.log(`🏆 Победитель: ${winnerNormalized} (завершено: ${thisResult.completed_at})`);
+        const winnerNormalized = thisResult.winner.replace(/^@/, '');
         setWinner(winnerNormalized || null);
         setCompletedAt(thisResult.completed_at || null);
         setStatus('completed');
       } else {
-        console.log('⚙️ Колесо ещё активно, победитель не определён');
         setWinner(null);
         setCompletedAt(null);
         setStatus('active');
       }
     } catch (e) {
-      console.error('❌ Ошибка загрузки данных колеса:', e);
       alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
     } finally {
       setLoading(false);
-      console.log('🚀 fetchData end');
     }
   };
 
@@ -94,12 +83,11 @@ export default function WheelPage() {
 
     const intervalId = setInterval(() => {
       fetchData();
-    }, 50000); // обновляем каждые 50 секунд
+    }, 50000);
 
     return () => clearInterval(intervalId);
   }, [wheel_id]);
 
-  // Таймер запуска анимации через 15 секунд после completedAt и статуса completed
   useEffect(() => {
     if (status !== 'completed' || !completedAt || !winner) {
       setTimeLeft(null);
@@ -123,8 +111,15 @@ export default function WheelPage() {
     return () => clearInterval(timerRef.current);
   }, [status, completedAt, winner]);
 
+  // Обработчик окончания анимации — показываем модал победителя
   const handleAnimFinish = () => {
-    alert(`🎉 Победитель: ${winner}`);
+    setShowWinnerModal(true);
+  };
+
+  // Закрытие модалки — скрываем и переходим в главное меню
+  const handleCloseModal = () => {
+    setShowWinnerModal(false);
+    navigate('/');
   };
 
   if (loading) return <div>Загрузка...</div>;
@@ -141,12 +136,50 @@ export default function WheelPage() {
       <Wheel
         participants={participants}
         wheelSize={wheelSize}
-        winnerUsername={animStarted ? winner : null} // анимация запускается только если animStarted=true
+        winnerUsername={animStarted ? winner : null}
         spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
         onFinish={handleAnimFinish}
       />
 
       <button onClick={() => navigate('/')}>Главное меню</button>
+
+      {showWinnerModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <div className="modal" style={{
+            background: '#222',
+            padding: '30px 40px',
+            borderRadius: '12px',
+            color: 'white',
+            textAlign: 'center',
+            minWidth: '280px',
+          }}>
+            <h2>Победитель {winner}</h2>
+            <button
+              onClick={handleCloseModal}
+              style={{
+                marginTop: '20px',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                fontSize: '16px',
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
