@@ -120,12 +120,12 @@ export default function Profile() {
       <div className="avatar-placeholder">{avatarLetter}</div>
       <div className="username-text">@{user.username}</div>
 
-      {/* Кнопка Ton Connect по центру */}
+      {/* Центрируем кнопку TonConnect */}
       <div className="ton-connect-center">
         <TonConnectButton />
       </div>
 
-      {/* Баланс и кнопки в одной строке */}
+      {/* Баланс и кнопки в одном ряду с меткой Balance */}
       <div className="balance-actions-row">
         <div className="balance-label">Balance</div>
         <div className="balance-display">

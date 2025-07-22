@@ -150,3 +150,12 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   margin-bottom: 10px;
   font-size: 14px;
 }
+
+/* Контейнер-обёртка для кнопки */
+.ton-connect-wrapper {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto 20px;
+}
