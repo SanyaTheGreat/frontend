@@ -12,6 +12,8 @@
     align-items: center;
     height: 60px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+
+    z-index: 10000; /* Важно! Чтобы таббар был поверх */
   }
   
   /* Ссылки в таббаре */
