@@ -35,8 +35,17 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   width: 100% !important;
   max-width: 300px;
   margin: 0 auto 20px;  /* горизонтальное центрирование */
-  display: block !important; /* меняем с flex на block */
   padding-top: 0;
+  /* Убрали display: block !important; чтобы flex контейнер работал корректно */
+}
+
+/* Контейнер-обёртка для кнопки TON Connect */
+.ton-connect-wrapper {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto 20px;
 }
 
 /* Объединили баланс и кнопки пополнения/вывода */
@@ -149,13 +158,4 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   border-radius: 8px;
   margin-bottom: 10px;
   font-size: 14px;
-}
-
-/* Контейнер-обёртка для кнопки */
-.ton-connect-wrapper {
-  display: flex !important;
-  justify-content: center !important;
-  width: 100%;
-  max-width: 300px;
-  margin: 0 auto 20px;
 }
