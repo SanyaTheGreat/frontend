@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import lottie from 'lottie-web';
+import { ToastContainer, toast } from 'react-toastify'; // импорт
+import 'react-toastify/dist/ReactToastify.css'; // стили
 import './Home.css';
 
 function Home() {
@@ -22,6 +24,7 @@ function Home() {
 
     if (error) {
       console.error('Ошибка загрузки колес:', error);
+      toast.error('Ошибка загрузки розыгрышей');
       return;
     }
 
@@ -36,6 +39,7 @@ function Home() {
 
         if (countError) {
           console.error('Ошибка подсчета участников:', countError);
+          toast.error('Ошибка подсчёта участников');
           return { ...wheel, participants: 0 };
         }
 
@@ -54,7 +58,10 @@ function Home() {
     fetch("/animations/colors.json")
       .then((res) => res.json())
       .then((data) => setColorsMap(data))
-      .catch((err) => console.error("Ошибка загрузки цветов:", err));
+      .catch((err) => {
+        console.error("Ошибка загрузки цветов:", err);
+        toast.error('Ошибка загрузки цветов');
+      });
   }, []);
 
   const handleJoin = async (wheel) => {
@@ -62,7 +69,12 @@ function Home() {
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      alert("Telegram user not found");
+      toast.error("Пользователь Telegram не найден");
+      return;
+    }
+
+    if (wheel.participants >= wheel.size) {
+      toast.warn("Колесо уже заполнено");
       return;
     }
 
@@ -76,7 +88,7 @@ function Home() {
       .single();
 
     if (error || !foundUser) {
-      alert("User not registered");
+      toast.error("Пользователь не зарегистрирован");
       setLoadingId(null);
       return;
     }
@@ -94,10 +106,11 @@ function Home() {
     });
 
     if (res.status === 201) {
+      toast.success("Вы успешно присоединились к розыгрышу!");
       await fetchWheels(); // Обновляем участников
     } else {
       const err = await res.json();
-      alert(err.error || "Ошибка вступления");
+      toast.error(err.error || "Ошибка вступления");
     }
 
     setLoadingId(null);
@@ -174,6 +187,20 @@ function Home() {
           </div>
         ))
       )}
+
+      {/* Toast контейнер для уведомлений */}
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 }
