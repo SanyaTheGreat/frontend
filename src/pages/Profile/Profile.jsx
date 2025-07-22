@@ -13,7 +13,6 @@ export default function Profile() {
   const [tonConnectUI] = useTonConnectUI();
   const tonWallet = useTonWallet();
 
-  // Получение профиля, рефералов, покупок
   const fetchProfile = async (telegram_id) => {
     const [profileData, referralData, sellsData] = await Promise.all([
       fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
@@ -62,91 +61,77 @@ export default function Profile() {
     alert('Скопировано!');
   };
 
+  const handleTopUp = async () => {
+    const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
+    const amount = parseFloat(amountInput);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Введите корректную сумму.');
+      return;
+    }
+    const nanoTON = (amount * 1e9).toFixed(0);
+    const comment = profile?.payload || '';
+    const payloadBase64 = comment || undefined;
+    try {
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
+            address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
+            amount: nanoTON,
+            payload: payloadBase64,
+          },
+        ],
+      });
+      alert('Транзакция отправлена');
+    } catch (error) {
+      alert('Ошибка при отправке TON');
+    }
+  };
+
+  const handleWithdraw = () => {
+    const address = prompt('Введите адрес TON-кошелька для вывода:');
+    const amount = prompt('Введите сумму для вывода (TON):');
+    if (!address || !amount) return;
+    fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegram_id: user.id,
+        address,
+        amount: parseFloat(amount),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => alert(data.message || 'Запрос на вывод отправлен'))
+      .catch(() => alert('Ошибка при отправке запроса'));
+  };
+
   if (loading || !user) {
     return <p className="profile-wrapper">Загрузка профиля...</p>;
   }
 
-  // Получаем первую букву ника для заглушки аватара
+  // Первая буква username для аватара-заглушки
   const avatarLetter = user.username ? user.username[0].toUpperCase() : '?';
 
   return (
     <div className="profile-wrapper">
 
-      <div className="profile-avatar-block">
-        {/* Если есть photo_url, можно заменить на <img src={user.photo_url} /> */}
-        <div className="avatar-placeholder">{avatarLetter}</div>
-        <div className="username-text">@{user.username}</div>
-      </div>
+      {/* Аватар и юзернейм без контейнера */}
+      <div className="avatar-placeholder">{avatarLetter}</div>
+      <div className="username-text">@{user.username}</div>
 
-      <div className="profile-block">
-        <div className="profile-title">🔌 Подключение TON Connect</div>
-        <div className="profile-row ton-button-row">
-          <TonConnectButton />
+      {/* Только кнопка TON Connect */}
+      <TonConnectButton />
+
+      {/* Баланс и кнопки в одном ряду */}
+      <div className="balance-actions-row">
+        <div className="balance-display">
+          <span className="ton-icon">🪙</span>
+          <span>{profile?.tickets ?? '—'}</span>
         </div>
-      </div>
-
-      <div className="profile-block">
-        <div className="profile-title">🎟 TON</div>
-        <div className="profile-row">{profile?.tickets ?? '—'}</div>
-      </div>
-
-      <div className="profile-block">
-        <div className="profile-title">💳 Пополнение и вывод TON</div>
-        <div className="profile-row">
-          <button
-            onClick={async () => {
-              const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
-              const amount = parseFloat(amountInput);
-              if (isNaN(amount) || amount <= 0) {
-                alert('Введите корректную сумму.');
-                return;
-              }
-              const nanoTON = (amount * 1e9).toFixed(0);
-              const comment = profile?.payload || '';
-              const payloadBase64 = comment || undefined;
-              try {
-                await tonConnectUI.sendTransaction({
-                  validUntil: Math.floor(Date.now() / 1000) + 600,
-                  messages: [
-                    {
-                      address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
-                      amount: nanoTON,
-                      payload: payloadBase64,
-                    },
-                  ],
-                });
-                alert('Транзакция отправлена');
-              } catch (error) {
-                alert('Ошибка при отправке TON');
-              }
-            }}
-          >
-            Пополнить TON
-          </button>
-        </div>
-
-        <div className="profile-row">
-          <button
-            onClick={() => {
-              const address = prompt('Введите адрес TON-кошелька для вывода:');
-              const amount = prompt('Введите сумму для вывода (TON):');
-              if (!address || !amount) return;
-              fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  telegram_id: user.id,
-                  address,
-                  amount: parseFloat(amount),
-                }),
-              })
-                .then((res) => res.json())
-                .then((data) => alert(data.message || 'Запрос на вывод отправлен'))
-                .catch(() => alert('Ошибка при отправке запроса'));
-            }}
-          >
-            Вывести
-          </button>
+        <div className="balance-buttons">
+          <button onClick={handleTopUp}>Пополнить TON</button>
+          <button onClick={handleWithdraw}>Вывести</button>
         </div>
       </div>
 
@@ -171,12 +156,12 @@ export default function Profile() {
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🕘 История покупок билетов</div>
+        <div className="profile-title">🕘 История покупок TON</div>
         <ul className="profile-history-list">
           {purchases.length === 0 && <li>История пуста</li>}
           {purchases.map((item, i) => (
             <li key={i}>
-              {item.amount} билета(ов) — {new Date(item.created_at).toLocaleString()}
+              {item.amount} TON — {new Date(item.created_at).toLocaleString()}
             </li>
           ))}
         </ul>
