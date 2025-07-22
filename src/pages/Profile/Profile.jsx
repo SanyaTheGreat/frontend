@@ -62,7 +62,7 @@ export default function Profile() {
   };
 
   const handleTopUp = async () => {
-    const amountInput = prompt('Введите сумму пополнения в TON (например, 1.5):');
+    const amountInput = prompt('Enter the amount in TON:');
     const amount = parseFloat(amountInput);
     if (isNaN(amount) || amount <= 0) {
       alert('Введите корректную сумму.');
@@ -89,8 +89,8 @@ export default function Profile() {
   };
 
   const handleWithdraw = () => {
-    const address = prompt('Введите адрес TON-кошелька для вывода:');
-    const amount = prompt('Введите сумму для вывода (TON):');
+    const address = prompt('Enter TON wallet address for withdrawal:');
+    const amount = prompt('Enter the amount to withdraw (TON):');
     if (!address || !amount) return;
     fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
       method: 'POST',
@@ -107,7 +107,7 @@ export default function Profile() {
   };
 
   if (loading || !user) {
-    return <p className="profile-wrapper">Загрузка профиля...</p>;
+    return <p className="profile-wrapper">Loading Profile...</p>;
   }
 
   // Первая буква username для аватара-заглушки
@@ -133,19 +133,19 @@ export default function Profile() {
           <span>{profile?.tickets ?? '—'}</span>
         </div>
         <div className="balance-buttons">
-          <button onClick={handleTopUp}>Пополнить TON</button>
-          <button onClick={handleWithdraw}>Вывести</button>
+          <button onClick={handleTopUp}>Purchase</button>
+          <button onClick={handleWithdraw}>Withrawal</button>
         </div>
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">👥 Рефералы</div>
-        <div className="profile-row">Кол-во: {referrals?.referral_count ?? 0}</div>
-        <div className="profile-row">Заработано: {referrals?.referral_earnings ?? 0} TON</div>
+        <div className="profile-title">👥 Referrals</div>
+        <div className="profile-row">Count: {referrals?.referral_count ?? 0}</div>
+        <div className="profile-row">Earn: {referrals?.referral_earnings ?? 0} TON</div>
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🔗 Ваша реферальная ссылка</div>
+        <div className="profile-title">🔗 Your referral link</div>
         <div className="profile-ref-wrapper">
           <input
             type="text"
@@ -154,14 +154,14 @@ export default function Profile() {
             value={`https://t.me/FightForGift_bot?start=${user.id}`}
             onClick={(e) => e.target.select()}
           />
-          <button onClick={handleCopyRefLink} className="copy-btn">Скопировать 🔗</button>
+          <button onClick={handleCopyRefLink} className="copy-btn">Copy 🔗</button>
         </div>
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🕘 История покупок TON</div>
+        <div className="profile-title">🕘 Purchase History</div>
         <ul className="profile-history-list">
-          {purchases.length === 0 && <li>История пуста</li>}
+          {purchases.length === 0 && <li>Still nothing...</li>}
           {purchases.map((item, i) => (
             <li key={i}>
               {item.amount} TON — {new Date(item.created_at).toLocaleString()}
