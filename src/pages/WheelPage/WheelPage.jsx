@@ -155,7 +155,7 @@ export default function WheelPage() {
         }}>
           <div className="modal" style={{
             background: '#222',
-            padding: '30px 40px',
+            padding: '15px 20px',
             borderRadius: '12px',
             color: 'white',
             textAlign: 'center',
