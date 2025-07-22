@@ -159,7 +159,7 @@ export default function WheelPage() {
             borderRadius: '12px',
             color: 'white',
             textAlign: 'center',
-            minWidth: '280px',
+            minWidth: '200px',
           }}>
             <h2>Победитель {winner}</h2>
             <button
