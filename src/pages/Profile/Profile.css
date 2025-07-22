@@ -69,6 +69,7 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
 /* Кнопки пополнения и вывода */
 .balance-buttons {
   display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -76,7 +77,7 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   background-color: #2E7D32;
   border: none;
   border-radius: 30px;
-  padding: 8px 20px;
+  padding: 6px 14px;
   color: white;
   font-weight: bold;
   cursor: pointer;

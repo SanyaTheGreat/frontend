@@ -116,15 +116,18 @@ export default function Profile() {
   return (
     <div className="profile-wrapper">
 
-      {/* Аватар и юзернейм без контейнера */}
+      {/* Аватар и username без контейнера */}
       <div className="avatar-placeholder">{avatarLetter}</div>
       <div className="username-text">@{user.username}</div>
 
-      {/* Только кнопка TON Connect */}
-      <TonConnectButton />
+      {/* Кнопка Ton Connect по центру */}
+      <div className="ton-connect-center">
+        <TonConnectButton />
+      </div>
 
-      {/* Баланс и кнопки в одном ряду */}
+      {/* Баланс и кнопки в одной строке */}
       <div className="balance-actions-row">
+        <div className="balance-label">Balance</div>
         <div className="balance-display">
           <span className="ton-icon">🪙</span>
           <span>{profile?.tickets ?? '—'}</span>
