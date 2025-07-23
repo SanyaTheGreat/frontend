@@ -1,6 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function useTelegramRegistration() {
+  const [referrerId, setReferrerId] = useState(null);
+
+  useEffect(() => {
+    // Получаем referrer_id из URL параметров
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('referrer');
+    if (ref) {
+      setReferrerId(ref);
+      console.log(`🔗 Найден referrer_id в URL: ${ref}`);
+    } else {
+      console.log('ℹ️ referrer_id не найден в URL');
+    }
+  }, []);
+
   useEffect(() => {
     console.log('📲 useTelegramRegistration: хук активирован');
 
@@ -15,9 +29,9 @@ export function useTelegramRegistration() {
       clearInterval(interval);
       console.log('✅ [Найден] Telegram.WebApp доступен');
 
-      tg.ready();       // ✅ сообщаем Telegram, что WebApp готов
-      tg.expand();      // ⬆️ открываем Mini App на весь экран
-      
+      tg.ready();
+      tg.expand();
+
       const user = tg.initDataUnsafe?.user;
       console.log('🧩 [initDataUnsafe]:', tg.initDataUnsafe);
       console.log('👤 [User из initDataUnsafe]:', user);
@@ -27,7 +41,6 @@ export function useTelegramRegistration() {
         return;
       }
 
-      // Добавляем аватар (если есть)
       const avatar_url = user.photo_url || null;
       if (avatar_url) {
         console.log(`🖼️ Найден аватар пользователя: ${avatar_url}`);
@@ -38,7 +51,8 @@ export function useTelegramRegistration() {
       const payload = {
         telegram_id: user.id,
         username: user.username || '',
-        avatar_url,  // передаем аватар
+        avatar_url,
+        ...(referrerId && { referrer_id: referrerId }),  // Добавляем referrer_id, если есть
       };
 
       console.log('📦 [Payload для отправки]:', payload);
@@ -69,5 +83,5 @@ export function useTelegramRegistration() {
       console.log('🧹 useTelegramRegistration: очистка таймера');
       clearInterval(interval);
     };
-  }, []);
+  }, [referrerId]);
 }
