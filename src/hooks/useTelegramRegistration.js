@@ -17,11 +17,13 @@ export function useTelegramRegistration() {
 
       tg.ready();       // ✅ сообщаем Telegram, что WebApp готов
       tg.expand();      // ⬆️ открываем Mini App на весь экран
-      
 
       const user = tg.initDataUnsafe?.user;
+      const referrer_id = tg.initDataUnsafe?.start_param || null;  // Получаем referrer_id из параметра запуска
+
       console.log('🧩 [initDataUnsafe]:', tg.initDataUnsafe);
       console.log('👤 [User из initDataUnsafe]:', user);
+      console.log('🔗 [referrer_id]:', referrer_id);
 
       if (!user || !user.id) {
         console.warn('⚠️ [Ошибка] Нет user.id в initDataUnsafe');
@@ -31,6 +33,7 @@ export function useTelegramRegistration() {
       const payload = {
         telegram_id: user.id,
         username: user.username || '',
+        referrer_id,  // Добавляем referrer_id в тело запроса
       };
 
       console.log('📦 [Payload для отправки]:', payload);
