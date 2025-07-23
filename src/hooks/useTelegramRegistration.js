@@ -18,7 +18,6 @@ export function useTelegramRegistration() {
       tg.ready();       // ✅ сообщаем Telegram, что WebApp готов
       tg.expand();      // ⬆️ открываем Mini App на весь экран
       
-
       const user = tg.initDataUnsafe?.user;
       console.log('🧩 [initDataUnsafe]:', tg.initDataUnsafe);
       console.log('👤 [User из initDataUnsafe]:', user);
@@ -28,9 +27,18 @@ export function useTelegramRegistration() {
         return;
       }
 
+      // Добавляем аватар (если есть)
+      const avatar_url = user.photo_url || null;
+      if (avatar_url) {
+        console.log(`🖼️ Найден аватар пользователя: ${avatar_url}`);
+      } else {
+        console.log('ℹ️ Аватар пользователя отсутствует');
+      }
+
       const payload = {
         telegram_id: user.id,
         username: user.username || '',
+        avatar_url,  // передаем аватар
       };
 
       console.log('📦 [Payload для отправки]:', payload);
