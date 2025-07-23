@@ -113,11 +113,22 @@ export default function Profile() {
   // Первая буква username для аватара-заглушки
   const avatarLetter = user.username ? user.username[0].toUpperCase() : '?';
 
+  // Логируем URL аватара
+  console.log("Отображаемый URL аватара:", profile?.avatar_url);
+
   return (
     <div className="profile-wrapper">
       {/* Показываем аватар, если есть, иначе букву-заглушку */}
       {profile?.avatar_url ? (
-        <img src={profile.avatar_url} alt="Avatar" className="profile-avatar" />
+        <img
+          src={profile.avatar_url}
+          alt="Avatar"
+          className="profile-avatar"
+          onError={(e) => {
+            console.error("Ошибка загрузки аватара:", e);
+            e.currentTarget.style.display = "none"; // скрыть если не загрузился
+          }}
+        />
       ) : (
         <div className="avatar-placeholder">{avatarLetter}</div>
       )}
