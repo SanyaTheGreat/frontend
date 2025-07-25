@@ -17,6 +17,15 @@
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
+.lobby-gift-image {
+  display: block;
+  margin: 12px auto 20px auto;
+  max-width: 150px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(35, 166, 213, 0.5);
+}
+
+
 .lobby-card h2 {
   font-size: 22px;
   text-align: center;

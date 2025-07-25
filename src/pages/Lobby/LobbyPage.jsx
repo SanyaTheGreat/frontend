@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
 import { ToastContainer, toast } from 'react-toastify'; // импорт
+import lottie from 'lottie-web';
 import 'react-toastify/dist/ReactToastify.css'; // стили
 import './LobbyPage.css';
 
@@ -13,10 +14,31 @@ function LobbyPage() {
   const [participants, setParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const animRef = useRef(null); // ref для Lottie анимации
 
   useEffect(() => {
     fetchLobbyData();
   }, [id]);
+
+  useEffect(() => {
+    if (!wheel?.nft_name || !animRef.current) return;
+
+    // Загружаем и проигрываем анимацию Lottie для текущего колеса
+    fetch(`/animations/${wheel.nft_name}.json`)
+      .then(res => res.json())
+      .then(data => {
+        lottie.loadAnimation({
+          container: animRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          animationData: data,
+        });
+      })
+      .catch((e) => {
+        console.error("Ошибка загрузки анимации Lottie:", e);
+      });
+  }, [wheel]);
 
   async function fetchLobbyData() {
     try {
@@ -123,6 +145,13 @@ function LobbyPage() {
   return (
     <div className="lobby-page">
       <h2>{wheel.nft_name}</h2>
+
+      {/* Lottie анимация */}
+      <div
+        ref={animRef}
+        style={{ width: '150px', height: '150px', margin: '0 auto 20px' }}
+      ></div>
+
       <p>Participants: {participantCount} / {wheel.size}</p>
       <p>Price: {wheel.price} 🎫</p>
 
@@ -135,7 +164,7 @@ function LobbyPage() {
       </button>
 
       <button
-        className="join-buttonLobby"
+        className="watch-buttonLobby"
         onClick={handleWatch}
         style={{ marginTop: '10px', backgroundColor: '#6c757d' }}
       >
