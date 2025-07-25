@@ -129,7 +129,7 @@ function LobbyPage() {
       </button>
 
       <div className="already-joined-text">
-      Already Joined
+      Already in The Game <span style={{fontSize: '18px'}}>✅</span>
       </div>
 
       <ul className="participant-list">
