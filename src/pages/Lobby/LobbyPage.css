@@ -40,26 +40,28 @@
   font-size: 14px;
 }
 
-
 .participant-list {
   list-style: none;
-  padding: 0;
+  padding: 10px 15px;
   margin: 20px 0;
   background: #1a1a1a;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #333;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px; /* Вертикальный и горизонтальный отступы */
 }
 
 .participant-list li {
   padding: 10px;
-  border-bottom: 1px solid #292929;
+  background-color: #292929;
+  border-radius: 6px;
   text-align: center;
   font-size: 14px;
-}
-
-.participant-list li:last-child {
-  border-bottom: none;
+  margin: 0; /* сбросить margin чтобы не конфликтовать с gap */
+  border: none;
 }
 
 .join-buttonLobby {
