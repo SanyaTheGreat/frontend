@@ -1,29 +1,37 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
-import { ToastContainer, toast } from 'react-toastify'; // импорт
+import { ToastContainer, toast } from 'react-toastify';
 import lottie from 'lottie-web';
-import 'react-toastify/dist/ReactToastify.css'; // стили
+import 'react-toastify/dist/ReactToastify.css';
 import './LobbyPage.css';
 
 function LobbyPage() {
-  const { id } = useParams(); // wheel_id из URL
-  const navigate = useNavigate(); // для перехода на другие страницы
+  const { id } = useParams();
+  const navigate = useNavigate();
 
   const [wheel, setWheel] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const animRef = useRef(null); // ref для Lottie анимации
+  const [colorsMap, setColorsMap] = useState({}); // Для цветов фона
+  const animRef = useRef(null);
 
   useEffect(() => {
     fetchLobbyData();
   }, [id]);
 
   useEffect(() => {
+    fetch("/animations/colors.json")
+      .then(res => res.json())
+      .then(setColorsMap)
+      .catch(e => console.error("Ошибка загрузки цветов:", e));
+  }, []);
+
+  useEffect(() => {
     if (!wheel?.nft_name || !animRef.current) return;
 
-    // Загружаем и проигрываем анимацию Lottie для текущего колеса
+    // Загружаем Lottie-анимацию
     fetch(`/animations/${wheel.nft_name}.json`)
       .then(res => res.json())
       .then(data => {
@@ -42,7 +50,6 @@ function LobbyPage() {
 
   async function fetchLobbyData() {
     try {
-      // Получаем данные о колесе
       const { data: wheelData, error: wheelError } = await supabase
         .from('wheels')
         .select('id, nft_name, size, price, status')
@@ -55,7 +62,6 @@ function LobbyPage() {
       }
       setWheel(wheelData);
 
-      // Участники
       const { data: participantData, error: participantsError } = await supabase
         .from('wheel_participants')
         .select('username')
@@ -67,7 +73,6 @@ function LobbyPage() {
       }
       setParticipants(participantData || []);
 
-      // Счётчик участников
       const { count, error: countError } = await supabase
         .from('wheel_participants')
         .select('*', { count: 'exact', head: true })
@@ -100,7 +105,6 @@ function LobbyPage() {
 
     setLoading(true);
 
-    // Получаем user_id из Supabase по telegram_id
     const { data: foundUser, error } = await supabase
       .from('users')
       .select('id')
@@ -113,7 +117,6 @@ function LobbyPage() {
       return;
     }
 
-    // POST на backend
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,7 +130,7 @@ function LobbyPage() {
 
     if (res.status === 201) {
       toast.success("Вы успешно присоединились к розыгрышу!");
-      await fetchLobbyData(); // обновляем участников
+      await fetchLobbyData();
     } else {
       const err = await res.json();
       toast.error(err.error || "Ошибка вступления");
@@ -146,10 +149,19 @@ function LobbyPage() {
     <div className="lobby-page">
       <h2>{wheel.nft_name}</h2>
 
-      {/* Lottie анимация */}
+      {/* Lottie анимация с фоном */}
       <div
         ref={animRef}
-        style={{ width: '150px', height: '150px', margin: '0 auto 20px' }}
+        style={{
+          width: '150px',
+          height: '150px',
+          margin: '0 auto 20px',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          background: colorsMap[wheel.nft_name]
+            ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
+            : '#000',
+        }}
       ></div>
 
       <p>Participants: {participantCount} / {wheel.size}</p>
@@ -166,13 +178,13 @@ function LobbyPage() {
       <button
         className="watch-buttonLobby"
         onClick={handleWatch}
-        style={{ marginTop: '10px', backgroundColor: '#6c757d' }}
+        style={{ marginTop: '10px' }}
       >
         Watch
       </button>
 
       <div className="already-joined-text">
-        Already in The Game <span style={{fontSize: '18px'}}>✅</span>
+        Already in The Game <span style={{ fontSize: '18px' }}>✅</span>
       </div>
 
       <ul className="participant-list">
