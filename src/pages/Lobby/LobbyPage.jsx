@@ -128,6 +128,10 @@ function LobbyPage() {
         {loading ? 'Joining...' : 'Join'}
       </button>
 
+      <div className="already-joined-text">
+      Already Joined
+      </div>
+
       <ul className="participant-list">
         {participants.map((p, index) => (
           <li key={index}>@{p.username}</li>
