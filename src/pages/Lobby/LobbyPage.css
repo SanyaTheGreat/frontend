@@ -44,10 +44,10 @@
   list-style: none;
   padding: 10px 15px;
   margin: 20px 0;
-  background: #1a1a1a;
+  background: #0d1b2a;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #333;
+  border: 1px solid #0d1b2a;
 
   display: grid;
   grid-template-columns: 1fr 1fr;
