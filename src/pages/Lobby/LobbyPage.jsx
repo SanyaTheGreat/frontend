@@ -153,8 +153,8 @@ function LobbyPage() {
       <div
         ref={animRef}
         style={{
-          width: '150px',
-          height: '150px',
+          width: '120px',
+          height: '120px',
           margin: '0 auto 20px',
           borderRadius: '12px',
           overflow: 'hidden',
