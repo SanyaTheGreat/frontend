@@ -5,6 +5,14 @@
     font-family: Arial, sans-serif;
   }
   
+  .history-wrapper > h1 {
+  white-space: nowrap;
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 20px;
+  }
+
   .history-list {
     margin-top: 20px;
   }
@@ -17,7 +25,7 @@
   }
   
   .history-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: bold;
     margin-bottom: 10px;
   }
