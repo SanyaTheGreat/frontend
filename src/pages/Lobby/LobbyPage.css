@@ -94,3 +94,23 @@
 .join-buttonLobby:hover:not(:disabled) {
   background-color: #1c91bb;
 }
+
+
+.watch-buttonLobby {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin: 10px 0 20px 0;
+  background-color: #555;  /* Отличный от Join цвет, можно настроить */
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.watch-buttonLobby:hover {
+  background-color: #444;
+}

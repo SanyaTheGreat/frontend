@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import { ToastContainer, toast } from 'react-toastify'; // импорт
@@ -7,6 +7,8 @@ import './LobbyPage.css';
 
 function LobbyPage() {
   const { id } = useParams(); // wheel_id из URL
+  const navigate = useNavigate(); // для перехода на другие страницы
+
   const [wheel, setWheel] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
@@ -43,7 +45,7 @@ function LobbyPage() {
       }
       setParticipants(participantData || []);
 
-      // Счётчик
+      // Счётчик участников
       const { count, error: countError } = await supabase
         .from('wheel_participants')
         .select('*', { count: 'exact', head: true })
@@ -112,6 +114,10 @@ function LobbyPage() {
     setLoading(false);
   }
 
+  const handleWatch = () => {
+    navigate(`/wheel/${id}`);
+  };
+
   if (!wheel) return <div>Loading...</div>;
 
   return (
@@ -128,8 +134,16 @@ function LobbyPage() {
         {loading ? 'Joining...' : 'Join'}
       </button>
 
+      <button
+        className="join-buttonLobby"
+        onClick={handleWatch}
+        style={{ marginTop: '10px', backgroundColor: '#6c757d' }}
+      >
+        Watch
+      </button>
+
       <div className="already-joined-text">
-      Already in The Game <span style={{fontSize: '18px'}}>✅</span>
+        Already in The Game <span style={{fontSize: '18px'}}>✅</span>
       </div>
 
       <ul className="participant-list">
@@ -138,7 +152,6 @@ function LobbyPage() {
         ))}
       </ul>
 
-      {/* Toast контейнер для уведомлений */}
       <ToastContainer
         position="top-right"
         autoClose={3000}
