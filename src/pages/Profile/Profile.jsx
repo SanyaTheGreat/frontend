@@ -183,7 +183,6 @@ export default function Profile() {
         </div>
         <div className="balance-buttons">
           <button onClick={handleTopUp}>Purchase</button>
-          <button onClick={handleWithdraw}>Withdrawal</button>
         </div>
       </div>
 
