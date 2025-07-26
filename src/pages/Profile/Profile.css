@@ -177,10 +177,10 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   align-items: center;
 }
 
-.referral-info {
+.referral-button-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .referral-withdraw-btn {
@@ -193,10 +193,10 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.3s ease;
-  white-space: nowrap;
 }
 
 .referral-withdraw-btn:hover {
   background-color: #27692a;
 }
+
 
