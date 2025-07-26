@@ -84,9 +84,9 @@ export default function Profile() {
           },
         ],
       });
-      toast.success('Транзакция отправлена');
+      toast.success('Transaction Send');
     } catch (error) {
-      toast.error('Ошибка при отправке TON');
+      toast.error('Error Sending TON');
     }
   };
 
@@ -110,17 +110,17 @@ export default function Profile() {
 
   const handleReferralWithdraw = async () => {
     if (!profile?.wallet) {
-      toast.error('TON-кошелёк не привязан');
+      toast.error('Wallet not connected');
       return;
     }
 
     const amount = referrals?.referral_earnings ?? 0;
     if (amount < 3) {
-      toast.warning('Минимальная сумма для вывода — 3 TON');
+      toast.warning('min.Amount — 3 TON');
       return;
     }
 
-    const confirmed = window.confirm(`Вывести ${amount} TON на ${profile.wallet}?`);
+    const confirmed = window.confirm(`Withdraw ${amount} TON on ${profile.wallet}?`);
     if (!confirmed) return;
 
     try {
@@ -136,13 +136,13 @@ export default function Profile() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Вывод успешно выполнен');
+        toast.success(data.message || 'Successful withdrawal');
         fetchProfile(user.id);
       } else {
-        toast.error(data.error || 'Ошибка при выводе');
+        toast.error(data.error || 'Error during output');
       }
     } catch (err) {
-      toast.error('Серверная ошибка при выводе');
+      toast.error('SERVER Error during output');
       console.error(err);
     }
   };
