@@ -189,12 +189,14 @@ export default function Profile() {
 
       <div className="profile-block">
         <div className="profile-title">👥 Referrals</div>
-        <div className="profile-row">Count: {referrals?.referral_count ?? 0}</div>
-        <div className="profile-row" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          Earn: {referrals?.referral_earnings ?? 0} TON
-          {(referrals?.referral_earnings ?? 0) >= 3 && (
-            <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
-              Withdraw
+        <div className="referral-flex-row">
+        <div className="referral-info">
+          <div className="profile-row">Count: {referrals?.referral_count ?? 0}</div>
+          <div className="profile-row">Earn: {referrals?.referral_earnings ?? 0} TON</div>
+        </div>
+        {(referrals?.referral_earnings ?? 0) >= 3 && (
+          <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
+            Withdraw
             </button>
           )}
         </div>
