@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import './Profile.css';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -58,14 +60,14 @@ export default function Profile() {
 
   const handleCopyRefLink = () => {
     navigator.clipboard.writeText(`https://t.me/FightForGift_bot?start=${user.id}`);
-    alert('Скопировано!');
+    toast.success('Скопировано!');
   };
 
   const handleTopUp = async () => {
     const amountInput = prompt('Enter the amount in TON:');
     const amount = parseFloat(amountInput);
     if (isNaN(amount) || amount <= 0) {
-      alert('Введите корректную сумму.');
+      toast.warning('Введите корректную сумму.');
       return;
     }
     const nanoTON = (amount * 1e9).toFixed(0);
@@ -82,9 +84,9 @@ export default function Profile() {
           },
         ],
       });
-      alert('Транзакция отправлена');
+      toast.success('Транзакция отправлена');
     } catch (error) {
-      alert('Ошибка при отправке TON');
+      toast.error('Ошибка при отправке TON');
     }
   };
 
@@ -102,23 +104,57 @@ export default function Profile() {
       }),
     })
       .then((res) => res.json())
-      .then((data) => alert(data.message || 'Запрос на вывод отправлен'))
-      .catch(() => alert('Ошибка при отправке запроса'));
+      .then((data) => toast.success(data.message || 'Запрос на вывод отправлен'))
+      .catch(() => toast.error('Ошибка при отправке запроса'));
+  };
+
+  const handleReferralWithdraw = async () => {
+    if (!profile?.wallet) {
+      toast.error('TON-кошелёк не привязан');
+      return;
+    }
+
+    const amount = referrals?.referral_earnings ?? 0;
+    if (amount < 3) {
+      toast.warning('Минимальная сумма для вывода — 3 TON');
+      return;
+    }
+
+    const confirmed = window.confirm(`Вывести ${amount} TON на ${profile.wallet}?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_id: user.id,
+          wallet: profile.wallet,
+          amount,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Вывод успешно выполнен');
+        fetchProfile(user.id);
+      } else {
+        toast.error(data.error || 'Ошибка при выводе');
+      }
+    } catch (err) {
+      toast.error('Серверная ошибка при выводе');
+      console.error(err);
+    }
   };
 
   if (loading || !user) {
     return <p className="profile-wrapper">Loading Profile...</p>;
   }
 
-  // Первая буква username для аватара-заглушки
   const avatarLetter = user.username ? user.username[0].toUpperCase() : '?';
-
-  // Логируем URL аватара
-  console.log("Отображаемый URL аватара:", profile?.avatar_url);
 
   return (
     <div className="profile-wrapper">
-      {/* Показываем аватар, если есть, иначе букву-заглушку */}
       {profile?.avatar_url ? (
         <img
           src={profile.avatar_url}
@@ -126,7 +162,7 @@ export default function Profile() {
           className="profile-avatar"
           onError={(e) => {
             console.error("Ошибка загрузки аватара:", e);
-            e.currentTarget.style.display = "none"; // скрыть если не загрузился
+            e.currentTarget.style.display = "none";
           }}
         />
       ) : (
@@ -154,7 +190,14 @@ export default function Profile() {
       <div className="profile-block">
         <div className="profile-title">👥 Referrals</div>
         <div className="profile-row">Count: {referrals?.referral_count ?? 0}</div>
-        <div className="profile-row">Earn: {referrals?.referral_earnings ?? 0} TON</div>
+        <div className="profile-row" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          Earn: {referrals?.referral_earnings ?? 0} TON
+          {(referrals?.referral_earnings ?? 0) >= 3 && (
+            <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
+              Withdraw
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="profile-block">
@@ -182,6 +225,18 @@ export default function Profile() {
           ))}
         </ul>
       </div>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 }

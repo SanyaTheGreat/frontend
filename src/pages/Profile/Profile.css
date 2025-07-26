@@ -169,3 +169,20 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   margin-bottom: 10px;
   font-size: 14px;
 }
+
+
+.referral-withdraw-btn {
+  background-color: #2E7D32;
+  border: none;
+  border-radius: 30px;
+  padding: 6px 14px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.referral-withdraw-btn:hover {
+  background-color: #27692a;
+}
