@@ -54,6 +54,8 @@ html, body {
 
 /* Анимация */
 .wheel-image {
+  display: flex;
+  justify-content: center;
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -61,6 +63,7 @@ html, body {
   overflow: hidden;
   margin-bottom: 8px;
   background-color: #000;
+  
 }
 
 .wheel-image > div {
