@@ -131,7 +131,7 @@ function Home() {
                     background: colorsMap[wheel.nft_name]
                       ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
                       : '#000',
-                    borderRadius: '6px',
+                    borderRadius: '10px',
                     position: 'relative',
                     overflow: 'hidden',
                   }}
