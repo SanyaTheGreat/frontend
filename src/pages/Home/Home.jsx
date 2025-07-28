@@ -126,7 +126,7 @@ function Home() {
             <div key={wheel.id} className="wheel-card">
               <div className="wheel-title">{wheel.nft_name}</div>
 
-              <div className="wheel-content">
+              
                 <div
                   className="wheel-image"
                   style={{
@@ -177,7 +177,7 @@ function Home() {
                     {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
                   </button>
                 </div>
-              </div>
+              
 
               <div className="wheel-info">
                 <span>Participants: {wheel.participants}/{wheel.size}</span>
