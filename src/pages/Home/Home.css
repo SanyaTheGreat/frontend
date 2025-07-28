@@ -21,10 +21,10 @@
   border-radius: 20px;
   width: 90%;          /* растягивается на доступную ширину родителя */
   max-width: 360px;
-  padding: 6px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
