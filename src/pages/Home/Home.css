@@ -44,7 +44,7 @@ html, body {
 .wheel-title {
   color: #e0e1dd;
   font-weight: bold;
-  font-size: 14px !important;
+  font-size: 12px !important;
   text-align: center;
   line-height: 1.2;
   margin-bottom: 0px;
@@ -103,7 +103,7 @@ html, body {
 .wheel-info {
   display: flex;
   justify-content: space-between;
-  font-size: 9px !important;
+  font-size: 10px !important;
   color: white;
   padding: 0 4px;
   white-space: nowrap;
