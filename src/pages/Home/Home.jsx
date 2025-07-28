@@ -117,14 +117,13 @@ function Home() {
   };
 
   return (
-  <div className="home-wrapper">
-    {wheels.length === 0 ? (
-      <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
-        Loading...
-      </p>
-    ) : (
-      <div className="wheels-grid">
-        {wheels.map((wheel) => (
+    <div className="home-wrapper">
+      {wheels.length === 0 ? (
+        <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
+          Loading...
+        </p>
+      ) : (
+        wheels.map((wheel) => (
           <div key={wheel.id} className="wheel-card">
             <div className="wheel-title">{wheel.nft_name}</div>
 
@@ -186,25 +185,24 @@ function Home() {
               <span>Price: {wheel.price} ticket</span>
             </div>
           </div>
-        ))}
-      </div>
-    )}
+        ))
+      )}
 
-    <ToastContainer 
-      position="top-right"
-      autoClose={3000}
-      hideProgressBar={false}
-      newestOnTop={true}
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-      theme="dark"
-    />
-  </div>
-);
-
+      {/* Toast контейнер для уведомлений */}
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
+    </div>
+  );
 }
 
 export default Home;
