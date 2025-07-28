@@ -53,6 +53,8 @@
 
 /* Контейнер анимации */
 .wheel-image {
+  width: 100%;
+  height: 100%;
   position: relative;
   width: 80px;
   height: 80px;
