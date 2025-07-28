@@ -24,7 +24,7 @@ function Home() {
 
     if (error) {
       console.error('Ошибка загрузки колес:', error);
-      toast.error('Ошибка загрузки розыгрышей');
+      toast.error('Error loading wheels');
       return;
     }
 
@@ -69,12 +69,12 @@ function Home() {
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      toast.error("Пользователь Telegram не найден");
+      toast.error("Telegram user not found");
       return;
     }
 
     if (wheel.participants >= wheel.size) {
-      toast.warn("Колесо уже заполнено");
+      toast.warn("The wheel is already full");
       return;
     }
 
@@ -104,11 +104,11 @@ function Home() {
     });
 
     if (res.status === 201) {
-      toast.success("Вы успешно присоединились к розыгрышу!");
+      toast.success("You have successfully joined!");
       await fetchWheels();
     } else {
       const err = await res.json();
-      toast.error(err.error || "Ошибка вступления");
+      toast.error(err.error || "Error Join");
     }
 
     setLoadingId(null);

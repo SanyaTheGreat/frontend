@@ -94,12 +94,12 @@ function LobbyPage() {
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      toast.error("Telegram пользователь не найден");
+      toast.error("Telegram user not found");
       return;
     }
 
     if (participantCount >= (wheel?.size || 0)) {
-      toast.warn("Колесо уже заполнено");
+      toast.warn("The wheel is already full");
       return;
     }
 
@@ -129,11 +129,11 @@ function LobbyPage() {
     });
 
     if (res.status === 201) {
-      toast.success("Вы успешно присоединились к розыгрышу!");
+      toast.success("You have successfully joined!");
       await fetchLobbyData();
     } else {
       const err = await res.json();
-      toast.error(err.error || "Ошибка вступления");
+      toast.error(err.error || "Error Join ");
     }
 
     setLoading(false);
