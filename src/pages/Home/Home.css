@@ -34,7 +34,9 @@
   color: #e0e1dd;
   font-weight: bold;
   font-size: 18px;
-  text-align: center;
+  text-align: left;        /* ← был center, теперь влево */
+  padding-left: 140px;     /* ← сдвигаем вправо, примерно за пределы картинки */
+  margin-top: -10px;       /* ← при необходимости чуть опустить */
 }
 
 /* Контент карточки */

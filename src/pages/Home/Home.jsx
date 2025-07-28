@@ -120,7 +120,7 @@ function Home() {
     <div className="home-wrapper">
       {wheels.length === 0 ? (
         <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
-          Нет активных розыгрышей
+          Loading...
         </p>
       ) : (
         wheels.map((wheel) => (
