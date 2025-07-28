@@ -21,7 +21,7 @@
   border-radius: 20px;
   width: 90%;          /* растягивается на доступную ширину родителя */
   max-width: 360px;
-  padding: 14px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 14px;
