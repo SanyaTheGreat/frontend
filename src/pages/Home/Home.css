@@ -11,85 +11,93 @@
   gap: 20px;
   box-sizing: border-box;
   font-family: 'Arial', sans-serif;
-  overflow-y: auto; /* ← добавь, если нужен scroll */
+  overflow-y: auto;
 }
 
+/* Сетка карточек: 2 в ряд */
+.wheels-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 440px;
+}
 
-
+/* Карточка розыгрыша */
 .wheel-card {
   background-color: #415a77;
-  border-radius: 20px;
-  width: 90%;          /* растягивается на доступную ширину родителя */
-  max-width: 360px;
-  padding: 14px;
+  border-radius: 16px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  height: 210px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-
-/* Заголовок карточки */
+/* Заголовок */
 .wheel-title {
   color: #e0e1dd;
   font-weight: bold;
-  font-size: 16px;
-  text-align: center
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Контент карточки */
-.wheel-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* Заглушка под изображение */
+/* Контейнер анимации */
 .wheel-image {
   position: relative;
-  width: 110px;
-  height: 110px;
+  width: 80px;
+  height: 80px;
   border-radius: 12px;
   overflow: hidden;
+  margin-bottom: 8px;
+  background-color: #000; /* fallback если нет градиента */
 }
 
-/* Блок кнопок */
+/* Кнопки в одну строку */
 .wheel-buttons {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: center;
   gap: 10px;
+  margin-bottom: 6px;
 }
 
-/* Кнопка Lobby */
+/* Кнопки */
+.lobby-button,
+.join-button {
+  font-size: 12px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 .lobby-button {
   background-color: #1b263b;
   color: white;
-  font-weight: bold;
-  border: none;
-  border-radius: 30px;
-  padding: 10px 25px;
-  font-size: 14px;
-  cursor: pointer;
 }
 
-/* Кнопка Join */
 .join-button {
   background-color: #2E7D32;
   color: white;
-  font-weight: bold;
-  border: none;
-  border-radius: 30px;
-  padding: 8px 25px;
-  font-size: 14px;
-  cursor: pointer;
 }
 
-/* Информация внизу карточки */
+/* Информация о розыгрыше */
 .wheel-info {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  width: 100%;
+  font-size: 12px;
   color: white;
+  padding: 0 6px;
 }
-
-

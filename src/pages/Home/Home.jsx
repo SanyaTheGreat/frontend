@@ -2,8 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import lottie from 'lottie-web';
-import { ToastContainer, toast } from 'react-toastify'; // импорт
-import 'react-toastify/dist/ReactToastify.css'; // стили
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './Home.css';
 
 function Home() {
@@ -80,7 +80,6 @@ function Home() {
 
     setLoadingId(wheel.id);
 
-    // Получаем user_id
     const { data: foundUser, error } = await supabase
       .from('users')
       .select('id')
@@ -93,7 +92,6 @@ function Home() {
       return;
     }
 
-    // POST на backend
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -107,7 +105,7 @@ function Home() {
 
     if (res.status === 201) {
       toast.success("Вы успешно присоединились к розыгрышу!");
-      await fetchWheels(); // Обновляем участников
+      await fetchWheels();
     } else {
       const err = await res.json();
       toast.error(err.error || "Ошибка вступления");
@@ -123,72 +121,73 @@ function Home() {
           Loading...
         </p>
       ) : (
-        wheels.map((wheel) => (
-          <div key={wheel.id} className="wheel-card">
-            <div className="wheel-title">{wheel.nft_name}</div>
+        <div className="wheels-grid">
+          {wheels.map((wheel) => (
+            <div key={wheel.id} className="wheel-card">
+              <div className="wheel-title">{wheel.nft_name}</div>
 
-            <div className="wheel-content">
-              <div
-                className="wheel-image"
-                style={{
-                  background: colorsMap[wheel.nft_name]
-                    ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
-                    : '#000',
-                  borderRadius: '12px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
+              <div className="wheel-content">
                 <div
-                  ref={(el) => {
-                    if (el && !animRefs.current[wheel.id]) {
-                      animRefs.current[wheel.id] = el;
-                      fetch(`/animations/${wheel.nft_name}.json`)
-                        .then(res => res.json())
-                        .then(data => {
-                          lottie.loadAnimation({
-                            container: el,
-                            renderer: 'svg',
-                            loop: true,
-                            autoplay: true,
-                            animationData: data
-                          });
-                        });
-                    }
-                  }}
+                  className="wheel-image"
                   style={{
-                    position: 'absolute',
-                    width: '100%',
-                    height: '100%',
-                    top: 0,
-                    left: 0,
+                    background: colorsMap[wheel.nft_name]
+                      ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
+                      : '#000',
+                    borderRadius: '12px',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
-                ></div>
-              </div>
-
-              <div className="wheel-buttons">
-                <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
-                  Lobby
-                </button>
-                <button
-                  className="join-button"
-                  onClick={() => handleJoin(wheel)}
-                  disabled={loadingId === wheel.id || wheel.participants >= wheel.size}
                 >
-                  {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
-                </button>
+                  <div
+                    ref={(el) => {
+                      if (el && !animRefs.current[wheel.id]) {
+                        animRefs.current[wheel.id] = el;
+                        fetch(`/animations/${wheel.nft_name}.json`)
+                          .then(res => res.json())
+                          .then(data => {
+                            lottie.loadAnimation({
+                              container: el,
+                              renderer: 'svg',
+                              loop: true,
+                              autoplay: true,
+                              animationData: data
+                            });
+                          });
+                      }
+                    }}
+                    style={{
+                      position: 'absolute',
+                      width: '100%',
+                      height: '100%',
+                      top: 0,
+                      left: 0,
+                    }}
+                  ></div>
+                </div>
+
+                <div className="wheel-buttons">
+                  <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
+                    Lobby
+                  </button>
+                  <button
+                    className="join-button"
+                    onClick={() => handleJoin(wheel)}
+                    disabled={loadingId === wheel.id || wheel.participants >= wheel.size}
+                  >
+                    {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="wheel-info">
+                <span>Participants: {wheel.participants}/{wheel.size}</span>
+                <span>Price: {wheel.price} ticket</span>
               </div>
             </div>
-
-            <div className="wheel-info">
-              <span>Participants: {wheel.participants}/{wheel.size}</span>
-              <span>Price: {wheel.price} ticket</span>
-            </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
-      {/* Toast контейнер для уведомлений */}
       <ToastContainer 
         position="top-right"
         autoClose={3000}
