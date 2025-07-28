@@ -24,7 +24,8 @@ html, body {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   width: 100%;
-  padding-left: 20px;
+  max-width: 100%;      /* или 100% — зависит от твоей цели */
+  margin: 0 auto;
 }
 
 /* Карточка */
