@@ -80,8 +80,8 @@ html, body {
 
 .lobby-button,
 .join-button {
-  font-size: 11px;
-  padding: 8px 16px;
+  font-size: 14px;
+  padding: 10px 20px;
   border: none;
   border-radius: 18px;
   font-weight: bold;
