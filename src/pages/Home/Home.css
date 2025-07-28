@@ -1,3 +1,7 @@
+html, body {
+  font-size: 12px;
+}
+
 /* Фон всей страницы */
 .home-wrapper {
   display: flex;
@@ -6,41 +10,40 @@
   background-color: #0d1b2a;
   min-height: 100vh;
   width: 100%;
-  padding: 20px;
+  padding: 12px;
   padding-bottom: 100px;
-  gap: 20px;
+  gap: 16px;
   box-sizing: border-box;
   font-family: 'Arial', sans-serif;
   overflow-y: auto;
 }
 
-/* Сетка карточек: 2 в ряд даже на узких экранах */
+/* Сетка карточек — адаптивная */
 .wheels-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
   width: 100%;
-  max-width: 440px;
 }
 
-/* Карточка розыгрыша */
+/* Карточка */
 .wheel-card {
   background-color: #415a77;
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 10px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
   width: 100%;
   height: auto;
   box-sizing: border-box;
 }
 
-/* Заголовок (уменьшен) */
+/* Заголовок */
 .wheel-title {
   color: #e0e1dd;
   font-weight: bold;
-  font-size: 12px; /* ← уменьшено */
+  font-size: 11px;
   text-align: center;
   line-height: 1.2;
   margin-bottom: 6px;
@@ -49,39 +52,37 @@
   text-overflow: ellipsis;
 }
 
-/* Анимация сверху */
+/* Анимация */
 .wheel-image {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1; /* квадратная пропорция */
+  aspect-ratio: 1 / 1;
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 8px;
   background-color: #000;
 }
 
-/* Lottie-анимация */
 .wheel-image > div {
   width: 100%;
   height: 100%;
 }
 
-/* Кнопки — в строку */
+/* Кнопки */
 .wheel-buttons {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 6px;
 }
 
-/* Стили кнопок */
 .lobby-button,
 .join-button {
   font-size: 11px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border: none;
-  border-radius: 20px;
+  border-radius: 18px;
   font-weight: bold;
   cursor: pointer;
   white-space: nowrap;
@@ -101,9 +102,9 @@
 .wheel-info {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 10px;
   color: white;
-  padding: 0 6px;
+  padding: 0 4px;
   white-space: nowrap;
   overflow: hidden;
 }
