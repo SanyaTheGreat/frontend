@@ -43,7 +43,7 @@ html, body {
 .wheel-title {
   color: #e0e1dd;
   font-weight: bold;
-  font-size: 11px;
+  font-size: 11px !important;
   text-align: center;
   line-height: 1.2;
   margin-bottom: 6px;

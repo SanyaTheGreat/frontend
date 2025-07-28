@@ -125,15 +125,13 @@ function Home() {
           {wheels.map((wheel) => (
             <div key={wheel.id} className="wheel-card">
               <div className="wheel-title">{wheel.nft_name}</div>
-
-              
                 <div
                   className="wheel-image"
                   style={{
                     background: colorsMap[wheel.nft_name]
                       ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
                       : '#000',
-                    borderRadius: '12px',
+                    borderRadius: '6px',
                     position: 'relative',
                     overflow: 'hidden',
                   }}
@@ -181,7 +179,7 @@ function Home() {
 
               <div className="wheel-info">
                 <span>Participants: {wheel.participants}/{wheel.size}</span>
-                <span>Price: {wheel.price} ticket</span>
+                <span>Price: {wheel.price} </span>
               </div>
             </div>
           ))}
