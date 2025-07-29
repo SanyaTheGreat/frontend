@@ -176,13 +176,13 @@ export default function Profile() {
       </div>
 
       <div className="balance-actions-row">
-        <div className="balance-label">Balance 💎</div>
+        <div className="balance-label">Balance</div>
         <div className="balance-display">
-          <span className="ton-icon">💎</span>
+          <span className="ton-icon">🪙</span>
           <span>{profile?.tickets ?? '—'}</span>
         </div>
         <div className="balance-buttons">
-          <button onClick={handleTopUp}>Purchase💎</button>
+          <button onClick={handleTopUp}>Purchase</button>
         </div>
       </div>
 
