@@ -49,7 +49,7 @@ function WheelCard({ wheel, grayscale, colorsMap, onGo }) {
       </div>
       <div className="wheel-info">
         <span>Status: {wheel.status}</span>
-        <span>Price: {wheel.price} 🎫</span>
+        <span>Price: {wheel.price} 💎</span>
       </div>
     </div>
   );
@@ -141,7 +141,7 @@ function InGame() {
       ))}
 
       {completedWheels.length > 0 && (
-        <div className="separator">Завершённые розыгрыши</div>
+        <div className="separator">Completed Games</div>
       )}
 
       {completedWheels.map(wheel => (
@@ -155,7 +155,7 @@ function InGame() {
       ))}
 
       {wheels.length === 0 && (
-        <p className="no-wheels">Ты сейчас ни в одном розыгрыше не участвуешь</p>
+        <p className="no-wheels">Your current games will be displayed on this page.</p>
       )}
     </div>
   );
