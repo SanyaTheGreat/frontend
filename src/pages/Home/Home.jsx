@@ -178,8 +178,8 @@ function Home() {
               
 
               <div className="wheel-info">
-                <span>Participants: {wheel.participants}/{wheel.size}</span>
-                <span>Price: {wheel.price} </span>
+                <span>Players: {wheel.participants}/{wheel.size}</span>
+                <span>Price: {wheel.price}💎</span>
               </div>
             </div>
           ))}

@@ -176,13 +176,13 @@ export default function Profile() {
       </div>
 
       <div className="balance-actions-row">
-        <div className="balance-label">Balance</div>
+        <div className="balance-label">Balance 💎</div>
         <div className="balance-display">
-          <span className="ton-icon">🪙</span>
+          <span className="ton-icon">💎</span>
           <span>{profile?.tickets ?? '—'}</span>
         </div>
         <div className="balance-buttons">
-          <button onClick={handleTopUp}>Purchase</button>
+          <button onClick={handleTopUp}>Purchase💎</button>
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export default function Profile() {
         <div className="referral-flex-row">
           <div>
             <div className="profile-row">Count: {referrals?.referral_count ?? 0}</div>
-            <div className="profile-row">Earn: {referrals?.referral_earnings ?? 0} TON</div>
+            <div className="profile-row">Earn: {referrals?.referral_earnings ?? 0} 💎 TON</div>
           </div>
           <div className="referral-button-wrapper">
             <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
