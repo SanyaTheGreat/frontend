@@ -34,7 +34,7 @@ html, body {
   padding: 2px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
   width: 100%;
   height: auto;
