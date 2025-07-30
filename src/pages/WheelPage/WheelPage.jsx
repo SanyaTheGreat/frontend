@@ -18,15 +18,14 @@ export default function WheelPage() {
   const timerRef = useRef(null);
   const [status, setStatus] = useState('active');
   const [timeLeft, setTimeLeft] = useState(null);
+  const [runAt, setRunAt] = useState(null);
 
-  // Новые состояния для модалки победителя
   const [showWinnerModal, setShowWinnerModal] = useState(false);
 
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Получаем участников по wheel_id
       const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
@@ -49,13 +48,12 @@ export default function WheelPage() {
 
       setParticipants(uniqueParticipants);
 
-      // Получаем данные о колесе, чтобы знать wheelSize
       const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`);
       if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
       const wheelData = await wheelRes.json();
       setWheelSize(wheelData.size || 0);
+      setRunAt(wheelData.run_at || null);
 
-      // Получаем результат розыгрыша (победителя) по wheel_id
       const resultRes = await fetch(`${API_BASE_URL}/results`);
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
@@ -111,12 +109,28 @@ export default function WheelPage() {
     return () => clearInterval(timerRef.current);
   }, [status, completedAt, winner]);
 
-  // Обработчик окончания анимации — показываем модал победителя
+  useEffect(() => {
+    if (!runAt || status !== 'active') return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const runTime = new Date(runAt);
+
+      if (now >= runTime) {
+        clearInterval(interval);
+        setTimeout(() => {
+          fetchData();
+        }, 3000);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [runAt, status]);
+
   const handleAnimFinish = () => {
     setShowWinnerModal(true);
   };
 
-  // Закрытие модалки — скрываем и переходим в главное меню
   const handleCloseModal = () => {
     setShowWinnerModal(false);
     navigate('/');
