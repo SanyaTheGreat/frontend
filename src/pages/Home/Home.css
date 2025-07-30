@@ -31,10 +31,10 @@ html, body {
 .wheel-card {
   background-color: #415a77;
   border-radius: 14px;
-  padding: 2px;
+  padding: 8px !important;
   display: flex;
   flex-direction: column;
-  gap:  4px !important;
+  gap:  6px !important;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
   width: 100%;
   height: auto;
