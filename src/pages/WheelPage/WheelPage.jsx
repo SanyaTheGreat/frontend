@@ -94,7 +94,7 @@ export default function WheelPage() {
       return;
     }
 
-    let remaining = 15;
+    let remaining = 30;
     setTimeLeft(remaining);
 
     timerRef.current = setInterval(() => {
