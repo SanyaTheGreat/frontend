@@ -3,6 +3,7 @@
   color: white;
   font-family: 'Arial', sans-serif;
   padding: 20px;
+  padding-bottom: 100px;
   min-height: 100vh;
   box-sizing: border-box;
 }
