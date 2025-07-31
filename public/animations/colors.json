@@ -58,5 +58,59 @@
     "edge_color": "#a4588b",
     "pattern_color": "#8e054e",
     "text_color": "#ffc7eb"
+  },
+  "LightSword-29312": {
+    "center_color": "#363738",
+    "edge_color": "#0e0f0f",
+    "pattern_color": "#6c6868",
+    "text_color": "#8c8f91"
+  },
+  "JoyfulBundle-2780": {
+    "center_color": "#5c6985",
+    "edge_color": "#354057",
+    "pattern_color": "#030a18",
+    "text_color": "#bfcce0"
+  },
+  "MadPumpkin-3581": {
+    "center_color": "#c2af64",
+    "edge_color": "#887e45",
+    "pattern_color": "#594c04",
+    "text_color": "#f5ebbc"
+  },
+  "SharpTongue-5731": {
+    "center_color": "#95b457",
+    "edge_color": "#3d9755",
+    "pattern_color": "#046b06",
+    "text_color": "#c2efbe"
+  },
+  "LushBouquet-23857": {
+    "center_color": "#363738",
+    "edge_color": "#0e0f0f",
+    "pattern_color": "#6c6868",
+    "text_color": "#8c8f91"
+  },
+  "KissedFrog-13796": {
+    "center_color": "#8c8c85",
+    "edge_color": "#6c6c66",
+    "pattern_color": "#2b2a20",
+    "text_color": "#cfcec4"
+  },
+  "SwissWatch-9613": {
+    "center_color": "#858ff3",
+    "edge_color": "#865fd3",
+    "pattern_color": "#4318a6",
+    "text_color": "#e0d9ff"
+  },
+  "JoyfulBundle-2803": {
+    "center_color": "#95b457",
+    "edge_color": "#3d9755",
+    "pattern_color": "#046b06",
+    "text_color": "#c2efbe"
+  },
+  "LushBouquet-18487": {
+    "center_color": "#537991",
+    "edge_color": "#416479",
+    "pattern_color": "#031b29",
+    "text_color": "#c2dcee"
   }
 }
