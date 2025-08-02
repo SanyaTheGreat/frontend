@@ -112,5 +112,47 @@
     "edge_color": "#416479",
     "pattern_color": "#031b29",
     "text_color": "#c2dcee"
+  },
+  "SwagBag-56036": {
+    "center_color": "#b58d38",
+    "edge_color": "#946925",
+    "pattern_color": "#4f3302",
+    "text_color": "#ffdd8c"
+  },
+  "SwagBag-42869": {
+    "center_color": "#6ba97c",
+    "edge_color": "#3e7970",
+    "pattern_color": "#0b4833",
+    "text_color": "#d8f5e5"
+  },
+  "SwagBag-55634": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "SnoopDogg-46153": {
+    "center_color": "#e6793e",
+    "edge_color": "#d44e3f",
+    "pattern_color": "#800b00",
+    "text_color": "#ffccbd"
+  },
+  "SnoopDogg-45701": {
+    "center_color": "#5c9bc4",
+    "edge_color": "#37739a",
+    "pattern_color": "#073b5c",
+    "text_color": "#c1e3f9"
+  },
+  "SnoopDogg-46011": {
+    "center_color": "#5f7849",
+    "edge_color": "#3c4f3b",
+    "pattern_color": "#102209",
+    "text_color": "#b7c4b5"
+  },
+  "SnoopDogg-46293": {
+    "center_color": "#58a3c8",
+    "edge_color": "#5379c2",
+    "pattern_color": "#0d45b6",
+    "text_color": "#c1deff"
   }
 }
