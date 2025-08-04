@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import lottie from 'lottie-web';
@@ -10,71 +10,139 @@ function Home() {
   const [wheels, setWheels] = useState([]);
   const [colorsMap, setColorsMap] = useState({});
   const [loadingId, setLoadingId] = useState(null);
-  const animRefs = useRef({});
+
   const navigate = useNavigate();
 
-  const handleOpenLobby = (wheelId) => {
-    navigate(`/lobby/${wheelId}`);
-  };
+  // Контейнеры и инстансы анимаций
+  const containerRefs = useRef({}); // id -> div
+  const animRefs = useRef({});      // id -> lottie instance
+  const observerRef = useRef(null);
+
+  // Кэш JSON анимаций (по nft_name)
+  const animCacheRef = useRef(new Map());
+
+  // Эвристика слабого устройства (можно убрать, если не нужна)
+  const isLowEnd = useMemo(() => {
+    const dm = navigator.deviceMemory || 4;
+    return dm <= 2;
+  }, []);
+
+  const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
   const fetchWheels = async () => {
-    const { data, error } = await supabase
-      .from('wheels')
-      .select('*');
-
+    const { data, error } = await supabase.from('wheels').select('*');
     if (error) {
       console.error('Ошибка загрузки колес:', error);
       toast.error('Error loading wheels');
       return;
     }
-
-    const activeWheels = data.filter(wheel => wheel.status === 'active');
-
+    const activeWheels = (data || []).filter(w => w.status === 'active');
     const wheelsWithParticipants = await Promise.all(
       activeWheels.map(async (wheel) => {
         const { count, error: countError } = await supabase
           .from('wheel_participants')
           .select('*', { count: 'exact', head: true })
           .eq('wheel_id', wheel.id);
-
         if (countError) {
-          console.error('Ошибка подсчета участников:', countError);
+          console.error('Ошибка подсчёта участников:', countError);
           toast.error('Ошибка подсчёта участников');
           return { ...wheel, participants: 0 };
         }
-
-        return { ...wheel, participants: count };
+        return { ...wheel, participants: count || 0 };
       })
     );
-
     setWheels(wheelsWithParticipants);
   };
 
-  useEffect(() => {
-    fetchWheels();
-  }, []);
+  useEffect(() => { fetchWheels(); }, []);
 
   useEffect(() => {
-    fetch("/animations/colors.json")
+    fetch('/animations/colors.json')
       .then((res) => res.json())
       .then((data) => setColorsMap(data))
       .catch((err) => {
-        console.error("Ошибка загрузки цветов:", err);
+        console.error('Ошибка загрузки цветов:', err);
         toast.error('Ошибка загрузки цветов');
       });
   }, []);
+
+  async function getAnimationJSON(nftName) {
+    if (animCacheRef.current.has(nftName)) return animCacheRef.current.get(nftName);
+    const res = await fetch(`/animations/${nftName}.json`);
+    if (!res.ok) throw new Error(`Animation not found: ${nftName}`);
+    const json = await res.json();
+    animCacheRef.current.set(nftName, json);
+    return json;
+  }
+
+  // Ленивая инициализация и управление play/pause по видимости
+  useEffect(() => {
+    lottie.setQuality('low');
+
+    // Чистка всех инстансов
+    const destroyAll = () => {
+      Object.values(animRefs.current).forEach((inst) => {
+        try { inst?.destroy?.(); } catch {}
+      });
+      animRefs.current = {};
+    };
+
+    observerRef.current = new IntersectionObserver(async (entries) => {
+      for (const entry of entries) {
+        const el = entry.target;
+        const wheelId = el.getAttribute('data-wheelid');
+        const nftName = el.getAttribute('data-nftname');
+        if (!wheelId || !nftName) continue;
+
+        if (!entry.isIntersecting) {
+          animRefs.current[wheelId]?.pause?.();
+          continue;
+        }
+
+        // В зоне видимости
+        if (!animRefs.current[wheelId]) {
+          try {
+            const data = await getAnimationJSON(nftName);
+            const inst = lottie.loadAnimation({
+              container: el,
+              renderer: 'canvas', // canvas работает быстрее svg на мобилках
+              loop: true,
+              autoplay: true,
+              animationData: data,
+              rendererSettings: { progressiveLoad: true, clearCanvas: true }
+            });
+            inst.setSpeed(isLowEnd ? 0.8 : 1); // можно слегка снизить speed на слабых
+            animRefs.current[wheelId] = inst;
+          } catch (e) {
+            console.error('Lottie load error', nftName, e);
+          }
+        } else {
+          animRefs.current[wheelId].play?.();
+        }
+      }
+    }, { threshold: 0.2, rootMargin: '120px 0px' }); // подгружаем чуть заранее
+
+    // Подписываем текущие контейнеры
+    Object.values(containerRefs.current).forEach((el) => {
+      if (el) observerRef.current.observe(el);
+    });
+
+    return () => {
+      observerRef.current?.disconnect();
+      destroyAll();
+    };
+  }, [wheels, isLowEnd]);
 
   const handleJoin = async (wheel) => {
     const tg = window.Telegram?.WebApp;
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      toast.error("Telegram user not found");
+      toast.error('Telegram user not found');
       return;
     }
-
     if (wheel.participants >= wheel.size) {
-      toast.warn("The wheel is already full");
+      toast.warn('The wheel is already full');
       return;
     }
 
@@ -87,7 +155,7 @@ function Home() {
       .single();
 
     if (error || !foundUser) {
-      toast.error("Пользователь не зарегистрирован");
+      toast.error('Пользователь не зарегистрирован');
       setLoadingId(null);
       return;
     }
@@ -104,11 +172,11 @@ function Home() {
     });
 
     if (res.status === 201) {
-      toast.success("You have successfully joined!");
+      toast.success('You have successfully joined!');
       await fetchWheels();
     } else {
       const err = await res.json();
-      toast.error(err.error || "Error Join");
+      toast.error(err.error || 'Error Join');
     }
 
     setLoadingId(null);
@@ -122,36 +190,33 @@ function Home() {
         </p>
       ) : (
         <div className="wheels-grid">
-          {wheels.map((wheel) => (
-            <div key={wheel.id} className="wheel-card">
-              <div className="wheel-title">{wheel.nft_name}</div>
+          {wheels.map((wheel) => {
+            const bg = colorsMap[wheel.nft_name]
+              ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
+              : '#000';
+
+            return (
+              <div key={wheel.id} className="wheel-card">
+                <div className="wheel-title">{wheel.nft_name}</div>
+
                 <div
                   className="wheel-image"
                   style={{
-                    background: colorsMap[wheel.nft_name]
-                      ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
-                      : '#000',
+                    background: bg,
                     borderRadius: '10px',
                     position: 'relative',
                     overflow: 'hidden',
                   }}
                 >
+                  {/* Контейнер под Lottie. Инициализируется только, когда виден */}
                   <div
                     ref={(el) => {
-                      if (el && !animRefs.current[wheel.id]) {
-                        animRefs.current[wheel.id] = el;
-                        fetch(`/animations/${wheel.nft_name}.json`)
-                          .then(res => res.json())
-                          .then(data => {
-                            lottie.loadAnimation({
-                              container: el,
-                              renderer: 'svg',
-                              loop: true,
-                              autoplay: true,
-                              animationData: data
-                            });
-                          });
-                      }
+                      if (!el) return;
+                      containerRefs.current[wheel.id] = el;
+                      el.setAttribute('data-wheelid', String(wheel.id));
+                      el.setAttribute('data-nftname', wheel.nft_name);
+                      // если observer уже создан — подписываем сразу
+                      if (observerRef.current) observerRef.current.observe(el);
                     }}
                     style={{
                       position: 'absolute',
@@ -160,7 +225,7 @@ function Home() {
                       top: 0,
                       left: 0,
                     }}
-                  ></div>
+                  />
                 </div>
 
                 <div className="wheel-buttons">
@@ -175,21 +240,20 @@ function Home() {
                     {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
                   </button>
                 </div>
-              
 
-              <div className="wheel-info">
-                <span>Players: {wheel.participants}/{wheel.size}</span>
-                <span>
-                  Price: {wheel.price}
-                  <span className="diamond">💎</span>
-                </span>
+                <div className="wheel-info">
+                  <span>Players: {wheel.participants}/{wheel.size}</span>
+                  <span>
+                    Price: {wheel.price} <span className="diamond">💎</span>
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      <ToastContainer 
+      <ToastContainer
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}

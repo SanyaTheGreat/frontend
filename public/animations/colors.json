@@ -154,5 +154,29 @@
     "edge_color": "#5379c2",
     "pattern_color": "#0d45b6",
     "text_color": "#c1deff"
+  },
+  "SnoopCigar-57512": {
+    "center_color": "#e07b85",
+    "edge_color": "#b65980",
+    "pattern_color": "#890638",
+    "text_color": "#ffd6e6"
+  },
+  "SnoopCigar-57935": {
+    "center_color": "#a980f3",
+    "edge_color": "#5b62d8",
+    "pattern_color": "#3722ab",
+    "text_color": "#d8d8ff"
+  },
+  "SwissWatch-12791": {
+    "center_color": "#78c585",
+    "edge_color": "#42a171",
+    "pattern_color": "#006532",
+    "text_color": "#b9f9d9"
+  },
+  "SwissWatch-23223": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
   }
 }
