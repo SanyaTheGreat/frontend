@@ -13,15 +13,16 @@ function Home() {
 
   const navigate = useNavigate();
 
-  // Контейнеры и инстансы анимаций
-  const containerRefs = useRef({}); // id -> div
-  const animRefs = useRef({});      // id -> lottie instance
+  // Контейнеры, инстансы и состояние "уже проиграно"
+  const containerRefs = useRef({});          // id -> div
+  const animRefs = useRef({});               // id -> lottie instance
+  const playedOnceRef = useRef({});          // id -> true/false
   const observerRef = useRef(null);
 
-  // Кэш JSON анимаций (по nft_name)
+  // Кэш JSON анимаций по nft_name
   const animCacheRef = useRef(new Map());
 
-  // Эвристика слабого устройства (можно убрать, если не нужна)
+  // Эвристика слабого устройства (необязательно, но помогает)
   const isLowEnd = useMemo(() => {
     const dm = navigator.deviceMemory || 4;
     return dm <= 2;
@@ -36,7 +37,7 @@ function Home() {
       toast.error('Error loading wheels');
       return;
     }
-    const activeWheels = (data || []).filter(w => w.status === 'active');
+    const activeWheels = (data || []).filter((w) => w.status === 'active');
     const wheelsWithParticipants = await Promise.all(
       activeWheels.map(async (wheel) => {
         const { count, error: countError } = await supabase
@@ -75,11 +76,10 @@ function Home() {
     return json;
   }
 
-  // Ленивая инициализация и управление play/pause по видимости
+  // Ленивая инициализация, проигрывание 1 раз и pause вне экрана
   useEffect(() => {
     lottie.setQuality('low');
 
-    // Чистка всех инстансов
     const destroyAll = () => {
       Object.values(animRefs.current).forEach((inst) => {
         try { inst?.destroy?.(); } catch {}
@@ -94,35 +94,56 @@ function Home() {
         const nftName = el.getAttribute('data-nftname');
         if (!wheelId || !nftName) continue;
 
+        // Уже проигрывали — гарантируем паузу и больше ничего не делаем
+        if (playedOnceRef.current[wheelId]) {
+          animRefs.current[wheelId]?.pause?.();
+          continue;
+        }
+
+        // Вне экрана — пауза (если инстанс уже создан)
         if (!entry.isIntersecting) {
           animRefs.current[wheelId]?.pause?.();
           continue;
         }
 
-        // В зоне видимости
+        // В экране и ещё не проигрывали
         if (!animRefs.current[wheelId]) {
           try {
             const data = await getAnimationJSON(nftName);
             const inst = lottie.loadAnimation({
               container: el,
-              renderer: 'canvas', // canvas работает быстрее svg на мобилках
-              loop: true,
-              autoplay: true,
+              renderer: 'canvas', // быстрее svg на мобильных
+              loop: false,        // один раз
+              autoplay: false,    // запустим вручную
               animationData: data,
               rendererSettings: { progressiveLoad: true, clearCanvas: true }
             });
-            inst.setSpeed(isLowEnd ? 0.8 : 1); // можно слегка снизить speed на слабых
+            inst.setSpeed(isLowEnd ? 0.8 : 1);
+
+            // По завершении помечаем и оставляем на последнем кадре (или вернёмся на первый — см. ниже)
+            inst.addEventListener('complete', () => {
+              playedOnceRef.current[wheelId] = true;
+              inst.pause(); // остаётся на последнем кадре
+              // Если нужно возвращать на первый кадр:
+              // inst.goToAndStop(0, true);
+            });
+
             animRefs.current[wheelId] = inst;
           } catch (e) {
             console.error('Lottie load error', nftName, e);
+            continue;
           }
-        } else {
-          animRefs.current[wheelId].play?.();
+        }
+
+        // Стартуем только если ещё не проигрывали
+        if (!playedOnceRef.current[wheelId]) {
+          animRefs.current[wheelId].goToAndStop(0, true); // на всякий случай
+          animRefs.current[wheelId].play();
         }
       }
-    }, { threshold: 0.2, rootMargin: '120px 0px' }); // подгружаем чуть заранее
+    }, { threshold: 0.2, rootMargin: '120px 0px' });
 
-    // Подписываем текущие контейнеры
+    // Подписываем контейнеры, если уже есть
     Object.values(containerRefs.current).forEach((el) => {
       if (el) observerRef.current.observe(el);
     });
@@ -208,14 +229,13 @@ function Home() {
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Контейнер под Lottie. Инициализируется только, когда виден */}
+                  {/* Контейнер под Lottie. Инициализируется и играет 1 раз в зоне видимости */}
                   <div
                     ref={(el) => {
                       if (!el) return;
                       containerRefs.current[wheel.id] = el;
                       el.setAttribute('data-wheelid', String(wheel.id));
                       el.setAttribute('data-nftname', wheel.nft_name);
-                      // если observer уже создан — подписываем сразу
                       if (observerRef.current) observerRef.current.observe(el);
                     }}
                     style={{
