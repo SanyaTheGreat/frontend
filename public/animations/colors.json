@@ -178,5 +178,23 @@
     "edge_color": "#794da0",
     "pattern_color": "#3e0a6b",
     "text_color": "#e0bdfe"
+  },
+  "ValentineBox-18119": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "BowTie-8480": {
+    "center_color": "#b186bb",
+    "edge_color": "#875a91",
+    "pattern_color": "#54225f",
+    "text_color": "#e6c7ed"
+  },
+  "TrappedHeart-24134": {
+    "center_color": "#ca70c6",
+    "edge_color": "#9662d4",
+    "pattern_color": "#620fb4",
+    "text_color": "#ebceff"
   }
 }
