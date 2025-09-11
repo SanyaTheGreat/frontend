@@ -61,13 +61,17 @@ export default function WheelPage() {
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
         const winnerNormalized = thisResult.winner.replace(/^@/, '');
-        setWinner(winnerNormalized || null);
-        setCompletedAt(thisResult.completed_at || null);
-        setStatus('completed');
+        if (!animStarted) { // не обновляем winner, если анимация уже запущена
+          setWinner(winnerNormalized || null);
+          setCompletedAt(thisResult.completed_at || null);
+          setStatus('completed');
+        }
       } else {
-        setWinner(null);
-        setCompletedAt(null);
-        setStatus('active');
+        if (!animStarted) { // аналогично — не сбрасываем winner
+          setWinner(null);
+          setCompletedAt(null);
+          setStatus('active');
+        }
       }
     } catch (e) {
       alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
@@ -78,13 +82,15 @@ export default function WheelPage() {
 
   useEffect(() => {
     fetchData();
+    const intervalId = setInterval(fetchData, 50000);
 
-    const intervalId = setInterval(() => {
-      fetchData();
-    }, 50000);
+    // отключаем обновление, если матч завершён и анимация уже запущена
+    if (status === 'completed' && animStarted) {
+      clearInterval(intervalId);
+    }
 
     return () => clearInterval(intervalId);
-  }, [wheel_id]);
+  }, [wheel_id, status, animStarted]);
 
   useEffect(() => {
     if (status !== 'completed' || !completedAt || !winner) {

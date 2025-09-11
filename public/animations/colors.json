@@ -196,5 +196,47 @@
     "edge_color": "#9662d4",
     "pattern_color": "#620fb4",
     "text_color": "#ebceff"
+  },
+  "StellarRocket-76257": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
+  },
+  "StellarRocket-76251": {
+    "center_color": "#97a2ac",
+    "edge_color": "#63727c",
+    "pattern_color": "#334552",
+    "text_color": "#dfe4e8"
+  },
+  "StellarRocket-76266": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "JollyChimp-59855": {
+    "center_color": "#d09932",
+    "edge_color": "#b77431",
+    "pattern_color": "#7d3600",
+    "text_color": "#ffd9b3"
+  },
+  "JollyChimp-59849": {
+    "center_color": "#d19a3a",
+    "edge_color": "#c06f47",
+    "pattern_color": "#9d3907",
+    "text_color": "#ffe1c3"
+  },
+  "MoonPendant-66755": {
+    "center_color": "#6c9edd",
+    "edge_color": "#5c6ec9",
+    "pattern_color": "#1239a2",
+    "text_color": "#d3e1ff"
+  },
+  "MoonPendant-66750": {
+    "center_color": "#d09932",
+    "edge_color": "#b77431",
+    "pattern_color": "#7d3600",
+    "text_color": "#ffd9b3"
   }
 }
