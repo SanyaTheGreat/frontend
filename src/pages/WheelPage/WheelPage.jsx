@@ -61,13 +61,13 @@ export default function WheelPage() {
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
         const winnerNormalized = thisResult.winner.replace(/^@/, '');
-        if (!animStarted) { // не обновляем winner, если анимация уже запущена
+        if (!animStarted) {
           setWinner(winnerNormalized || null);
           setCompletedAt(thisResult.completed_at || null);
           setStatus('completed');
         }
       } else {
-        if (!animStarted) { // аналогично — не сбрасываем winner
+        if (!animStarted) {
           setWinner(null);
           setCompletedAt(null);
           setStatus('active');
@@ -84,7 +84,6 @@ export default function WheelPage() {
     fetchData();
     const intervalId = setInterval(fetchData, 50000);
 
-    // отключаем обновление, если матч завершён и анимация уже запущена
     if (status === 'completed' && animStarted) {
       clearInterval(intervalId);
     }
@@ -106,7 +105,7 @@ export default function WheelPage() {
       if (remaining < 0) {
         clearInterval(timerRef.current);
         setTimeLeft(null);
-        setAnimStarted(true);
+        setAnimStarted(true); // теперь просто запускаем колесо
       } else {
         setTimeLeft(remaining);
       }
@@ -124,9 +123,7 @@ export default function WheelPage() {
 
       if (now >= runTime) {
         clearInterval(interval);
-        setTimeout(() => {
-          fetchData();
-        }, 3000);
+        setAnimStarted(true); // сразу запускаем анимацию, без fetchData()
       }
     }, 5000);
 
