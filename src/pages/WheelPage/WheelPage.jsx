@@ -13,18 +13,21 @@ export default function WheelPage() {
   const [wheelSize, setWheelSize] = useState(0);
   const [winner, setWinner] = useState(null);
   const [completedAt, setCompletedAt] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);          // только для первого рендера
+  const [refreshing, setRefreshing] = useState(false);   // мягкая подгрузка без «перезагрузки страницы»
   const [animStarted, setAnimStarted] = useState(false);
-  const timerRef = useRef(null);
   const [status, setStatus] = useState('active');
   const [timeLeft, setTimeLeft] = useState(null);
   const [runAt, setRunAt] = useState(null);
-
   const [showWinnerModal, setShowWinnerModal] = useState(false);
 
-  const fetchData = async () => {
+  const timerRef = useRef(null);
+  const pollRef = useRef(null); // хранить id интервала
+
+  const fetchData = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
+      else setRefreshing(true);
 
       const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
@@ -61,7 +64,7 @@ export default function WheelPage() {
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
         const winnerNormalized = thisResult.winner.replace(/^@/, '');
-        if (!animStarted) {
+        if (!animStarted) { // не трогаем победителя во время анимации
           setWinner(winnerNormalized || null);
           setCompletedAt(thisResult.completed_at || null);
           setStatus('completed');
@@ -76,21 +79,27 @@ export default function WheelPage() {
     } catch (e) {
       alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+      else setRefreshing(false);
     }
   };
 
+  // 1) Первый загрузочный вызов + запуск интервала опроса (только на маунт)
   useEffect(() => {
-    fetchData();
-    const intervalId = setInterval(fetchData, 50000);
+    fetchData(true);
+    pollRef.current = setInterval(() => {
+      // мягкая подгрузка, без «Загрузка…»
+      if (!(status === 'completed' && animStarted)) {
+        fetchData(false);
+      }
+    }, 50000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wheel_id]); // при смене id — пересоздаём
 
-    if (status === 'completed' && animStarted) {
-      clearInterval(intervalId);
-    }
-
-    return () => clearInterval(intervalId);
-  }, [wheel_id, status, animStarted]);
-
+  // 2) Отсчёт до старта (по completedAt из результатов)
   useEffect(() => {
     if (status !== 'completed' || !completedAt || !winner) {
       setTimeLeft(null);
@@ -105,7 +114,12 @@ export default function WheelPage() {
       if (remaining < 0) {
         clearInterval(timerRef.current);
         setTimeLeft(null);
-        setAnimStarted(true); // теперь просто запускаем колесо
+        setAnimStarted(true); // плавный переход: запускаем колесо без fetchData()
+        // как только пошла анимация — можно остановить общий опрос
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
       } else {
         setTimeLeft(remaining);
       }
@@ -114,6 +128,7 @@ export default function WheelPage() {
     return () => clearInterval(timerRef.current);
   }, [status, completedAt, winner]);
 
+  // 3) Таймер по runAt для «active» колёс (без перезапроса)
   useEffect(() => {
     if (!runAt || status !== 'active') return;
 
@@ -123,7 +138,11 @@ export default function WheelPage() {
 
       if (now >= runTime) {
         clearInterval(interval);
-        setAnimStarted(true); // сразу запускаем анимацию, без fetchData()
+        setAnimStarted(true); // запуск анимации локально
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
       }
     }, 5000);
 
@@ -139,26 +158,40 @@ export default function WheelPage() {
     navigate('/');
   };
 
-  if (loading) return <div>Загрузка...</div>;
-
   return (
-    <div className="wheel-page-wrapper">
+    <div className="wheel-page-wrapper" style={{ position: 'relative' }}>
+      {/* Мягкий индикатор фоновой подгрузки */}
+      {refreshing && (
+        <div style={{
+          position: 'absolute', top: 8, right: 8, padding: '6px 10px',
+          background: 'rgba(0,0,0,0.5)', color: '#fff', borderRadius: 8, fontSize: 12
+        }}>
+          обновление…
+        </div>
+      )}
+
       <h2>Колесо №{wheel_id}</h2>
       <p>Участников: {participants.length}</p>
 
       {status === 'active' && <p>Набор участников</p>}
-
       {status === 'completed' && timeLeft !== null && <p>Запуск через: {timeLeft} сек.</p>}
 
-      <Wheel
-        participants={participants}
-        wheelSize={wheelSize}
-        winnerUsername={animStarted ? winner : null}
-        spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
-        onFinish={handleAnimFinish}
-      />
+      {/* Не выходим в полный экран «Загрузка…» после первого рендера */}
+      {loading ? (
+        <div style={{ padding: 20 }}>Загрузка…</div>
+      ) : (
+        <>
+          <Wheel
+            participants={participants}
+            wheelSize={wheelSize}
+            winnerUsername={animStarted ? winner : null}
+            spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
+            onFinish={handleAnimFinish}
+          />
 
-      <button onClick={() => navigate('/')}>Главное меню</button>
+          <button onClick={() => navigate('/')}>Главное меню</button>
+        </>
+      )}
 
       {showWinnerModal && (
         <div className="modal-overlay" style={{
