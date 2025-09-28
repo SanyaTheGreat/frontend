@@ -238,5 +238,137 @@
     "edge_color": "#b77431",
     "pattern_color": "#7d3600",
     "text_color": "#ffd9b3"
+  },
+  "SkullFlower-3855": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "SnowGlobe-41006": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "JollyChimp-24567": {
+    "center_color": "#4c5d63",
+    "edge_color": "#2f3b42",
+    "pattern_color": "#04080a",
+    "text_color": "#b6c5cc"
+  },
+  "TrappedHeart-6866": {
+    "center_color": "#d09932",
+    "edge_color": "#b77431",
+    "pattern_color": "#7d3600",
+    "text_color": "#ffd9b3"
+  },
+  "LovePotion-19594": {
+    "center_color": "#a46e58",
+    "edge_color": "#74443b",
+    "pattern_color": "#3e0a02",
+    "text_color": "#e4b6ac"
+  },
+  "KissedFrog-8501": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "MadPumpkin-15229": {
+    "center_color": "#d08656",
+    "edge_color": "#9d6531",
+    "pattern_color": "#602901",
+    "text_color": "#f4d8be"
+  },
+  "EvilEye-42340": {
+    "center_color": "#c2af64",
+    "edge_color": "#887e45",
+    "pattern_color": "#594c04",
+    "text_color": "#f5ebbc"
+  },
+  "FlyingBroom-2647": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "LolPop-371990": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
+  },
+  "InputKey-88230": {
+    "center_color": "#b1907e",
+    "edge_color": "#7c6356",
+    "pattern_color": "#4a3226",
+    "text_color": "#ebd4c8"
+  },
+  "ElectricSkull-2465": {
+    "center_color": "#d09932",
+    "edge_color": "#b77431",
+    "pattern_color": "#7d3600",
+    "text_color": "#ffd9b3"
+  },
+  "WitchHat-80761": {
+    "center_color": "#b77a77",
+    "edge_color": "#814c52",
+    "pattern_color": "#551c22",
+    "text_color": "#edcacd"
+  },
+  "SantaHat-58699": {
+    "center_color": "#e07b85",
+    "edge_color": "#b65980",
+    "pattern_color": "#890638",
+    "text_color": "#ffd6e6"
+  },
+  "SwagBag-220916": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "WhipCupcake-132412": {
+    "center_color": "#b17da5",
+    "edge_color": "#8c577a",
+    "pattern_color": "#652852",
+    "text_color": "#f0c4e2"
+  },
+  "EternalRose-1292": {
+    "center_color": "#e28ab6",
+    "edge_color": "#a4588b",
+    "pattern_color": "#8e054e",
+    "text_color": "#ffc7eb"
+  },
+  "FreshSocks-69356": {
+    "center_color": "#b58d38",
+    "edge_color": "#946925",
+    "pattern_color": "#4f3302",
+    "text_color": "#ffdd8c"
+  },
+  "JollyChimp-84388": {
+    "center_color": "#4c5d63",
+    "edge_color": "#2f3b42",
+    "pattern_color": "#04080a",
+    "text_color": "#b6c5cc"
+  },
+  "BerryBox-25888": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
+  },
+  "IonicDryer-12556": {
+    "center_color": "#4c5d63",
+    "edge_color": "#2f3b42",
+    "pattern_color": "#04080a",
+    "text_color": "#b6c5cc"
+  },
+  "StellarRocket-42167": {
+    "center_color": "#4c5d63",
+    "edge_color": "#2f3b42",
+    "pattern_color": "#04080a",
+    "text_color": "#b6c5cc"
   }
 }
