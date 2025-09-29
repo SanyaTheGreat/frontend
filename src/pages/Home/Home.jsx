@@ -219,10 +219,10 @@ function Home() {
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
         >
-          <option value="players_desc">Заполненность: сверху заполненные</option>
-          <option value="players_asc">Заполненность: сначала пустые</option>
-          <option value="price_asc">Цена: дешевле → дороже</option>
-          <option value="price_desc">Цена: дороже → дешевле</option>
+          <option value="players_desc">Players count: start soon</option>
+          <option value="players_asc">Players count: in progress</option>
+          <option value="price_asc">Price: low → high</option>
+          <option value="price_desc">Цена: high → low</option>
         </select>
       </div>
 
