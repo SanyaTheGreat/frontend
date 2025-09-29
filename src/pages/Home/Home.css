@@ -124,3 +124,20 @@ html, body {
   50%  { transform: scale(1.2); opacity: 0.7; }
   100% { transform: scale(1);   opacity: 1; }
 }
+
+.sort-bar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 14px;
+}
+
+.sort-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #415a77;
+  background-color: #1b263b;
+  color: #fff;
+  font-size: 12px;
+  outline: none;
+}

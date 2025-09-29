@@ -10,6 +10,7 @@ function Home() {
   const [wheels, setWheels] = useState([]);
   const [colorsMap, setColorsMap] = useState({});
   const [loadingId, setLoadingId] = useState(null);
+  const [sortBy, setSortBy] = useState('players_desc'); // players_desc | players_asc | price_asc | price_desc
 
   const navigate = useNavigate();
 
@@ -22,7 +23,7 @@ function Home() {
   // Кэш JSON анимаций по nft_name
   const animCacheRef = useRef(new Map());
 
-  // Эвристика слабого устройства (необязательно, но помогает)
+  // Эвристика слабого устройства
   const isLowEnd = useMemo(() => {
     const dm = navigator.deviceMemory || 4;
     return dm <= 2;
@@ -30,29 +31,19 @@ function Home() {
 
   const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
+  // Загружаем активные колёса: participants_count уже есть в самой таблице
   const fetchWheels = async () => {
-    const { data, error } = await supabase.from('wheels').select('*');
+    const { data, error } = await supabase
+      .from('wheels')
+      .select('*')
+      .eq('status', 'active');
+
     if (error) {
       console.error('Ошибка загрузки колес:', error);
       toast.error('Error loading wheels');
       return;
     }
-    const activeWheels = (data || []).filter((w) => w.status === 'active');
-    const wheelsWithParticipants = await Promise.all(
-      activeWheels.map(async (wheel) => {
-        const { count, error: countError } = await supabase
-          .from('wheel_participants')
-          .select('*', { count: 'exact', head: true })
-          .eq('wheel_id', wheel.id);
-        if (countError) {
-          console.error('Ошибка подсчёта участников:', countError);
-          toast.error('Ошибка подсчёта участников');
-          return { ...wheel, participants: 0 };
-        }
-        return { ...wheel, participants: count || 0 };
-      })
-    );
-    setWheels(wheelsWithParticipants);
+    setWheels(data || []);
   };
 
   useEffect(() => { fetchWheels(); }, []);
@@ -76,7 +67,7 @@ function Home() {
     return json;
   }
 
-  // Ленивая инициализация, проигрывание 1 раз и pause вне экрана
+  // Ленивая инициализация Lottie
   useEffect(() => {
     lottie.setQuality('low');
 
@@ -94,40 +85,32 @@ function Home() {
         const nftName = el.getAttribute('data-nftname');
         if (!wheelId || !nftName) continue;
 
-        // Уже проигрывали — гарантируем паузу и больше ничего не делаем
         if (playedOnceRef.current[wheelId]) {
           animRefs.current[wheelId]?.pause?.();
           continue;
         }
 
-        // Вне экрана — пауза (если инстанс уже создан)
         if (!entry.isIntersecting) {
           animRefs.current[wheelId]?.pause?.();
           continue;
         }
 
-        // В экране и ещё не проигрывали
         if (!animRefs.current[wheelId]) {
           try {
             const data = await getAnimationJSON(nftName);
             const inst = lottie.loadAnimation({
               container: el,
-              renderer: 'canvas', // быстрее svg на мобильных
-              loop: false,        // один раз
-              autoplay: false,    // запустим вручную
+              renderer: 'canvas',
+              loop: false,
+              autoplay: false,
               animationData: data,
               rendererSettings: { progressiveLoad: true, clearCanvas: true }
             });
             inst.setSpeed(isLowEnd ? 0.8 : 1);
-
-            // По завершении помечаем и оставляем на последнем кадре (или вернёмся на первый — см. ниже)
             inst.addEventListener('complete', () => {
               playedOnceRef.current[wheelId] = true;
-              inst.pause(); // остаётся на последнем кадре
-              // Если нужно возвращать на первый кадр:
-              // inst.goToAndStop(0, true);
+              inst.pause();
             });
-
             animRefs.current[wheelId] = inst;
           } catch (e) {
             console.error('Lottie load error', nftName, e);
@@ -135,9 +118,8 @@ function Home() {
           }
         }
 
-        // Стартуем только если ещё не проигрывали
         if (!playedOnceRef.current[wheelId]) {
-          animRefs.current[wheelId].goToAndStop(0, true); // на всякий случай
+          animRefs.current[wheelId].goToAndStop(0, true);
           animRefs.current[wheelId].play();
         }
       }
@@ -154,6 +136,30 @@ function Home() {
     };
   }, [wheels, isLowEnd]);
 
+  // Сортировка на клиенте
+  const sortedWheels = useMemo(() => {
+    const arr = [...wheels];
+    const price = (w) => (w?.price ?? Number.POSITIVE_INFINITY);
+    const players = (w) => (w?.participants_count ?? 0);
+
+    switch (sortBy) {
+      case 'price_asc':
+        arr.sort((a, b) => Number(price(a)) - Number(price(b)));
+        break;
+      case 'price_desc':
+        arr.sort((a, b) => Number(price(b)) - Number(price(a)));
+        break;
+      case 'players_asc':
+        arr.sort((a, b) => players(a) - players(b) || String(a.id).localeCompare(String(b.id)));
+        break;
+      case 'players_desc':
+      default:
+        arr.sort((a, b) => players(b) - players(a) || String(a.id).localeCompare(String(b.id)));
+        break;
+    }
+    return arr;
+  }, [wheels, sortBy]);
+
   const handleJoin = async (wheel) => {
     const tg = window.Telegram?.WebApp;
     const user = tg?.initDataUnsafe?.user;
@@ -162,7 +168,7 @@ function Home() {
       toast.error('Telegram user not found');
       return;
     }
-    if (wheel.participants >= wheel.size) {
+    if ((wheel.participants_count ?? 0) >= wheel.size) {
       toast.warn('The wheel is already full');
       return;
     }
@@ -194,6 +200,7 @@ function Home() {
 
     if (res.status === 201) {
       toast.success('You have successfully joined!');
+      // триггер в БД уже обновит participants_count — просто рефетчим список
       await fetchWheels();
     } else {
       const err = await res.json();
@@ -205,13 +212,27 @@ function Home() {
 
   return (
     <div className="home-wrapper">
-      {wheels.length === 0 ? (
+      {/* Панель сортировки */}
+      <div className="sort-bar">
+        <select
+          className="sort-select"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="players_desc">Заполненность: сверху заполненные</option>
+          <option value="players_asc">Заполненность: сначала пустые</option>
+          <option value="price_asc">Цена: дешевле → дороже</option>
+          <option value="price_desc">Цена: дороже → дешевле</option>
+        </select>
+      </div>
+
+      {sortedWheels.length === 0 ? (
         <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
           Loading...
         </p>
       ) : (
         <div className="wheels-grid">
-          {wheels.map((wheel) => {
+          {sortedWheels.map((wheel) => {
             const bg = colorsMap[wheel.nft_name]
               ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
               : '#000';
@@ -229,7 +250,6 @@ function Home() {
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Контейнер под Lottie. Инициализируется и играет 1 раз в зоне видимости */}
                   <div
                     ref={(el) => {
                       if (!el) return;
@@ -255,14 +275,14 @@ function Home() {
                   <button
                     className="join-button"
                     onClick={() => handleJoin(wheel)}
-                    disabled={loadingId === wheel.id || wheel.participants >= wheel.size}
+                    disabled={loadingId === wheel.id || (wheel.participants_count ?? 0) >= wheel.size}
                   >
                     {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
                   </button>
                 </div>
 
                 <div className="wheel-info">
-                  <span>Players: {wheel.participants}/{wheel.size}</span>
+                  <span>Players: {wheel.participants_count ?? 0}/{wheel.size}</span>
                   <span>
                     Price: {wheel.price} <span className="diamond">💎</span>
                   </span>
