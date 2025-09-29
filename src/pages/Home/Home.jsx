@@ -10,7 +10,7 @@ function Home() {
   const [wheels, setWheels] = useState([]);
   const [colorsMap, setColorsMap] = useState({});
   const [loadingId, setLoadingId] = useState(null);
-  const [sortBy, setSortBy] = useState('players_desc'); // players_desc | players_asc | price_asc | price_desc
+  const [sortBy, setSortBy] = useState('players_desc'); // players_desc | players_asc | price_asc | price_desc | size_asc | size_desc
 
   const navigate = useNavigate();
 
@@ -141,6 +141,7 @@ function Home() {
     const arr = [...wheels];
     const price = (w) => (w?.price ?? Number.POSITIVE_INFINITY);
     const players = (w) => (w?.participants_count ?? 0);
+    const size = (w) => (w?.size ?? 0);
 
     switch (sortBy) {
       case 'price_asc':
@@ -153,6 +154,14 @@ function Home() {
         arr.sort((a, b) => players(a) - players(b) || String(a.id).localeCompare(String(b.id)));
         break;
       case 'players_desc':
+        arr.sort((a, b) => players(b) - players(a) || String(a.id).localeCompare(String(b.id)));
+        break;
+      case 'size_asc':
+        arr.sort((a, b) => size(a) - size(b) || String(a.id).localeCompare(String(b.id)));
+        break;
+      case 'size_desc':
+        arr.sort((a, b) => size(b) - size(a) || String(a.id).localeCompare(String(b.id)));
+        break;
       default:
         arr.sort((a, b) => players(b) - players(a) || String(a.id).localeCompare(String(b.id)));
         break;
@@ -200,8 +209,7 @@ function Home() {
 
     if (res.status === 201) {
       toast.success('You have successfully joined!');
-      // триггер в БД уже обновит participants_count — просто рефетчим список
-      await fetchWheels();
+      await fetchWheels(); // триггер в БД обновит participants_count
     } else {
       const err = await res.json();
       toast.error(err.error || 'Error Join');
@@ -223,6 +231,8 @@ function Home() {
           <option value="players_asc">Players count: in progress</option>
           <option value="price_asc">Price: low → high</option>
           <option value="price_desc">Цена: high → low</option>
+          <option value="size_desc">Max Players: high → low</option>
+          <option value="size_asc">Max Players: low → high</option>
         </select>
       </div>
 
