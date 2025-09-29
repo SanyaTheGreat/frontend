@@ -230,7 +230,7 @@ function Home() {
           <option value="players_desc">Players count: start soon</option>
           <option value="players_asc">Players count: in progress</option>
           <option value="price_asc">Price: low → high</option>
-          <option value="price_desc">Цена: high → low</option>
+          <option value="price_desc">Price: high → low</option>
           <option value="size_desc">Max Players: high → low</option>
           <option value="size_asc">Max Players: low → high</option>
         </select>
