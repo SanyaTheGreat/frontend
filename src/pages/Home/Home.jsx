@@ -10,20 +10,16 @@ function Home() {
   const [wheels, setWheels] = useState([]);
   const [colorsMap, setColorsMap] = useState({});
   const [loadingId, setLoadingId] = useState(null);
-  const [sortBy, setSortBy] = useState('players_desc'); // players_desc | players_asc | price_asc | price_desc | size_asc | size_desc
+  const [sortBy, setSortBy] = useState('players_desc');
 
   const navigate = useNavigate();
 
-  // Контейнеры, инстансы и состояние "уже проиграно"
-  const containerRefs = useRef({});          // id -> div
-  const animRefs = useRef({});               // id -> lottie instance
-  const playedOnceRef = useRef({});          // id -> true/false
+  const containerRefs = useRef({});
+  const animRefs = useRef({});
+  const playedOnceRef = useRef({});
   const observerRef = useRef(null);
-
-  // Кэш JSON анимаций по nft_name
   const animCacheRef = useRef(new Map());
 
-  // Эвристика слабого устройства
   const isLowEnd = useMemo(() => {
     const dm = navigator.deviceMemory || 4;
     return dm <= 2;
@@ -31,7 +27,6 @@ function Home() {
 
   const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
-  // Загружаем активные колёса (берём все поля, включая mode/channel/promokey)
   const fetchWheels = async () => {
     const { data, error } = await supabase
       .from('wheels')
@@ -67,7 +62,6 @@ function Home() {
     return json;
   }
 
-  // Ленивая инициализация Lottie
   useEffect(() => {
     lottie.setQuality('low');
 
@@ -125,7 +119,6 @@ function Home() {
       }
     }, { threshold: 0.2, rootMargin: '120px 0px' });
 
-    // Подписываем контейнеры, если уже есть
     Object.values(containerRefs.current).forEach((el) => {
       if (el) observerRef.current.observe(el);
     });
@@ -136,7 +129,6 @@ function Home() {
     };
   }, [wheels, isLowEnd]);
 
-  // Сортировка на клиенте
   const sortedWheels = useMemo(() => {
     const arr = [...wheels];
     const price = (w) => (w?.price ?? Number.POSITIVE_INFINITY);
@@ -169,7 +161,6 @@ function Home() {
     return arr;
   }, [wheels, sortBy]);
 
-  // Открыть канал: через Telegram WebApp API или просто ссылкой
   const openChannel = (channel) => {
     const tg = window.Telegram?.WebApp;
     const handle = (channel || '').replace(/^@/, '');
@@ -205,15 +196,12 @@ function Home() {
       return;
     }
 
-    // --- Новая логика доступа ---
     let extra = {};
     if (wheel.mode === 'subscription') {
-      // Предложим перейти и подтвердить подписку
       const confirmed = window.confirm(
         `Для участия нужна подписка на канал ${wheel.channel}.\nНажми OK, чтобы открыть канал, затем вернись и снова нажми JOIN.`
       );
       if (confirmed) openChannel(wheel.channel);
-      // Даже если пользователь нажал Cancel — просто не продолжаем
       setLoadingId(null);
       return;
     }
@@ -225,7 +213,6 @@ function Home() {
       }
       extra.promokey = code.trim();
     }
-    // --- Конец новой логики доступа ---
 
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
@@ -235,13 +222,13 @@ function Home() {
         user_id: foundUser.id,
         telegram_id: user.id,
         username: user.username || '',
-        ...extra, // promokey для promo
+        ...extra,
       }),
     });
 
     if (res.status === 201) {
       toast.success('You have successfully joined!');
-      await fetchWheels(); // триггер в БД обновит participants_count
+      await fetchWheels();
     } else {
       const err = await res.json().catch(() => ({}));
       toast.error(err.error || 'Error Join');
@@ -252,7 +239,6 @@ function Home() {
 
   return (
     <div className="home-wrapper">
-      {/* Панель сортировки */}
       <div className="sort-bar">
         <select
           className="sort-select"
@@ -261,13 +247,6 @@ function Home() {
         >
           <option value="players_desc">Players count: start soon</option>
           <option value="players_asc">Players count: in progress</option>
-        </select>
-        <select
-          className="sort-select"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          style={{ marginLeft: 8 }}
-        >
           <option value="price_asc">Price: low → high</option>
           <option value="price_desc">Price: high → low</option>
           <option value="size_desc">Max Players: high → low</option>
