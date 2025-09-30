@@ -197,14 +197,6 @@ function Home() {
     }
 
     let extra = {};
-    if (wheel.mode === 'subscription') {
-      const confirmed = window.confirm(
-        `Для участия нужна подписка на канал ${wheel.channel}.\nНажми OK, чтобы открыть канал, затем вернись и снова нажми JOIN.`
-      );
-      if (confirmed) openChannel(wheel.channel);
-      setLoadingId(null);
-      return;
-    }
     if (wheel.mode === 'promo') {
       const code = window.prompt('Введите промокод');
       if (!code) {
