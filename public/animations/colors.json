@@ -412,5 +412,23 @@
     "edge_color": "#2f3b42",
     "pattern_color": "#04080a",
     "text_color": "#b6c5cc"
+  },
+  "SnakeBox-79118": {
+    "center_color": "#5ec0b8",
+    "edge_color": "#3d928e",
+    "pattern_color": "#11534c",
+    "text_color": "#bdf8f2"
+  },
+  "SnakeBox-123150": {
+    "center_color": "#e07b85",
+    "edge_color": "#b65980",
+    "pattern_color": "#890638",
+    "text_color": "#ffd6e6"
+  },
+  "SnakeBox-102415": {
+    "center_color": "#8fae78",
+    "edge_color": "#4b825b",
+    "pattern_color": "#1c491f",
+    "text_color": "#d8f5de"
   }
 }
