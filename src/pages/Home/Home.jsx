@@ -31,7 +31,7 @@ function Home() {
 
   const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
-  // Загружаем активные колёса: participants_count уже есть в самой таблице
+  // Загружаем активные колёса (берём все поля, включая mode/channel/promokey)
   const fetchWheels = async () => {
     const { data, error } = await supabase
       .from('wheels')
@@ -169,6 +169,15 @@ function Home() {
     return arr;
   }, [wheels, sortBy]);
 
+  // Открыть канал: через Telegram WebApp API или просто ссылкой
+  const openChannel = (channel) => {
+    const tg = window.Telegram?.WebApp;
+    const handle = (channel || '').replace(/^@/, '');
+    const link = `https://t.me/${handle}`;
+    if (tg?.openTelegramLink) tg.openTelegramLink(link);
+    else window.open(link, '_blank', 'noopener,noreferrer');
+  };
+
   const handleJoin = async (wheel) => {
     const tg = window.Telegram?.WebApp;
     const user = tg?.initDataUnsafe?.user;
@@ -196,6 +205,28 @@ function Home() {
       return;
     }
 
+    // --- Новая логика доступа ---
+    let extra = {};
+    if (wheel.mode === 'subscription') {
+      // Предложим перейти и подтвердить подписку
+      const confirmed = window.confirm(
+        `Для участия нужна подписка на канал ${wheel.channel}.\nНажми OK, чтобы открыть канал, затем вернись и снова нажми JOIN.`
+      );
+      if (confirmed) openChannel(wheel.channel);
+      // Даже если пользователь нажал Cancel — просто не продолжаем
+      setLoadingId(null);
+      return;
+    }
+    if (wheel.mode === 'promo') {
+      const code = window.prompt('Введите промокод');
+      if (!code) {
+        setLoadingId(null);
+        return;
+      }
+      extra.promokey = code.trim();
+    }
+    // --- Конец новой логики доступа ---
+
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -204,6 +235,7 @@ function Home() {
         user_id: foundUser.id,
         telegram_id: user.id,
         username: user.username || '',
+        ...extra, // promokey для promo
       }),
     });
 
@@ -211,7 +243,7 @@ function Home() {
       toast.success('You have successfully joined!');
       await fetchWheels(); // триггер в БД обновит participants_count
     } else {
-      const err = await res.json();
+      const err = await res.json().catch(() => ({}));
       toast.error(err.error || 'Error Join');
     }
 
@@ -229,6 +261,13 @@ function Home() {
         >
           <option value="players_desc">Players count: start soon</option>
           <option value="players_asc">Players count: in progress</option>
+        </select>
+        <select
+          className="sort-select"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          style={{ marginLeft: 8 }}
+        >
           <option value="price_asc">Price: low → high</option>
           <option value="price_desc">Price: high → low</option>
           <option value="size_desc">Max Players: high → low</option>
@@ -247,9 +286,33 @@ function Home() {
               ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
               : '#000';
 
+            const modeBadge =
+              wheel.mode === 'subscription'
+                ? 'SUBSCRIPTION'
+                : wheel.mode === 'promo'
+                ? 'PROMO'
+                : null;
+
             return (
               <div key={wheel.id} className="wheel-card">
-                <div className="wheel-title">{wheel.nft_name}</div>
+                <div className="wheel-title">
+                  {wheel.nft_name}
+                  {modeBadge && (
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 12,
+                        padding: '2px 6px',
+                        borderRadius: 6,
+                        background: '#222',
+                        color: '#fff',
+                        border: '1px solid #444'
+                      }}
+                    >
+                      {modeBadge}
+                    </span>
+                  )}
+                </div>
 
                 <div
                   className="wheel-image"
@@ -294,9 +357,21 @@ function Home() {
                 <div className="wheel-info">
                   <span>Players: {wheel.participants_count ?? 0}/{wheel.size}</span>
                   <span>
-                    Price: {wheel.price} <span className="diamond">💎</span>
+                    Price: {Number(wheel.price) === 0 ? 'Free' : wheel.price} <span className="diamond">💎</span>
                   </span>
                 </div>
+
+                {wheel.mode === 'subscription' && wheel.channel && (
+                  <div style={{ marginTop: 6, textAlign: 'center' }}>
+                    <button
+                      className="lobby-button"
+                      onClick={() => openChannel(wheel.channel)}
+                      style={{ width: '100%' }}
+                    >
+                      Subscribe: {wheel.channel}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
