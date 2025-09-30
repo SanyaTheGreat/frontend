@@ -63,6 +63,53 @@ export default function Profile() {
     toast.success('Скопировано!');
   };
 
+  // ---- Новый метод: пополнение звёздами ----
+  const handleTopUpStars = async () => {
+    const tg = window.Telegram?.WebApp;
+    const uid = tg?.initDataUnsafe?.user?.id || user?.id;
+
+    if (!uid) {
+      toast.error('Telegram user not found');
+      return;
+    }
+
+    const input = prompt('Enter top-up amount (tickets, step 0.1):', '0.1');
+    const tickets = parseFloat(input);
+    const valid = Number.isFinite(tickets) && tickets >= 0.1 && Math.abs(tickets * 10 - Math.round(tickets * 10)) < 1e-9;
+    if (!valid) {
+      toast.warning('Amount must be ≥ 0.1 with a 0.1 step');
+      return;
+    }
+
+    try {
+      const resp = await fetch('https://lottery-server-waif.onrender.com/payments/create-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegram_id: uid, tickets_desired: tickets }),
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data?.invoice_link) {
+        toast.error(data?.error || 'Failed to create invoice');
+        return;
+      }
+
+      tg.openInvoice(data.invoice_link, async (status) => {
+        if (status === 'paid') {
+          toast.success('Paid ✅ Balance will update shortly');
+          setTimeout(() => fetchProfile(uid), 1500);
+        } else if (status === 'cancelled') {
+          toast.info('Payment cancelled');
+        } else if (status === 'failed') {
+          toast.error('Payment failed');
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Server error while creating invoice');
+    }
+  };
+
   const handleTopUp = async () => {
     const amountInput = prompt('Enter the amount in TON:');
     const amount = parseFloat(amountInput);
@@ -182,7 +229,8 @@ export default function Profile() {
           <span>{profile?.tickets ?? '—'}</span>
         </div>
         <div className="balance-buttons">
-          <button onClick={handleTopUp}>Purchase</button>
+          <button className="btn btn-stars" onClick={handleTopUpStars}>Purchase ⭐</button>
+          <button className="btn btn-ton" onClick={handleTopUp}>Purchase</button>
         </div>
       </div>
 
@@ -200,7 +248,6 @@ export default function Profile() {
           </div>
         </div>
       </div>
-
 
       <div className="profile-block">
         <div className="profile-title">🔗 Your referral link</div>

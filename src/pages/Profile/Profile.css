@@ -32,7 +32,6 @@
   object-fit: cover;
 }
 
-
 .username-text {
   color: #fff;
   font-weight: 700;
@@ -42,12 +41,12 @@
 }
 
 /* Центрируем кнопку TON Connect */
-button.ton-connect-button, .profile-block > div.ton-button-row {
+button.ton-connect-button,
+.profile-block > div.ton-button-row {
   width: 100% !important;
   max-width: 300px;
-  margin: 0 auto 20px;  /* горизонтальное центрирование */
+  margin: 0 auto 20px;
   padding-top: 0;
-  /* Убрали display: block !important; чтобы flex контейнер работал корректно */
 }
 
 /* Контейнер-обёртка для кнопки TON Connect */
@@ -85,26 +84,46 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   font-size: 28px;
 }
 
-/* Кнопки пополнения и вывода */
+/* Кнопки пополнения (⭐ и TON) */
 .balance-buttons {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.balance-buttons button {
-  background-color: #2E7D32;
+.balance-buttons .btn {
   border: none;
   border-radius: 30px;
-  padding: 6px 14px;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
+  padding: 10px 16px;
+  font-weight: 700;
   font-size: 14px;
-  transition: background-color 0.3s ease;
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+  outline: none;
 }
 
-.balance-buttons button:hover {
+/* визуальная обратная связь */
+.balance-buttons .btn:active {
+  transform: translateY(1px);
+}
+
+/* Stars (золотистая) */
+.balance-buttons .btn-stars {
+  background: linear-gradient(180deg, #ffd54f, #ffb300);
+  color: #1b263b;
+  box-shadow: 0 4px 10px rgba(255, 179, 0, 0.35);
+}
+.balance-buttons .btn-stars:hover {
+  filter: brightness(1.03);
+}
+
+/* TON (зелёная как раньше) */
+.balance-buttons .btn-ton {
+  background-color: #2E7D32;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(46, 125, 50, 0.35);
+}
+.balance-buttons .btn-ton:hover {
   background-color: #27692a;
 }
 
@@ -171,7 +190,6 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   font-size: 14px;
 }
 
-
 .referral-flex-row {
   display: flex;
   justify-content: space-between;
@@ -200,4 +218,15 @@ button.ton-connect-button, .profile-block > div.ton-button-row {
   background-color: #27692a;
 }
 
-
+/* мелкая адаптация для узких экранов */
+@media (max-width: 380px) {
+  .balance-actions-row {
+    gap: 12px;
+  }
+  .balance-display {
+    font-size: 22px;
+  }
+  .balance-buttons .btn {
+    padding: 9px 14px;
+  }
+}
