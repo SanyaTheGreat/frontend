@@ -230,7 +230,7 @@ export default function Profile() {
         </div>
         <div className="balance-buttons">
           <button className="btn btn-stars" onClick={handleTopUpStars}>Purchase ⭐</button>
-          <button className="btn btn-ton" onClick={handleTopUp}>Purchase</button>
+          <button className="btn btn-ton" onClick={handleTopUp}>Purchase 💎</button>
         </div>
       </div>
 
