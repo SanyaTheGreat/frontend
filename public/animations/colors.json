@@ -370,5 +370,47 @@
     "edge_color": "#2f3b42",
     "pattern_color": "#04080a",
     "text_color": "#b6c5cc"
+  },
+  "LolPop-344404": {
+    "center_color": "#d19a3a",
+    "edge_color": "#c06f47",
+    "pattern_color": "#9d3907",
+    "text_color": "#ffe1c3"
+  },
+  "CloverPin-136793": {
+    "center_color": "#58b4c8",
+    "edge_color": "#538bc2",
+    "pattern_color": "#07609b",
+    "text_color": "#cde8fd"
+  },
+  "LolPop-344518": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "CloverPin-54568": {
+    "center_color": "#8fae78",
+    "edge_color": "#4b825b",
+    "pattern_color": "#1c491f",
+    "text_color": "#d8f5de"
+  },
+  "JoyfulBundle-13266": {
+    "center_color": "#4c5d63",
+    "edge_color": "#2f3b42",
+    "pattern_color": "#04080a",
+    "text_color": "#b6c5cc"
+  },
+  "WhipCupcake-111650": {
+    "center_color": "#80a4b8",
+    "edge_color": "#607c91",
+    "pattern_color": "#15374b",
+    "text_color": "#c9e4f4"
+  },
+  "ValentineBox-27730": {
+    "center_color": "#4c5d63",
+    "edge_color": "#2f3b42",
+    "pattern_color": "#04080a",
+    "text_color": "#b6c5cc"
   }
 }
