@@ -12,7 +12,7 @@ function Home() {
   const [loadingId, setLoadingId] = useState(null);
   const [sortBy, setSortBy] = useState('players_desc');
 
-  const [subscriptionModal, setSubscriptionModal] = useState(null); // хранит wheel для модалки
+  const [subscriptionModal, setSubscriptionModal] = useState(null);
 
   const navigate = useNavigate();
 
@@ -176,7 +176,6 @@ function Home() {
       return;
     }
 
-    // если subscription и не было skipModal → открываем модалку
     if (wheel.mode === 'subscription' && !skipModal) {
       setSubscriptionModal(wheel);
       return;
@@ -258,30 +257,25 @@ function Home() {
               ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
               : '#000';
 
-            const modeBadge =
+            const modeIcon =
               wheel.mode === 'subscription'
-                ? 'SUBSCRIPTION'
+                ? '📢'
                 : wheel.mode === 'promo'
-                ? 'PROMO'
+                ? '🔑'
                 : null;
 
             return (
               <div key={wheel.id} className="wheel-card">
                 <div className="wheel-title">
                   {wheel.nft_name}
-                  {modeBadge && (
+                  {modeIcon && (
                     <span
                       style={{
-                        marginLeft: 8,
-                        fontSize: 12,
-                        padding: '2px 6px',
-                        borderRadius: 6,
-                        background: '#222',
-                        color: '#fff',
-                        border: '1px solid #444'
+                        marginLeft: 6,
+                        fontSize: 14,
                       }}
                     >
-                      {modeBadge}
+                      {modeIcon}
                     </span>
                   )}
                 </div>
