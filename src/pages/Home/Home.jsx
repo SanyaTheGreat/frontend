@@ -12,6 +12,8 @@ function Home() {
   const [loadingId, setLoadingId] = useState(null);
   const [sortBy, setSortBy] = useState('players_desc');
 
+  const [subscriptionModal, setSubscriptionModal] = useState(null); // хранит wheel для модалки
+
   const navigate = useNavigate();
 
   const containerRefs = useRef({});
@@ -161,15 +163,7 @@ function Home() {
     return arr;
   }, [wheels, sortBy]);
 
-  const openChannel = (channel) => {
-    const tg = window.Telegram?.WebApp;
-    const handle = (channel || '').replace(/^@/, '');
-    const link = `https://t.me/${handle}`;
-    if (tg?.openTelegramLink) tg.openTelegramLink(link);
-    else window.open(link, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleJoin = async (wheel) => {
+  const handleJoin = async (wheel, skipModal = false) => {
     const tg = window.Telegram?.WebApp;
     const user = tg?.initDataUnsafe?.user;
 
@@ -179,6 +173,12 @@ function Home() {
     }
     if ((wheel.participants_count ?? 0) >= wheel.size) {
       toast.warn('The wheel is already full');
+      return;
+    }
+
+    // если subscription и не было skipModal → открываем модалку
+    if (wheel.mode === 'subscription' && !skipModal) {
+      setSubscriptionModal(wheel);
       return;
     }
 
@@ -227,6 +227,7 @@ function Home() {
     }
 
     setLoadingId(null);
+    setSubscriptionModal(null);
   };
 
   return (
@@ -331,21 +332,42 @@ function Home() {
                     Price: {Number(wheel.price) === 0 ? 'Free' : wheel.price} <span className="diamond">💎</span>
                   </span>
                 </div>
-
-                {wheel.mode === 'subscription' && wheel.channel && (
-                  <div style={{ marginTop: 6, textAlign: 'center' }}>
-                    <button
-                      className="lobby-button"
-                      onClick={() => openChannel(wheel.channel)}
-                      style={{ width: '100%' }}
-                    >
-                      Subscribe: {wheel.channel}
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Модалка подписки */}
+      {subscriptionModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <p>
+              Для участия нужно быть подписанным на канал{" "}
+              <a
+                href={`https://t.me/${subscriptionModal.channel.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4da6ff', fontWeight: 'bold' }}
+              >
+                {subscriptionModal.channel}
+              </a>
+            </p>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <button
+                className="lobby-button"
+                onClick={() => setSubscriptionModal(null)}
+              >
+                Отмена
+              </button>
+              <button
+                className="join-button"
+                onClick={() => handleJoin(subscriptionModal, true)}
+              >
+                Я подписан
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
