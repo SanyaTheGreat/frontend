@@ -226,7 +226,11 @@ export default function Profile() {
         <div className="balance-label">Balance</div>
         <div className="balance-display">
           <span className="ton-icon">🪙</span>
-          <span>{profile?.tickets ?? '—'}</span>
+          <span>
+            {profile?.tickets !== undefined
+              ? parseFloat(profile.tickets).toFixed(2).replace(/\.?0+$/, "")
+              : "—"}
+          </span>
         </div>
         <div className="balance-buttons">
           <button className="btn btn-stars" onClick={handleTopUpStars}>Purchase ⭐</button>
