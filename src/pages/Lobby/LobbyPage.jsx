@@ -14,27 +14,28 @@ function LobbyPage() {
   const [participants, setParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [colorsMap, setColorsMap] = useState({}); // Для цветов фона
+  const [colorsMap, setColorsMap] = useState({});
+  const [subscriptionModal, setSubscriptionModal] = useState(null); // хранит wheel для модалки
   const animRef = useRef(null);
 
   useEffect(() => {
     fetchLobbyData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
-    fetch("/animations/colors.json")
-      .then(res => res.json())
+    fetch('/animations/colors.json')
+      .then((res) => res.json())
       .then(setColorsMap)
-      .catch(e => console.error("Ошибка загрузки цветов:", e));
+      .catch((e) => console.error('Ошибка загрузки цветов:', e));
   }, []);
 
   useEffect(() => {
     if (!wheel?.nft_name || !animRef.current) return;
 
-    // Загружаем Lottie-анимацию
     fetch(`/animations/${wheel.nft_name}.json`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         lottie.loadAnimation({
           container: animRef.current,
           renderer: 'svg',
@@ -44,15 +45,16 @@ function LobbyPage() {
         });
       })
       .catch((e) => {
-        console.error("Ошибка загрузки анимации Lottie:", e);
+        console.error('Ошибка загрузки анимации Lottie:', e);
       });
   }, [wheel]);
 
   async function fetchLobbyData() {
     try {
+      // забираем и новые поля: mode, channel
       const { data: wheelData, error: wheelError } = await supabase
         .from('wheels')
-        .select('id, nft_name, size, price, status')
+        .select('id, nft_name, size, price, status, mode, channel') // добавили mode/channel
         .eq('id', id)
         .single();
 
@@ -89,17 +91,25 @@ function LobbyPage() {
     }
   }
 
-  async function handleJoin() {
+  const handleJoin = async (skipModal = false) => {
+    if (!wheel) return;
+
     const tg = window.Telegram?.WebApp;
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      toast.error("Telegram user not found");
+      toast.error('Telegram user not found');
       return;
     }
 
     if (participantCount >= (wheel?.size || 0)) {
-      toast.warn("The wheel is already full");
+      toast.warn('The wheel is already full');
+      return;
+    }
+
+    // если subscription и модалка ещё не показана — показываем её
+    if (wheel.mode === 'subscription' && !skipModal) {
+      setSubscriptionModal(wheel);
       return;
     }
 
@@ -112,32 +122,45 @@ function LobbyPage() {
       .single();
 
     if (error || !foundUser) {
-      toast.error("Пользователь не зарегистрирован");
+      toast.error('Пользователь не зарегистрирован');
       setLoading(false);
       return;
+    }
+
+    // промокод — через prompt
+    const body = {
+      wheel_id: id,
+      user_id: foundUser.id,
+      telegram_id: user.id,
+      username: user.username || '',
+    };
+
+    if (wheel.mode === 'promo') {
+      const code = window.prompt('Введите промокод');
+      if (!code) {
+        setLoading(false);
+        return;
+      }
+      body.promokey = code.trim();
     }
 
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        wheel_id: id,
-        user_id: foundUser.id,
-        telegram_id: user.id,
-        username: user.username || '',
-      }),
+      body: JSON.stringify(body),
     });
 
     if (res.status === 201) {
-      toast.success("You have successfully joined!");
+      toast.success('You have successfully joined!');
       await fetchLobbyData();
     } else {
-      const err = await res.json();
-      toast.error(err.error || "Error Join ");
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || 'Error Join ');
     }
 
     setLoading(false);
-  }
+    setSubscriptionModal(null);
+  };
 
   const handleWatch = () => {
     navigate(`/wheel/${id}`);
@@ -165,11 +188,11 @@ function LobbyPage() {
       ></div>
 
       <p>Participants: {participantCount} / {wheel.size}</p>
-      <p>Price: {wheel.price} 🎫</p>
+      <p>Price: {Number(wheel.price) === 0 ? 'Free' : wheel.price} 🎫</p>
 
       <button
         className="join-buttonLobby"
-        onClick={handleJoin}
+        onClick={() => handleJoin()}
         disabled={loading || participantCount >= wheel.size}
       >
         {loading ? 'Joining...' : 'Join'}
@@ -192,6 +215,33 @@ function LobbyPage() {
           <li key={index}>@{p.username}</li>
         ))}
       </ul>
+
+      {/* Модалка подписки */}
+      {subscriptionModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <p>
+              Для участия нужно быть подписанным на канал{' '}
+              <a
+                href={`https://t.me/${subscriptionModal.channel?.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4da6ff', fontWeight: 'bold' }}
+              >
+                {subscriptionModal.channel}
+              </a>
+            </p>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <button className="lobby-button" onClick={() => setSubscriptionModal(null)}>
+                Отмена
+              </button>
+              <button className="join-button" onClick={() => handleJoin(true)}>
+                Я подписан
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ToastContainer
         position="top-right"
