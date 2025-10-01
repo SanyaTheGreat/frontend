@@ -168,11 +168,11 @@ function Home() {
     const user = tg?.initDataUnsafe?.user;
 
     if (!user) {
-      toast.error('Telegram user not found');
+      toast.error('Пользователь не найден');
       return;
     }
     if ((wheel.participants_count ?? 0) >= wheel.size) {
-      toast.warn('The wheel is already full');
+      toast.warn('Колесо уже заполнено');
       return;
     }
 
@@ -197,7 +197,7 @@ function Home() {
 
     let extra = {};
     if (wheel.mode === 'promo') {
-      const code = window.prompt('Введите промокод');
+      const code = window.prompt('Введите пароль');
       if (!code) {
         setLoadingId(null);
         return;
@@ -218,7 +218,7 @@ function Home() {
     });
 
     if (res.status === 201) {
-      toast.success('You have successfully joined!');
+      toast.success('Ты успешно присоеденился к розыгрышу!');
       await fetchWheels();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -237,18 +237,18 @@ function Home() {
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
         >
-          <option value="players_desc">Players count: start soon</option>
-          <option value="players_asc">Players count: in progress</option>
-          <option value="price_asc">Price: low → high</option>
-          <option value="price_desc">Price: high → low</option>
-          <option value="size_desc">Max Players: high → low</option>
-          <option value="size_asc">Max Players: low → high</option>
+          <option value="players_desc">Заполненность: больше</option>
+          <option value="players_asc">Заполненность: меньше</option>
+          <option value="price_asc">Цена: ниже → выше</option>
+          <option value="price_desc">Цена: выше → ниже</option>
+          <option value="size_desc">Макс. Игроков: больше → меньше</option>
+          <option value="size_asc">Макс. Игроков: меньше → больше</option>
         </select>
       </div>
 
       {sortedWheels.length === 0 ? (
         <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
-          Loading...
+          Загрузка...
         </p>
       ) : (
         <div className="wheels-grid">
@@ -309,21 +309,21 @@ function Home() {
 
                 <div className="wheel-buttons">
                   <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
-                    Lobby
+                    Лобби
                   </button>
                   <button
                     className="join-button"
                     onClick={() => handleJoin(wheel)}
                     disabled={loadingId === wheel.id || (wheel.participants_count ?? 0) >= wheel.size}
                   >
-                    {loadingId === wheel.id ? 'Joining...' : 'JOIN'}
+                    {loadingId === wheel.id ? 'Грузим...' : 'Вход'}
                   </button>
                 </div>
 
                 <div className="wheel-info">
-                  <span>Players: {wheel.participants_count ?? 0}/{wheel.size}</span>
+                  <span>Игроков {wheel.participants_count ?? 0}/{wheel.size}</span>
                   <span>
-                    Price: {Number(wheel.price) === 0 ? 'Free' : wheel.price} <span className="diamond">💎</span>
+                    Цена: {Number(wheel.price) === 0 ? 'Free' : wheel.price} <span className="diamond">💎</span>
                   </span>
                 </div>
               </div>
