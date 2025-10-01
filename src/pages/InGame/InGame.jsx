@@ -44,12 +44,12 @@ function WheelCard({ wheel, grayscale, colorsMap, onGo }) {
           }}
         ></div>
         <button className="go-button" onClick={onGo}>
-          Go
+          Go!
         </button>
       </div>
       <div className="wheel-info">
-        <span>Status: {wheel.status}</span>
-        <span>Price: {wheel.price} 💎</span>
+        <span>Статус: {wheel.status}</span>
+        <span>Цена: {wheel.price} 💎</span>
       </div>
     </div>
   );
@@ -141,7 +141,7 @@ function InGame() {
       ))}
 
       {completedWheels.length > 0 && (
-        <div className="separator">Completed Games</div>
+        <div className="separator">Завершенные игры</div>
       )}
 
       {completedWheels.map(wheel => (
@@ -155,7 +155,7 @@ function InGame() {
       ))}
 
       {wheels.length === 0 && (
-        <p className="no-wheels">Your current games will be displayed on this page.</p>
+        <p className="no-wheels">Все твои игры будут отображаться на этой странице.</p>
       )}
     </div>
   );

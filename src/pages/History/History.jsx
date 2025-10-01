@@ -47,17 +47,17 @@ const History = () => {
 
   return (
     <div className="history-wrapper">
-      <h1>Wall of Winners</h1>
+      <h1>История</h1>
       <div className="history-list">
         {history.map((item, index) => (
           <div key={index} className="history-item">
             <div className="history-title">{item.nft_name}</div>
             <div className="history-details">
-              <span className="winner">Winner: {item.username}</span>
-              <span className="price">Price: {item.price} ticket</span>
-              <span className="size">Participants: {item.size}</span>
+              <span className="winner">Победитель: {item.username}</span>
+              <span className="price">Цена: {item.price} ticket</span>
+              <span className="size">Участники: {item.size}</span>
               <span className="date">
-                Date: {new Date(item.completed_at).toLocaleString()}
+                Дата: {new Date(item.completed_at).toLocaleString()}
               </span>
             </div>
           </div>

@@ -187,8 +187,8 @@ function LobbyPage() {
         }}
       ></div>
 
-      <p>Participants: {participantCount} / {wheel.size}</p>
-      <p>Price: {Number(wheel.price) === 0 ? 'Free' : wheel.price} 🎫</p>
+      <p>Участников: {participantCount} / {wheel.size}</p>
+      <p>Цена: {Number(wheel.price) === 0 ? 'Free' : wheel.price} 🎫</p>
 
       <button
         className="join-buttonLobby"
@@ -203,11 +203,11 @@ function LobbyPage() {
         onClick={handleWatch}
         style={{ marginTop: '10px' }}
       >
-        Watch
+        Смотреть
       </button>
 
       <div className="already-joined-text">
-        Already in The Game <span style={{ fontSize: '18px' }}>✅</span>
+        Уже Вступили <span style={{ fontSize: '18px' }}>✅</span>
       </div>
 
       <ul className="participant-list">

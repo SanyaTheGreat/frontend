@@ -73,11 +73,11 @@ export default function Profile() {
       return;
     }
 
-    const input = prompt('Enter top-up amount (tickets, step 0.1):', '0.1');
+    const input = prompt('Введите сумму пополнения в TON (мин.шаг 0.1)  100⭐= 0.57💎 :', '0.1');
     const tickets = parseFloat(input);
     const valid = Number.isFinite(tickets) && tickets >= 0.1 && Math.abs(tickets * 10 - Math.round(tickets * 10)) < 1e-9;
     if (!valid) {
-      toast.warning('Amount must be ≥ 0.1 with a 0.1 step');
+      toast.warning('Сумма должна быть ≥ 0.1 с минимальным шагом 0.1 ');
       return;
     }
 
@@ -111,7 +111,7 @@ export default function Profile() {
   };
 
   const handleTopUp = async () => {
-    const amountInput = prompt('Enter the amount in TON:');
+    const amountInput = prompt('введите сумму в TON:');
     const amount = parseFloat(amountInput);
     if (isNaN(amount) || amount <= 0) {
       toast.warning('Введите корректную сумму.');
@@ -131,7 +131,7 @@ export default function Profile() {
           },
         ],
       });
-      toast.success('Transaction Send');
+      toast.success('Тразакция отправлена');
     } catch (error) {
       toast.error('Error Sending TON');
     }
@@ -157,13 +157,13 @@ export default function Profile() {
 
   const handleReferralWithdraw = async () => {
     if (!profile?.wallet) {
-      toast.error('Wallet not connected');
+      toast.error('Кошелек не подключен');
       return;
     }
 
     const amount = referrals?.referral_earnings ?? 0;
     if (amount < 3) {
-      toast.warning('min.Amount — 3 TON');
+      toast.warning('мин.сумма — 3 TON');
       return;
     }
 
@@ -223,7 +223,7 @@ export default function Profile() {
       </div>
 
       <div className="balance-actions-row">
-        <div className="balance-label">Balance</div>
+        <div className="balance-label">Баланс</div>
         <div className="balance-display">
           <span className="ton-icon">🪙</span>
           <span>
@@ -233,28 +233,28 @@ export default function Profile() {
           </span>
         </div>
         <div className="balance-buttons">
-          <button className="btn btn-stars" onClick={handleTopUpStars}>Purchase ⭐</button>
-          <button className="btn btn-ton" onClick={handleTopUp}>Purchase 💎</button>
+          <button className="btn btn-stars" onClick={handleTopUpStars}>Пополнить⭐</button>
+          <button className="btn btn-ton" onClick={handleTopUp}>Пополнить💎</button>
         </div>
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">👥 Referrals</div>
+        <div className="profile-title">👥 Реферралы</div>
         <div className="referral-flex-row">
           <div>
-            <div className="profile-row">Count: {referrals?.referral_count ?? 0}</div>
-            <div className="profile-row">Earn: {referrals?.referral_earnings ?? 0} 💎 TON</div>
+            <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
+            <div className="profile-row">Заработано: {referrals?.referral_earnings ?? 0} 💎 TON</div>
           </div>
           <div className="referral-button-wrapper">
             <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
-              Withdraw
+              Вывод
             </button>
           </div>
         </div>
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🔗 Your referral link</div>
+        <div className="profile-title">🔗 Твоя Реферралка </div>
         <div className="profile-ref-wrapper">
           <input
             type="text"
@@ -263,12 +263,12 @@ export default function Profile() {
             value={`https://t.me/FightForGift_bot?start=${user.id}`}
             onClick={(e) => e.target.select()}
           />
-          <button onClick={handleCopyRefLink} className="copy-btn">Copy 🔗</button>
+          <button onClick={handleCopyRefLink} className="copy-btn"> 🔗</button>
         </div>
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🕘 Purchase History</div>
+        <div className="profile-title">🕘 История Пополнений</div>
         <ul className="profile-history-list">
           {purchases.length === 0 && <li>Still nothing...</li>}
           {purchases.map((item, i) => (
