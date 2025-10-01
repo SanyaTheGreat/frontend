@@ -73,7 +73,7 @@ export default function Profile() {
       return;
     }
 
-    const input = prompt('Введите сумму пополнения в TON (мин.шаг 0.1)  100⭐= 0.57💎 :', '0.1');
+    const input = prompt('Введите сумму пополнения в TON (мин.шаг 0.1)  23⭐= 0.1💎 :', '0.1');
     const tickets = parseFloat(input);
     const valid = Number.isFinite(tickets) && tickets >= 0.1 && Math.abs(tickets * 10 - Math.round(tickets * 10)) < 1e-9;
     if (!valid) {
