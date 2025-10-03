@@ -205,7 +205,7 @@ function LobbyPage() {
       ></div>
 
       <p>Участников: {participantCount} / {wheel.size}</p>
-      <p>Цена: {Number(wheel.price) === 0 ? 'Free' : wheel.price} 🎫</p>
+      <p>Цена: {Number(wheel.price) === 0 ? 'Free' : wheel.price} 💎 </p>
 
       <button
         className="join-buttonLobby"
