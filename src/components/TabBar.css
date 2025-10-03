@@ -2,7 +2,7 @@
 .tab-bar {
     position: fixed;
     bottom: 0px;
-    width: 100%;
+    width: 98%;
     left: 50%;
     transform: translateX(-50%); /* Центрирование по горизонтали */
     background-color: #1b263b;
