@@ -16,6 +16,19 @@ function Home() {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const wa = window?.Telegram?.WebApp;
+    const p =
+      wa?.initDataUnsafe?.start_param ||
+      new URLSearchParams(window.location.search).get('tgWebAppStartParam');
+
+      if (p?.startsWith('lobby_')) {
+        const wheelId = p.slice('lobby_'.length);
+        if (wheelId) navigate(`/lobby/${wheelId}`, { replace: true });
+      }
+    }, [navigate]);
+
+
   const containerRefs = useRef({});
   const animRefs = useRef({});
   const playedOnceRef = useRef({});

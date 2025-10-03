@@ -6,6 +6,9 @@ import lottie from 'lottie-web';
 import 'react-toastify/dist/ReactToastify.css';
 import './LobbyPage.css';
 
+// ← укажи ник своего бота (без @)
+const BOT = 'your_bot_username';
+
 function LobbyPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -166,6 +169,20 @@ function LobbyPage() {
     navigate(`/wheel/${id}`);
   };
 
+  // deep link для шаринга
+  const shareDeepLink = `https://t.me/${BOT}?startapp=lobby_${id}`;
+
+  // открыть родной «поделиться в Telegram» со списком чатов/пользователей
+  const openTelegramShare = () => {
+    const wa = window?.Telegram?.WebApp;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(shareDeepLink)}&text=${encodeURIComponent('Залетай в мой розыгрыш!')}`;
+    if (wa?.openTelegramLink) {
+      wa.openTelegramLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
   if (!wheel) return <div>Loading...</div>;
 
   return (
@@ -198,13 +215,27 @@ function LobbyPage() {
         {loading ? 'Joining...' : 'Join'}
       </button>
 
-      <button
-        className="watch-buttonLobby"
-        onClick={handleWatch}
-        style={{ marginTop: '10px' }}
+      {/* Две кнопки в один ряд: Смотреть + Поделиться */}
+      <div
+        className="action-row"
+        style={{ display: 'flex', gap: 10, width: '100%', margin: '10px 0 20px 0' }}
       >
-        Смотреть
-      </button>
+        <button
+          className="watch-buttonLobby"
+          onClick={handleWatch}
+          style={{ flex: 1, width: 'auto', margin: 0 }}
+        >
+          Смотреть
+        </button>
+
+        <button
+          className="lobby-button"
+          onClick={openTelegramShare}
+          style={{ flex: 1, width: 'auto', margin: 0 }}
+        >
+          Поделиться
+        </button>
+      </div>
 
       <div className="already-joined-text">
         Уже Вступили <span style={{ fontSize: '18px' }}>✅</span>
