@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './LobbyPage.css';
 
 // ← укажи ник своего бота (без @)
-const BOT = 'your_bot_username';
+const BOT = 'fightforgift_bot';
 
 function LobbyPage() {
   const { id } = useParams();
