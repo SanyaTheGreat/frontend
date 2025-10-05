@@ -448,5 +448,29 @@
     "edge_color": "#4b825b",
     "pattern_color": "#1c491f",
     "text_color": "#d8f5de"
+  },
+  "Cupcake-132412": {
+    "center_color": "#b17da5",
+    "edge_color": "#8c577a",
+    "pattern_color": "#652852",
+    "text_color": "#f0c4e2"
+  },
+  "FreshSocks-115594": {
+    "center_color": "#d09932",
+    "edge_color": "#b77431",
+    "pattern_color": "#7d3600",
+    "text_color": "#ffd9b3"
+  },
+  "SnoopDogg-430792": {
+    "center_color": "#a980f3",
+    "edge_color": "#5b62d8",
+    "pattern_color": "#3722ab",
+    "text_color": "#d8d8ff"
+  },
+  "PetSnake-90189": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
   }
 }
