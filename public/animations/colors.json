@@ -472,5 +472,23 @@
     "edge_color": "#7e735b",
     "pattern_color": "#504429",
     "text_color": "#f2e5cd"
+  },
+  "SnakeBox-110524": {
+    "center_color": "#8ab163",
+    "edge_color": "#559345",
+    "pattern_color": "#126b00",
+    "text_color": "#d5fbc8"
+  },
+  "HangingStar-25144": {
+    "center_color": "#aeb85a",
+    "edge_color": "#559345",
+    "pattern_color": "#466a07",
+    "text_color": "#d8f2c2"
+  },
+  "PetSnake-130903": {
+    "center_color": "#b1907e",
+    "edge_color": "#7c6356",
+    "pattern_color": "#4a3226",
+    "text_color": "#ebd4c8"
   }
 }
