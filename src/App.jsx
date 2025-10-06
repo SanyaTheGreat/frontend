@@ -7,6 +7,7 @@ import LobbyPage from './pages/Lobby/LobbyPage';
 import WheelPage from './pages/WheelPage/WheelPage';
 import Profile from './pages/Profile/Profile';
 import InGame from './pages/InGame/InGame.jsx';
+import Leaderboard from './pages/Leaderboard/Leaderboard';
 
 import TabBar from './components/TabBar';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
@@ -29,6 +30,7 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/ingame" element={<InGame />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
       </div>
     </TonConnectUIProvider>
