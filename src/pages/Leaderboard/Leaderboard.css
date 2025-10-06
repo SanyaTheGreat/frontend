@@ -91,3 +91,11 @@
 .skeleton .sk { background: rgba(255,255,255,.12); border-radius:8px; }
 .sk-text { height:12px; width:60%; }
 .sk-text.short { width:40%; }
+
+/* центрируем любые аватары */
+.lb-avatar,
+.lb-avatar-fallback {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
