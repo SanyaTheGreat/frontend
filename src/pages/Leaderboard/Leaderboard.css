@@ -1,56 +1,63 @@
-/* фон и базовая типографика — как в Profile.css */
 .lb-wrapper {
   background-color: #0d1b2a;
   color: #fff;
   min-height: 100vh;
   padding: 20px;
-  padding-bottom: 100px; /* под таббар */
+  padding-bottom: 100px;
   box-sizing: border-box;
   font-family: 'Arial', sans-serif;
 }
 
-/* заголовок */
+/* header */
 .lb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
 .lb-title  { font-size:20px; font-weight:700; }
-
-/* блок TOP-3 — карточки как .profile-block */
-.lb-top3 {
-  display:grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap:12px;
-  margin-bottom:16px;
+.lb-badge  {
+  font-size: 12px; background:#415a77; padding:4px 10px; border-radius:999px;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
 }
-.lb-podium {
-  background-color:#415a77;
-  border-radius:12px;
-  padding:16px 12px;
+
+/* ПЬЕДЕСТАЛ (без карточек вокруг) */
+.lb-podium-wrap{
+  display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;
+  align-items:end; margin-bottom:16px;
+}
+.step { text-align:center; position:relative; }
+.step .lb-username{ margin-top:6px; }
+.step .lb-amount{ margin-top:2px; }
+
+/* нижние «ступени» пьедестала */
+.base {
+  margin-top:8px;
+  border-radius: 8px 8px 0 0;
+  background:#415a77;
+  color:#fff;
+  font-weight:800;
+  display:flex; align-items:center; justify-content:center;
   box-shadow:0 4px 8px rgba(0,0,0,.3);
-  text-align:center;
-  position:relative;
 }
-.lb-podium-1 { transform: translateY(-4px); }
+.base-1 { height:72px; }
+.base-2 { height:56px; }
+.base-3 { height:44px; }
 
-/* контейнеры под Lottie анимации призов (без фона) */
-.lb-tgs { width: 64px; height: 64px; margin: 0 auto 6px; }
-.lb-tgs-big { width: 84px; height: 84px; }
+/* контейнеры под Lottie анимации */
+.lb-tgs { width:64px; height:64px; margin:0 auto 6px; }
+.lb-tgs-big { width:84px; height:84px; }
 
+/* аватары/текст */
 .lb-avatar { border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.25); }
 .lb-avatar-fallback {
   border-radius:50%; text-align:center; background:#1b263b; color:#f0f0f0; font-weight:700; border:2px solid rgba(255,255,255,.2);
 }
-.lb-username { font-weight:700; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lb-username.small { font-size: 12px; }
-.lb-amount   { font-weight:800; margin-top:4px; }
+.lb-username { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lb-username.small { font-size:12px; }
+.lb-amount { font-weight:800; }
 .lb-amount.small { font-size:12px; }
-.lb-star { margin-left: 4px; opacity: .9; }
+.lb-star { margin-left:4px; opacity:.9; }
 
-/* карточка «Ваше место» — стилистика как profile-блоки */
+/* ваш блок */
 .lb-me-card {
   display:grid; grid-template-columns:56px 1fr 110px; align-items:center;
-  background-color:#415a77;
-  border-radius:12px;
-  padding:12px;
-  margin-bottom:16px;
+  background-color:#415a77; border-radius:12px; padding:12px; margin-bottom:16px;
   box-shadow:0 4px 8px rgba(0,0,0,.3);
 }
 .lb-me-left  { text-align:center; }
@@ -61,11 +68,9 @@
 .lb-me-right .lb-amount { font-size:16px; }
 .lb-me-right .lb-amount-sub { font-size:12px; opacity:.8; }
 
-/* общий список — как список в профиле */
+/* список */
 .lb-list {
-  background-color:#415a77;
-  border-radius:12px;
-  box-shadow:0 4px 8px rgba(0,0,0,.3);
+  background-color:#415a77; border-radius:12px; box-shadow:0 4px 8px rgba(0,0,0,.3);
   overflow:hidden;
 }
 .lb-row {
@@ -82,7 +87,7 @@
 
 .lb-error { padding:16px; text-align:center; color:#ffd1d1; }
 
-/* skeleton */
+/* скелетоны */
 .skeleton .sk { background: rgba(255,255,255,.12); border-radius:8px; }
 .sk-text { height:12px; width:60%; }
 .sk-text.short { width:40%; }
