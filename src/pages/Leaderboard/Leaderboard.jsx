@@ -169,7 +169,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
           <div ref={a2Ref} className="lb-tgs" />
           <Avatar src={second.avatar_url} username={second.username} size={56} />
           <div className="lb-username small">{formatUsername(second.username)}</div>
-          <div className="lb-amount small">{formatAmount(second.total_spent)} ⭐</div>
+          <div className="lb-amount small">{formatAmount(second.total_spent)} 💎</div>
           <div className="block base base-2">2</div>
         </div>
       )}
@@ -179,7 +179,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
           <div ref={a1Ref} className="lb-tgs lb-tgs-big" />
           <Avatar src={first.avatar_url} username={first.username} size={72} />
           <div className="lb-username">{formatUsername(first.username)}</div>
-          <div className="lb-amount">{formatAmount(first.total_spent)} ⭐</div>
+          <div className="lb-amount">{formatAmount(first.total_spent)} 💎</div>
           <div className="block base base-1">1</div>
         </div>
       )}
@@ -189,7 +189,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
           <div ref={a3Ref} className="lb-tgs" />
           <Avatar src={third.avatar_url} username={third.username} size={56} />
           <div className="lb-username small">{formatUsername(third.username)}</div>
-          <div className="lb-amount small">{formatAmount(third.total_spent)} ⭐</div>
+          <div className="lb-amount small">{formatAmount(third.total_spent)} 💎</div>
           <div className="block base base-3">3</div>
         </div>
       )}
@@ -207,7 +207,7 @@ function Row({ row, highlight }) {
       </div>
       <div className="lb-col-amount">
         <span className="lb-amount">{formatAmount(row.total_spent)}</span>
-        <span className="lb-star">⭐</span>
+        <span className="lb-star">💎</span>
       </div>
     </div>
   );
