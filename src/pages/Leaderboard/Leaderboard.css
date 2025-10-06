@@ -98,3 +98,8 @@
   margin-left: auto;
   margin-right: auto;
 }
+
+.lb-me-right { text-align: right; white-space: nowrap; }
+.lb-me-right .lb-amount,
+.lb-me-right .lb-amount-sub { display: inline-block; vertical-align: middle; }
+.lb-me-right .lb-amount-sub { margin-left: 6px; } /* небольшой отступ */
