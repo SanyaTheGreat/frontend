@@ -9,6 +9,7 @@ const TabBar = () => {
       <Link to="/ingame" className="tab-link">In Game</Link>
       <Link to="/profile" className="tab-link">Profile</Link>
       <Link to="/leaderboard" className="tab-link">Top</Link>
+      <Link to="/spins" className="tab-btn">Spin</Link>
     </div>
   );
 };
