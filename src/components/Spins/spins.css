@@ -1,0 +1,76 @@
+@keyframes popIn {
+0% { transform: scale(0.9); opacity: 0; }
+100% { transform: scale(1); opacity: 1; }
+}
+
+.spins-page {
+cursor: pointer;
+}
+
+
+.case-chip.active { color: #fff; border-color: #3a8fff; background: #243247; }
+
+
+.spin-wheel-wrap {
+display: grid;
+place-items: center;
+margin: 8px 0;
+}
+
+
+.spin-action {
+display: grid;
+gap: 8px;
+}
+
+
+.spin-button {
+width: 100%;
+border: none;
+border-radius: 12px;
+padding: 14px 16px;
+font-weight: 800;
+background: #ffd24d;
+color: #222;
+}
+
+
+.spin-button:disabled { opacity: .6; }
+
+
+.result-banner {
+border-radius: 16px;
+padding: 12px;
+background: #1f2229;
+color: #fff;
+animation: popIn .15s ease-out;
+}
+
+
+.result-cta {
+display: grid;
+grid-auto-flow: column;
+gap: 8px;
+}
+
+
+.ghost-btn, .primary-btn {
+padding: 10px 12px;
+border-radius: 10px;
+border: 1px solid #374151;
+background: #2a2e37;
+color: #e5e7eb;
+}
+
+
+.primary-btn { background: #3a8fff; border-color: #3a8fff; color: #fff; }
+
+
+.wheel-pointer {
+width: 0;
+height: 0;
+border-left: 10px solid transparent;
+border-right: 10px solid transparent;
+border-bottom: 16px solid #fff;
+margin-bottom: 6px;
+}
