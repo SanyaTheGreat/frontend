@@ -99,6 +99,20 @@
   margin-right: auto;
 }
 
+.step-2 .lb-avatar,
+.step-2 .lb-avatar-fallback {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.step-3 .lb-avatar,
+.step-3 .lb-avatar-fallback {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .lb-me-right { text-align: right; white-space: nowrap; }
 .lb-me-right .lb-amount,
 .lb-me-right .lb-amount-sub { display: inline-block; vertical-align: middle; }
