@@ -27,7 +27,7 @@ export default function SpinPage() {
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
   const telegramIdRef = useRef(getTelegramId());
 
-  // курс конвертации TON -> ⭐
+  // курс конвертации из таблицы fx_rates
   const [fx, setFx] = useState({ stars_per_ton: 0, ton_per_100stars: 0, fee_markup: 0 });
 
   // сторожевой таймер окончания анимации
@@ -47,15 +47,15 @@ export default function SpinPage() {
     })();
   }, []);
 
-  // курс из fx_rates
+  // загрузка курсов
   useEffect(() => {
     (async () => {
-      const { data, error: fxErr } = await supabase
+      const { data } = await supabase
         .from("fx_rates")
         .select("stars_per_ton, ton_per_100stars, fee_markup")
         .limit(1)
         .single();
-      if (!fxErr && data) {
+      if (data) {
         setFx({
           stars_per_ton: Number(data.stars_per_ton || 0),
           ton_per_100stars: Number(data.ton_per_100stars || 0),
@@ -74,15 +74,14 @@ export default function SpinPage() {
         const list = await fetchCaseChance(activeCase.id);
         // ожидаем поля: id, nft_name, slug, percent, payout_value, price, is_active
         const onlyActive = list.filter((x) => x.is_active);
-        // нормализуем для колеса
         setChances(
           onlyActive.map((x) => ({
             id: x.id,
             label: x.nft_name,
             slug: x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
             percent: Number(x.percent || 0),
-            price: Number(x.price || 0),            // базовая цена (TON), если пригодится
-            payout_value: Number(x.payout_value || 0), // TON для обмена
+            price: Number(x.price || 0),              // TON (fallback)
+            payout_value: Number(x.payout_value || 0) // TON для обмена
           }))
         );
       } catch (e) {
@@ -120,7 +119,6 @@ export default function SpinPage() {
     setTargetId(null);
     setSpinId(null);
 
-    // очистить старый таймер, если был
     if (spinWatchdogRef.current) {
       clearTimeout(spinWatchdogRef.current);
       spinWatchdogRef.current = null;
@@ -137,13 +135,12 @@ export default function SpinPage() {
       setSpinId(resp.spin_id);
 
       if (resp.status === "lose") {
-        // визуально крутим до сегмента lose (ищем по label/slug); если нет — к первому сегменту
         const loseSeg =
-          chances.find((s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose") || chances[0];
+          chances.find((s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose") ||
+          chances[0];
         setTargetId(loseSeg?.id || null);
         setResult({ status: "lose" });
 
-        // сторожевой таймер
         spinWatchdogRef.current = setTimeout(() => {
           setSpinning(false);
           spinWatchdogRef.current = null;
@@ -152,7 +149,6 @@ export default function SpinPage() {
         setTargetId(resp.prize?.chance_id || null);
         setResult({ status: "pending", prize: resp.prize });
 
-        // сторожевой таймер
         spinWatchdogRef.current = setTimeout(() => {
           setSpinning(false);
           spinWatchdogRef.current = null;
@@ -198,7 +194,6 @@ export default function SpinPage() {
     try {
       const resp = await postReroll(spinId);
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
-      // обновить баланс после обмена
       const { data } = await supabase
         .from("users")
         .select("stars, tickets")
@@ -210,7 +205,7 @@ export default function SpinPage() {
     }
   }
 
-  // вью сегментов для колеса
+  // сегменты для колеса
   const wheelSegments = useMemo(() => chances, [chances]);
 
   // баланс для отображения: звёзды только целые
@@ -218,7 +213,7 @@ export default function SpinPage() {
 
   return (
     <>
-      {/* Фиксированный баланс в правом верхнем углу (только один раз) */}
+      {/* Фиксированный баланс в правом верхнем углу */}
       <div
         style={{
           position: "fixed",
@@ -240,7 +235,7 @@ export default function SpinPage() {
       </div>
 
       <div className="spins-page">
-        {/* Header (без дубля баланса) */}
+        {/* Header */}
         <div className="spins-header">
           <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
         </div>
@@ -253,7 +248,7 @@ export default function SpinPage() {
           onSpinEnd={handleSpinEnd}
         />
 
-        {/* Ползунок выбора кейса (без названий) */}
+        {/* Ползунок выбора кейса */}
         <CaseRange count={cases.length} index={index} onChange={setIndex} />
 
         {/* Управление */}
@@ -274,6 +269,7 @@ export default function SpinPage() {
             chances={chances}
             allowStars={allowStars}
             starsPerTon={fx.stars_per_ton}
+            feeMarkup={fx.fee_markup}
             onClaim={handleClaim}
             onReroll={handleReroll}
           />
@@ -312,7 +308,8 @@ function CaseRange({ count, index, onChange }) {
   );
 }
 
-function ResultBlock({ result, chances, allowStars, starsPerTon, onClaim, onReroll }) {
+/* Блок результата со встроенной логикой обмена */
+function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, onClaim, onReroll }) {
   if (result.status === "lose") {
     return <div className="result-banner">Не повезло. Попробуй ещё!</div>;
   }
@@ -320,11 +317,23 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, onClaim, onRero
   if (result.status === "pending") {
     const ch = chances.find((x) => x.id === result.prize?.chance_id);
 
-    // базовая сумма в TON: сначала payout_value, если его нет — price
-    const baseTon = Number(ch?.payout_value ?? ch?.price ?? 0);
+    // базовая сумма в TON: берём первое валидное > 0 из списка кандидатов
+    const candidates = [
+      ch?.payout_value,
+      ch?.price,
+      result.prize?.payout_value,
+      result.prize?.price,
+    ].map((v) => Number(v));
+    const baseTon = candidates.find((v) => Number.isFinite(v) && v > 0) || 0;
+
+    // конвертация TON -> ⭐ с учётом fee_markup (уменьшаем выдачу)
+    const starsAmount = Math.max(
+      0,
+      Math.ceil(baseTon * (starsPerTon || 0) * (1 - (feeMarkup || 0)))
+    );
 
     const exchangeLabel = allowStars
-      ? `Обменять на ${Math.max(0, Math.ceil(baseTon * (starsPerTon || 0)))} ⭐`
+      ? `Обменять на ${starsAmount} ⭐`
       : `Обменять на ${baseTon} TON`;
 
     return (
@@ -345,10 +354,7 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, onClaim, onRero
     return <div className="result-banner">Подарок отправлен! Проверь Telegram 🎁</div>;
   }
 
-  // после обмена ничего не показываем
-  if (result.status === "reroll") {
-    return null;
-  }
+  if (result.status === "reroll") return null;
 
   return null;
 }
