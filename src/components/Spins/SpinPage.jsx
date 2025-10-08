@@ -164,11 +164,33 @@ export default function SpinPage() {
   const wheelSegments = useMemo(() => chances, [chances]);
 
   return (
+    <>
+      {/* Фиксированный баланс в правом верхнем углу */}
+      <div
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 12,
+          zIndex: 1000,
+          background: "rgba(0,0,0,0.5)",
+          borderRadius: 20,
+          padding: "6px 12px",
+          color: "#fff",
+          fontWeight: 700,
+          fontSize: 14,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        {allowStars ? `⭐ ${balance.stars}` : `${balance.tickets} TON`}
+      </div>
+
       <div className="spins-page">
-        <div className="spins-page" style={{ position: "relative", zIndex: 1 }}></div>
         {/* Header */}
         <div className="spins-header">
           <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
+          {/* Старую плашку баланса можно оставить/удалить при желании */}
           <div className="balance-pill">
             {allowStars ? `⭐ ${balance.stars}` : `${balance.tickets} TON`}
           </div>
@@ -176,11 +198,11 @@ export default function SpinPage() {
 
         {/* Выбор кейса (слайдер) */}
         <CaseSlider
-        items={cases}
-        index={index}
-        onPrev={() => setIndex((p) => Math.max(0, p - 1))}
-        onNext={() => setIndex((p) => Math.min(cases.length - 1, p + 1))}
-        onPick={(i) => setIndex(i)}
+          items={cases}
+          index={index}
+          onPrev={() => setIndex((p) => Math.max(0, p - 1))}
+          onNext={() => setIndex((p) => Math.min(cases.length - 1, p + 1))}
+          onPick={(i) => setIndex(i)}
         />
 
         {/* Колесо */}
@@ -213,9 +235,12 @@ export default function SpinPage() {
         )}
 
         {error && (
-          <div className="result-banner" style={{ background: "#3b1e1e", color: "#ffb4b4" }}>{error}</div>
+          <div className="result-banner" style={{ background: "#3b1e1e", color: "#ffb4b4" }}>
+            {error}
+          </div>
         )}
       </div>
+    </>
   );
 }
 
@@ -267,15 +292,3 @@ function ResultBlock({ result, chances, onClaim, onReroll }) {
 
   return null;
 }
-
-// ===============================
-// PATCH: src/components/TabBar.jsx — добавить вкладку
-// ===============================
-// Найди массив/список табов и добавь пункт:
-// { to: "/spins", label: "Spins" }
-
-// ===============================
-// PATCH: src/App.jsx — добавить роут
-// ===============================
-// import SpinPage from "./components/Spins/SpinPage";
-// <Route path="/spins" element={<SpinPage/>} />
