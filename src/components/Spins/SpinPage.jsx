@@ -27,6 +27,9 @@ export default function SpinPage() {
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
   const telegramIdRef = useRef(getTelegramId());
 
+  // сторожевой таймер окончания анимации
+  const spinWatchdogRef = useRef(null);
+
   const activeCase = cases[index] || null;
 
   // загрузка кейсов
@@ -94,6 +97,12 @@ export default function SpinPage() {
     setTargetId(null);
     setSpinId(null);
 
+    // очистить старый таймер, если был
+    if (spinWatchdogRef.current) {
+      clearTimeout(spinWatchdogRef.current);
+      spinWatchdogRef.current = null;
+    }
+
     try {
       const payload = {
         case_id: activeCase.id,
@@ -103,14 +112,30 @@ export default function SpinPage() {
       const resp = await postSpin(payload);
       // resp: { spin_id, status: 'pending'|'lose', prize?{chance_id,...} }
       setSpinId(resp.spin_id);
+
       if (resp.status === "lose") {
-        // визуально крутим до сегмента lose (ищем по label/slug)
-        const loseSeg = chances.find((s) => s.label?.toLowerCase() === "lose" || s.slug === "lose");
+        // визуально крутим до сегмента lose (ищем по label/slug); если нет — к первому сегменту
+        const loseSeg =
+          chances.find(
+            (s) => s.label?.toLowerCase() === "lose" || s.slug === "lose"
+          ) || chances[0];
         setTargetId(loseSeg?.id || null);
         setResult({ status: "lose" });
+
+        // сторожевой таймер: если transitionend не придёт — отпустить кнопку
+        spinWatchdogRef.current = setTimeout(() => {
+          setSpinning(false);
+          spinWatchdogRef.current = null;
+        }, 2600);
       } else {
         setTargetId(resp.prize?.chance_id || null);
         setResult({ status: "pending", prize: resp.prize });
+
+        // сторожевой таймер
+        spinWatchdogRef.current = setTimeout(() => {
+          setSpinning(false);
+          spinWatchdogRef.current = null;
+        }, 2600);
       }
 
       // обновляем баланс после списания
@@ -126,8 +151,13 @@ export default function SpinPage() {
     }
   }
 
+  // окончание анимации (если событие пришло — снимаем таймер и разблокируем кнопку)
   function handleSpinEnd() {
-    setTimeout(() => setSpinning(false), 150);
+    if (spinWatchdogRef.current) {
+      clearTimeout(spinWatchdogRef.current);
+      spinWatchdogRef.current = null;
+    }
+    setSpinning(false);
   }
 
   async function handleClaim() {
@@ -203,11 +233,7 @@ export default function SpinPage() {
         />
 
         {/* Ползунок выбора кейса (без названий) */}
-        <CaseRange
-          count={cases.length}
-          index={index}
-          onChange={setIndex}
-        />
+        <CaseRange count={cases.length} index={index} onChange={setIndex} />
 
         {/* Управление */}
         <SpinControls
@@ -274,7 +300,7 @@ function ResultBlock({ result, chances, onClaim, onReroll }) {
       <div className="result-banner" style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={`/animations/${ch?.slug}.png`} alt="prize" width={40} height={40} />
-          <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
+        <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
         </div>
         <div className="result-cta">
           <button className="primary-btn" onClick={onClaim}>Забрать</button>
@@ -285,7 +311,7 @@ function ResultBlock({ result, chances, onClaim, onReroll }) {
   }
 
   if (result.status === "reward_sent") {
-    return <div className="result-banner">Подарок cкоро будет отправлен! Проверь лс от @FightForGift 🎁</div>;
+    return <div className="result-banner">Подарок отправлен! Проверь Telegram 🎁</div>;
   }
 
   // после обмена ничего не показываем
