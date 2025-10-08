@@ -10,57 +10,100 @@ import "./spins.css";
  */
 export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd }) {
   const wheelRef = useRef(null);
-  const [angle, setAngle] = useState(0);
-  const [transitionOn, setTransitionOn] = useState(false);
 
+  // текущий угол (в градусах, 0..∞)
+  const [angle, setAngle] = useState(0);
+
+  // rAF-анимация
+  const rafRef = useRef(null);
+  const startTimeRef = useRef(0);
+  const startAngleRef = useRef(0);
+  const endAngleRef = useRef(0);
+  const durationRef = useRef(0);
+
+  // предрасчёт сегментов
   const cumulated = useMemo(() => {
     let acc = 0;
     return segments.map((s) => {
-      const start = acc; // в градусах 0..360
+      const start = acc;
       const sweep = (s.percent / 100) * 360;
       acc += sweep;
       return { ...s, start, sweep };
     });
   }, [segments]);
 
-  // 1) Когда начинаем новый спин — нормализуем угол без анимации и затем включаем transition
-  useEffect(() => {
-    if (!isSpinning) return;
-    if (!wheelRef.current) return;
+  // нормализация угла в 0..360 (для вычислений)
+  const normalize360 = (deg) => ((deg % 360) + 360) % 360;
 
-    // выключаем transition и приводим угол к диапазону 0..360
-    setTransitionOn(false);
-    setAngle((prev) => ((prev % 360) + 360) % 360);
+  // easeOutCubic: плавная инерционная остановка
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
-    // форсим reflow, потом включаем transition вновь
-    const el = wheelRef.current;
-    // eslint-disable-next-line no-unused-expressions
-    el.getBoundingClientRect();
-    setTransitionOn(true);
-  }, [isSpinning]);
-
-  // 2) Вычисляем финальный угол для целевого сегмента и запускаем вращение
+  // запуск анимации: на каждый новый спин с целевым сегментом
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
+
+    // вычисляем центр целевого сегмента
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
     const center = seg.start + seg.sweep / 2; // градусы
-    const fullTurns = 5; // количество полных оборотов
-    const final = fullTurns * 360 + (360 - center);
 
-    requestAnimationFrame(() => {
-      setAngle(final);
-    });
+    // текущий и финальный угол:
+    const current = angle; // не нормализуем — накапливаем обороты для естественности
+    const currentNorm = normalize360(current);
+
+    // куда нужно прийти (стрелка сверху => хотим поставить центр под 0°)
+    const deltaToCenter = (360 - center); // в 0° сверху
+    // чтобы было реалистично — крутим 5–6 полных оборотов + чуть рандома
+    const fullTurns = 5 + Math.random() * 1; // 5..6 оборотов
+    const final = current + fullTurns * 360 + deltaToCenter;
+
+    // длительность с лёгкой вариативностью (3.2–3.6s)
+    const duration = 3200 + Math.random() * 400;
+
+    // подготовка анимации
+    cancelAnim(); // если вдруг что-то крутилось
+    startTimeRef.current = performance.now();
+    startAngleRef.current = current;
+    endAngleRef.current = final;
+    durationRef.current = duration;
+
+    // запуск rAF
+    rafRef.current = requestAnimationFrame(tick);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpinning, targetId, cumulated]);
 
-  // 3) Окончание анимации
-  useEffect(() => {
-    const el = wheelRef.current;
-    if (!el) return;
-    const handler = () => onSpinEnd?.();
-    el.addEventListener("transitionend", handler);
-    return () => el.removeEventListener("transitionend", handler);
-  }, [onSpinEnd]);
+  // кадр анимации
+  const tick = (now) => {
+    const start = startTimeRef.current;
+    const end = endAngleRef.current;
+    const dur = durationRef.current;
+
+    const t = Math.min(1, (now - start) / dur);
+    const k = easeOutCubic(t);
+
+    const value = startAngleRef.current + (end - startAngleRef.current) * k;
+    setAngle(value);
+
+    if (t < 1) {
+      rafRef.current = requestAnimationFrame(tick);
+    } else {
+      // гарантируем финальное положение и вызываем коллбек
+      setAngle(end);
+      rafRef.current = null;
+      onSpinEnd?.();
+    }
+  };
+
+  const cancelAnim = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  };
+
+  // при размонтировании отменяем анимацию
+  useEffect(() => cancelAnim, []);
 
   return (
     <div className="spin-wheel-wrap">
@@ -72,7 +115,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
           height: 340,
           borderRadius: "50%",
           position: "relative",
-          transition: transitionOn ? "transform 3.5s cubic-bezier(0.07, 0.72, 0.21, 1.02)" : "none",
+          // никаких CSS-transition — всё на rAF
           transform: `rotate(${angle}deg)`,
           background: "#0f1218",
           border: "6px solid #1f2229",
