@@ -11,6 +11,7 @@ import "./spins.css";
 export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd }) {
   const wheelRef = useRef(null);
   const [angle, setAngle] = useState(0);
+  const [transitionOn, setTransitionOn] = useState(false);
 
   const cumulated = useMemo(() => {
     let acc = 0;
@@ -22,24 +23,37 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     });
   }, [segments]);
 
-  // вычисляем финальный угол так, чтобы стрелка (сверху) попала в середину целевого сегмента
+  // 1) Когда начинаем новый спин — нормализуем угол без анимации и затем включаем transition
+  useEffect(() => {
+    if (!isSpinning) return;
+    if (!wheelRef.current) return;
+
+    // выключаем transition и приводим угол к диапазону 0..360
+    setTransitionOn(false);
+    setAngle((prev) => ((prev % 360) + 360) % 360);
+
+    // форсим reflow, потом включаем transition вновь
+    const el = wheelRef.current;
+    // eslint-disable-next-line no-unused-expressions
+    el.getBoundingClientRect();
+    setTransitionOn(true);
+  }, [isSpinning]);
+
+  // 2) Вычисляем финальный угол для целевого сегмента и запускаем вращение
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
     const center = seg.start + seg.sweep / 2; // градусы
-
-    // крутим несколько полных оборотов + приводим центр под стрелку (0° сверху)
-    const fullTurns = 5; // можно увеличить для драматичности
+    const fullTurns = 5; // количество полных оборотов
     const final = fullTurns * 360 + (360 - center);
 
-    // запускаем анимацию через CSS-переход
     requestAnimationFrame(() => {
       setAngle(final);
     });
   }, [isSpinning, targetId, cumulated]);
 
-  // окончание анимации
+  // 3) Окончание анимации
   useEffect(() => {
     const el = wheelRef.current;
     if (!el) return;
@@ -50,7 +64,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 
   return (
     <div className="spin-wheel-wrap">
-      <div className="wheel-pointer"/>
+      <div className="wheel-pointer" />
       <div
         ref={wheelRef}
         style={{
@@ -58,7 +72,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
           height: 340,
           borderRadius: "50%",
           position: "relative",
-          transition: isSpinning ? "transform 2.2s cubic-bezier(.19,1,.22,1)" : "none",
+          transition: transitionOn ? "transform 2.2s cubic-bezier(.19,1,.22,1)" : "none",
           transform: `rotate(${angle}deg)`,
           background: "#0f1218",
           border: "6px solid #1f2229",
@@ -135,4 +149,3 @@ function Segment({ start, sweep, label, slug }) {
     </div>
   );
 }
-
