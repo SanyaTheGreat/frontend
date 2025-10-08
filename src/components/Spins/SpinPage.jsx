@@ -164,57 +164,58 @@ export default function SpinPage() {
   const wheelSegments = useMemo(() => chances, [chances]);
 
   return (
-    <div className="spins-page">
-      {/* Header */}
-      <div className="spins-header">
-        <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
-        <div className="balance-pill">
-          {allowStars ? `⭐ ${balance.stars}` : `${balance.tickets} TON`}
+      <div className="spins-page">
+        <div className="spins-page" style={{ position: "relative", zIndex: 1 }}></div>
+        {/* Header */}
+        <div className="spins-header">
+          <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
+          <div className="balance-pill">
+            {allowStars ? `⭐ ${balance.stars}` : `${balance.tickets} TON`}
+          </div>
         </div>
-      </div>
 
-      {/* Выбор кейса (слайдер) */}
-      <CaseSlider
+        {/* Выбор кейса (слайдер) */}
+        <CaseSlider
         items={cases}
         index={index}
         onPrev={() => setIndex((p) => Math.max(0, p - 1))}
         onNext={() => setIndex((p) => Math.min(cases.length - 1, p + 1))}
         onPick={(i) => setIndex(i)}
-      />
-
-      {/* Колесо */}
-      <SpinWheel
-        segments={wheelSegments}
-        targetId={targetId}
-        isSpinning={spinning}
-        onSpinEnd={handleSpinEnd}
-      />
-
-      {/* Управление */}
-      <SpinControls
-        allowStars={allowStars}
-        priceTon={priceTon}
-        priceStars={priceStars}
-        balanceStars={balance.stars}
-        balanceTickets={balance.tickets}
-        spinning={spinning}
-        onSpin={handleSpin}
-      />
-
-      {/* Результат */}
-      {result && (
-        <ResultBlock
-          result={result}
-          chances={chances}
-          onClaim={handleClaim}
-          onReroll={handleReroll}
         />
-      )}
 
-      {error && (
-        <div className="result-banner" style={{ background: "#3b1e1e", color: "#ffb4b4" }}>{error}</div>
-      )}
-    </div>
+        {/* Колесо */}
+        <SpinWheel
+          segments={wheelSegments}
+          targetId={targetId}
+          isSpinning={spinning}
+          onSpinEnd={handleSpinEnd}
+        />
+
+        {/* Управление */}
+        <SpinControls
+          allowStars={allowStars}
+          priceTon={priceTon}
+          priceStars={priceStars}
+          balanceStars={balance.stars}
+          balanceTickets={balance.tickets}
+          spinning={spinning}
+          onSpin={handleSpin}
+        />
+
+        {/* Результат */}
+        {result && (
+          <ResultBlock
+            result={result}
+            chances={chances}
+            onClaim={handleClaim}
+            onReroll={handleReroll}
+          />
+        )}
+
+        {error && (
+          <div className="result-banner" style={{ background: "#3b1e1e", color: "#ffb4b4" }}>{error}</div>
+        )}
+      </div>
   );
 }
 
