@@ -47,20 +47,32 @@ export default function SpinPage() {
     })();
   }, []);
 
-  // загрузка курсов
+  // загрузка курсов (с учётом RLS / 406)
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("fx_rates")
-        .select("stars_per_ton, ton_per_100stars, fee_markup")
-        .limit(1)
-        .single();
-      if (data) {
+      try {
+        const { data, error } = await supabase
+          .from("fx_rates")
+          .select("stars_per_ton, ton_per_100stars, fee_markup")
+          .eq("id", 1)       // точечный выбор первой записи
+          .maybeSingle();    // не падать, если строк нет (RLS/фильтр)
+
+        if (error) {
+          console.warn("[fx_rates] select error:", error);
+          return;
+        }
+        if (!data) {
+          console.warn("[fx_rates] no rows (RLS policy?)");
+          return;
+        }
+
         setFx({
           stars_per_ton: Number(data.stars_per_ton || 0),
           ton_per_100stars: Number(data.ton_per_100stars || 0),
           fee_markup: Number(data.fee_markup || 0),
         });
+      } catch (e) {
+        console.warn("[fx_rates] unexpected error:", e);
       }
     })();
   }, []);
