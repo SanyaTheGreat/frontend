@@ -54,8 +54,8 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
       <div
         ref={wheelRef}
         style={{
-          width: 280,
-          height: 280,
+          width: 340,
+          height: 340,
           borderRadius: "50%",
           position: "relative",
           transition: isSpinning ? "transform 2.2s cubic-bezier(.19,1,.22,1)" : "none",
