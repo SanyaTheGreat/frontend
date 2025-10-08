@@ -285,12 +285,12 @@ function ResultBlock({ result, chances, onClaim, onReroll }) {
   }
 
   if (result.status === "reward_sent") {
-    return <div className="result-banner">Подарок отправлен! Проверь Telegram 🎁</div>;
+    return <div className="result-banner">Подарок cкоро будет отправлен! Проверь лс от @FightForGift 🎁</div>;
   }
 
+  // после обмена ничего не показываем
   if (result.status === "reroll") {
-    const msg = result.reroll?.message || "Подарок обменян";
-    return <div className="result-banner">{msg}</div>;
+    return null;
   }
 
   return null;
