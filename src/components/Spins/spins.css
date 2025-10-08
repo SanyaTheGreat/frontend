@@ -1,98 +1,103 @@
 @keyframes popIn {
-0% { transform: scale(0.9); opacity: 0; }
-100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
+/* ==== Основные элементы страницы ==== */
 .spins-page {
-cursor: pointer;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  background: transparent;
 }
 
-
-.case-chip.active { color: #fff; border-color: #3a8fff; background: #243247; }
-
+.case-chip.active { 
+  color: #fff; 
+  border-color: #3a8fff; 
+  background: #243247; 
+}
 
 .spin-wheel-wrap {
-display: grid;
-place-items: center;
-margin: 8px 0;
+  display: grid;
+  place-items: center;
+  margin: 8px 0;
 }
-
 
 .spin-action {
-display: grid;
-gap: 8px;
+  display: grid;
+  gap: 8px;
 }
-
 
 .spin-button {
-width: 100%;
-border: none;
-border-radius: 12px;
-padding: 14px 16px;
-font-weight: 800;
-background: #ffd24d;
-color: #222;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-weight: 800;
+  background: #ffd24d;
+  color: #222;
 }
-
 
 .spin-button:disabled { opacity: .6; }
 
-
 .result-banner {
-border-radius: 16px;
-padding: 12px;
-background: #1f2229;
-color: #fff;
-animation: popIn .15s ease-out;
+  border-radius: 16px;
+  padding: 12px;
+  background: #1f2229;
+  color: #fff;
+  animation: popIn .15s ease-out;
 }
-
 
 .result-cta {
-display: grid;
-grid-auto-flow: column;
-gap: 8px;
+  display: grid;
+  grid-auto-flow: column;
+  gap: 8px;
 }
-
 
 .ghost-btn, .primary-btn {
-padding: 10px 12px;
-border-radius: 10px;
-border: 1px solid #374151;
-background: #2a2e37;
-color: #e5e7eb;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  background: #2a2e37;
+  color: #e5e7eb;
 }
 
-
-.primary-btn { background: #3a8fff; border-color: #3a8fff; color: #fff; }
-
+.primary-btn { 
+  background: #3a8fff; 
+  border-color: #3a8fff; 
+  color: #fff; 
+}
 
 .wheel-pointer {
-width: 0;
-height: 0;
-border-left: 10px solid transparent;
-border-right: 10px solid transparent;
-border-bottom: 16px solid #fff;
-margin-bottom: 6px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 16px solid #fff;
+  margin-bottom: 6px;
 }
 
-/* Фон — звёздное небо с параллаксом */
+/* ==== Глубокий фон — звёздное небо ==== */
 .space-bg {
-  position: relative;
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
   background: radial-gradient(1200px 800px at 50% 120%, #0b1020 0%, #060a16 60%, #04070f 100%);
 }
+
 .space-bg::before,
 .space-bg::after {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: -50% -50%;
   background-repeat: repeat;
   pointer-events: none;
-  opacity: .7;
+  opacity: 0.65;
   animation: starDrift 120s linear infinite;
 }
-/* дальние звезды (мелкие, медленные) */
+
+/* дальние звёзды */
 .space-bg::before {
   background-image:
     radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.7) 99%, transparent),
@@ -100,9 +105,9 @@ margin-bottom: 6px;
     radial-gradient(1px 1px at 80% 20%, rgba(255,255,255,.5) 99%, transparent),
     radial-gradient(1px 1px at 35% 85%, rgba(255,255,255,.6) 99%, transparent);
   background-size: 900px 900px;
-  filter: blur(0.2px);
 }
-/* ближние звезды (крупнее, быстрее, лёгкий мерцание) */
+
+/* ближние звёзды */
 .space-bg::after {
   background-image:
     radial-gradient(1.5px 1.5px at 15% 40%, rgba(255,255,255,.85) 99%, transparent),
@@ -113,7 +118,8 @@ margin-bottom: 6px;
   animation-duration: 70s;
   mix-blend-mode: screen;
 }
+
 @keyframes starDrift {
-  0%   { transform: translate3d(0,   0, 0); }
-  100% { transform: translate3d(-300px, -500px, 0); }
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-400px, -600px, 0); }
 }
