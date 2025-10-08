@@ -51,15 +51,18 @@ export default function SpinPage() {
       setLoading(true);
       try {
         const list = await fetchCaseChance(activeCase.id);
-        // ожидаем поля: id, nft_name, slug, percent, ...
+        // ожидаем поля: id, nft_name, slug, percent, payout_stars, payout_value, is_active
         const onlyActive = list.filter((x) => x.is_active);
         // нормализуем для колеса
         setChances(
           onlyActive.map((x) => ({
             id: x.id,
             label: x.nft_name,
-            slug: x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
+            slug:
+              x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
             percent: Number(x.percent || 0),
+            payout_stars: Number(x.payout_stars || 0), // для обмена в ⭐
+            payout_value: Number(x.payout_value || 0), // для обмена в TON
           }))
         );
       } catch (e) {
@@ -80,12 +83,19 @@ export default function SpinPage() {
         .select("stars, tickets")
         .eq("telegram_id", tgId)
         .single();
-      if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
+      if (data)
+        setBalance({
+          stars: Number(data.stars || 0),
+          tickets: Number(data.tickets || 0),
+        });
     })();
   }, [telegramIdRef.current]);
 
   const priceTon = useMemo(() => Number(activeCase?.price || 0), [activeCase]);
-  const priceStars = useMemo(() => Number(activeCase?.price_in_stars || 0), [activeCase]);
+  const priceStars = useMemo(
+    () => Number(activeCase?.price_in_stars || 0),
+    [activeCase]
+  );
   const allowStars = !!activeCase?.allow_stars;
 
   // запуск спина
@@ -117,12 +127,14 @@ export default function SpinPage() {
         // визуально крутим до сегмента lose (ищем по label/slug); если нет — к первому сегменту
         const loseSeg =
           chances.find(
-            (s) => s.label?.toLowerCase() === "lose" || s.slug === "lose"
+            (s) =>
+              s.label?.toLowerCase() === "lose" ||
+              s.slug?.toLowerCase() === "lose"
           ) || chances[0];
         setTargetId(loseSeg?.id || null);
         setResult({ status: "lose" });
 
-        // сторожевой таймер: если transitionend не придёт — отпустить кнопку
+        // сторожевой таймер
         spinWatchdogRef.current = setTimeout(() => {
           setSpinning(false);
           spinWatchdogRef.current = null;
@@ -144,14 +156,18 @@ export default function SpinPage() {
         .select("stars, tickets")
         .eq("telegram_id", telegramIdRef.current)
         .single();
-      if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
+      if (data)
+        setBalance({
+          stars: Number(data.stars || 0),
+          tickets: Number(data.tickets || 0),
+        });
     } catch (e) {
       setError(e.message);
       setSpinning(false);
     }
   }
 
-  // окончание анимации (если событие пришло — снимаем таймер и разблокируем кнопку)
+  // окончание анимации
   function handleSpinEnd() {
     if (spinWatchdogRef.current) {
       clearTimeout(spinWatchdogRef.current);
@@ -183,7 +199,11 @@ export default function SpinPage() {
         .select("stars, tickets")
         .eq("telegram_id", telegramIdRef.current)
         .single();
-      if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
+      if (data)
+        setBalance({
+          stars: Number(data.stars || 0),
+          tickets: Number(data.tickets || 0),
+        });
     } catch (e) {
       setError(e.message);
     }
@@ -193,7 +213,9 @@ export default function SpinPage() {
   const wheelSegments = useMemo(() => chances, [chances]);
 
   // баланс для отображения: звёзды только целые
-  const displayBalance = allowStars ? Math.floor(balance.stars) : `${balance.tickets} TON`;
+  const displayBalance = allowStars
+    ? Math.floor(balance.stars)
+    : `${balance.tickets} TON`;
 
   return (
     <>
@@ -251,6 +273,7 @@ export default function SpinPage() {
           <ResultBlock
             result={result}
             chances={chances}
+            allowStars={allowStars}
             onClaim={handleClaim}
             onReroll={handleReroll}
           />
@@ -289,22 +312,26 @@ function CaseRange({ count, index, onChange }) {
   );
 }
 
-function ResultBlock({ result, chances, onClaim, onReroll }) {
+function ResultBlock({ result, chances, allowStars, onClaim, onReroll }) {
   if (result.status === "lose") {
     return <div className="result-banner">Не повезло. Попробуй ещё!</div>;
   }
 
   if (result.status === "pending") {
     const ch = chances.find((x) => x.id === result.prize?.chance_id);
+    const exchangeLabel = allowStars
+      ? `Обменять на ${Math.floor(ch?.payout_stars || 0)} ⭐`
+      : `Обменять на ${ch?.payout_value || 0} TON`;
+
     return (
       <div className="result-banner" style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={`/animations/${ch?.slug}.png`} alt="prize" width={40} height={40} />
-        <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
+          <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
         </div>
         <div className="result-cta">
           <button className="primary-btn" onClick={onClaim}>Забрать</button>
-          <button className="ghost-btn" onClick={onReroll}>Обменять</button>
+          <button className="ghost-btn" onClick={onReroll}>{exchangeLabel}</button>
         </div>
       </div>
     );
