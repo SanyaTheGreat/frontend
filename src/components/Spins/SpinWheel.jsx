@@ -72,7 +72,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
           height: 340,
           borderRadius: "50%",
           position: "relative",
-          transition: transitionOn ? "transform 2.2s cubic-bezier(.19,1,.22,1)" : "none",
+          transition: transitionOn ? "transform 3.5s cubic-bezier(0.07, 0.72, 0.21, 1.02)" : "none",
           transform: `rotate(${angle}deg)`,
           background: "#0f1218",
           border: "6px solid #1f2229",
