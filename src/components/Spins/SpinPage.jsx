@@ -107,7 +107,6 @@ export default function SpinPage() {
         // визуально крутим до сегмента lose (ищем по label/slug)
         const loseSeg = chances.find((s) => s.label?.toLowerCase() === "lose" || s.slug === "lose");
         setTargetId(loseSeg?.id || null);
-        // результат покажем по окончании анимации
         setResult({ status: "lose" });
       } else {
         setTargetId(resp.prize?.chance_id || null);
@@ -128,7 +127,7 @@ export default function SpinPage() {
   }
 
   function handleSpinEnd() {
-    setTimeout(() => setSpinning(false), 150); // отпустить кнопку после анимации
+    setTimeout(() => setSpinning(false), 150);
   }
 
   async function handleClaim() {
@@ -163,9 +162,12 @@ export default function SpinPage() {
   // вью сегментов для колеса
   const wheelSegments = useMemo(() => chances, [chances]);
 
+  // баланс для отображения: звёзды только целые
+  const displayBalance = allowStars ? Math.floor(balance.stars) : `${balance.tickets} TON`;
+
   return (
     <>
-      {/* Фиксированный баланс в правом верхнем углу */}
+      {/* Фиксированный баланс в правом верхнем углу (только один раз) */}
       <div
         style={{
           position: "fixed",
@@ -183,27 +185,14 @@ export default function SpinPage() {
           gap: 6,
         }}
       >
-        {allowStars ? `⭐ ${balance.stars}` : `${balance.tickets} TON`}
+        {allowStars ? `⭐ ${displayBalance}` : displayBalance}
       </div>
 
       <div className="spins-page">
-        {/* Header */}
+        {/* Header (без дубля баланса) */}
         <div className="spins-header">
           <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
-          {/* Старую плашку баланса можно оставить/удалить при желании */}
-          <div className="balance-pill">
-            {allowStars ? `⭐ ${balance.stars}` : `${balance.tickets} TON`}
-          </div>
         </div>
-
-        {/* Выбор кейса (слайдер) */}
-        <CaseSlider
-          items={cases}
-          index={index}
-          onPrev={() => setIndex((p) => Math.max(0, p - 1))}
-          onNext={() => setIndex((p) => Math.min(cases.length - 1, p + 1))}
-          onPick={(i) => setIndex(i)}
-        />
 
         {/* Колесо */}
         <SpinWheel
@@ -211,6 +200,13 @@ export default function SpinPage() {
           targetId={targetId}
           isSpinning={spinning}
           onSpinEnd={handleSpinEnd}
+        />
+
+        {/* Ползунок выбора кейса (без названий) */}
+        <CaseRange
+          count={cases.length}
+          index={index}
+          onChange={setIndex}
         />
 
         {/* Управление */}
@@ -244,18 +240,25 @@ export default function SpinPage() {
   );
 }
 
-function CaseSlider({ items, index, onPrev, onNext, onPick }) {
+/* Ползунок выбора кейса — точки вместо названий */
+function CaseRange({ count, index, onChange }) {
+  if (!count) return null;
   return (
-    <div className="case-slider">
-      <button className="ghost-btn" onClick={onPrev}>◀</button>
-      <div className="track">
-        {items.map((c, i) => (
-          <button key={c.id} className={`case-chip ${i === index ? "active" : ""}`} onClick={() => onPick(i)}>
-            {c.name} {c.allow_stars ? "⭐" : "TON"}
-          </button>
+    <div style={{ padding: "6px 8px 2px" }}>
+      <input
+        type="range"
+        min={0}
+        max={count - 1}
+        step={1}
+        value={index}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="case-range"
+      />
+      <div className="case-range-dots">
+        {Array.from({ length: count }).map((_, i) => (
+          <span key={i} className={`dot ${i === index ? "active" : ""}`} />
         ))}
       </div>
-      <button className="ghost-btn" onClick={onNext}>▶</button>
     </div>
   );
 }

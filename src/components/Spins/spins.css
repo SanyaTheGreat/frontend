@@ -123,3 +123,34 @@
   0%   { transform: translate3d(0, 0, 0); }
   100% { transform: translate3d(-400px, -600px, 0); }
 }
+
+.case-range {
+  width: 100%;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: #2a2e37;
+  outline: none;
+}
+.case-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd24d;
+  border: 2px solid #1f2229;
+  cursor: pointer;
+}
+.case-range-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.case-range-dots .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #3a4453; opacity: .7;
+}
+.case-range-dots .dot.active {
+  background: #ffd24d; opacity: 1; transform: scale(1.2);
+}
