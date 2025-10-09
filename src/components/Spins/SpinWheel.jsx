@@ -132,59 +132,83 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 }
 
 function Segment({ start, sweep, label, slug }) {
-  const pathStyle = {
+  const ICON_RADIUS = 135;   // подгоняй под свой размер колеса (для 340px ~ 120–140)
+  const TEXT_RADIUS = 105;
+
+  const container = {
     position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
+    inset: 0,
     transform: `rotate(${start}deg)`,
     transformOrigin: "50% 50%",
+  };
+
+  // клин из центра к окружности
+  const slice = {
+    position: "absolute",
+    inset: 0,
     clipPath: `polygon(50% 50%, 0% 0%, 100% 0%)`,
   };
-  const sliceStyle = {
+
+  // лёгкое чередование тона, чтобы сектора были визуальны
+  const tint = {
     position: "absolute",
-    width: "100%",
-    height: "100%",
-    background: "radial-gradient(circle at 50% 50%, rgba(255,255,255,.06), rgba(255,255,255,0) 60%)",
+    inset: 0,
+    background:
+      "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06), rgba(255,255,255,0) 60%)",
     transform: `skewY(${90 - sweep}deg)`,
     transformOrigin: "0% 0%",
     borderRight: "1px solid rgba(255,255,255,.06)",
   };
 
   return (
-    <div style={pathStyle}>
-      <div style={sliceStyle} />
-      {/* иконка */}
+    <div style={container}>
+      <div style={slice}>
+        <div style={tint} />
+      </div>
+
+      {/* Иконка — в центр своего сектора, «смотрит» вверх */}
       <img
         src={`/animations/${slug}.png`}
         alt={label}
         style={{
           position: "absolute",
+          left: "50%",
+          top: "50%",
           width: 48,
           height: 48,
-          left: "50%",
-          top: "14%",
-          transform: `rotate(${-start - sweep / 2}deg) translate(-50%, 0)`,
+          transform: `
+            rotate(${start + sweep / 2}deg)
+            translateY(-${ICON_RADIUS}px)
+            rotate(${-start - sweep / 2}deg)
+          `,
+          transformOrigin: "center",
           objectFit: "contain",
           pointerEvents: "none",
         }}
         onError={(e) => (e.currentTarget.style.display = "none")}
       />
-      {/* подпись */}
+
+      {/* Подпись — тоже по радиусу сектора */}
       <div
         style={{
           position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: "100%",
-          display: "grid",
-          placeItems: "center",
-          transform: `rotate(${-start - sweep / 2}deg)`,
+          left: "50%",
+          top: "50%",
+          transform: `
+            rotate(${start + sweep / 2}deg)
+            translateY(-${TEXT_RADIUS}px)
+            rotate(${-start - sweep / 2}deg)
+          `,
+          width: 80,
+          marginLeft: -40,
+          textAlign: "center",
           color: "#cdd3df",
           fontSize: 12,
-          textAlign: "center",
+          fontWeight: 600,
+          lineHeight: 1.15,
+          whiteSpace: "nowrap",
+          textShadow: "0 1px 2px rgba(0,0,0,.35)",
+          pointerEvents: "none",
         }}
       >
         {label}
