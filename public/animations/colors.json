@@ -514,5 +514,35 @@
     "edge_color": "#7c808a",
     "pattern_color": "#3f4550",
     "text_color": "#dadfe2"
+  },
+  "SnoopDogg-343410": {
+    "center_color": "#95b457",
+    "edge_color": "#3d9755",
+    "pattern_color": "#046b06",
+    "text_color": "#c2efbe"
+  },
+  "CupidCharm-9281": {
+    "center_color": "#5f7849",
+    "edge_color": "#3c4f3b",
+    "pattern_color": "#102209",
+    "text_color": "#b7c4b5"
+  },
+  "SnoopDogg-356501": {
+    "center_color": "#5f7849",
+    "edge_color": "#3c4f3b",
+    "pattern_color": "#102209",
+    "text_color": "#b7c4b5"
+  },
+  "SnoopDogg-286328": {
+    "center_color": "#dab345",
+    "edge_color": "#b1802a",
+    "pattern_color": "#7a3100",
+    "text_color": "#ffedc7"
+  },
+  "CloverPin-91818": {
+    "center_color": "#adb070",
+    "edge_color": "#6b7d54",
+    "pattern_color": "#39501b",
+    "text_color": "#d3e6bb"
   }
 }
