@@ -490,5 +490,29 @@
     "edge_color": "#7c6356",
     "pattern_color": "#4a3226",
     "text_color": "#ebd4c8"
+  },
+  "SnoopDogg-533685": {
+    "center_color": "#31b5aa",
+    "edge_color": "#189599",
+    "pattern_color": "#004f4f",
+    "text_color": "#d1fffd"
+  },
+  "PetSnake-16609": {
+    "center_color": "#537991",
+    "edge_color": "#416479",
+    "pattern_color": "#031b29",
+    "text_color": "#c2dcee"
+  },
+  "PetSnake-98217": {
+    "center_color": "#80a4b8",
+    "edge_color": "#607c91",
+    "pattern_color": "#15374b",
+    "text_color": "#c9e4f4"
+  },
+  "SnoopDogg-72607": {
+    "center_color": "#a3a8b5",
+    "edge_color": "#7c808a",
+    "pattern_color": "#3f4550",
+    "text_color": "#dadfe2"
   }
 }
