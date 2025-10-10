@@ -69,11 +69,20 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 
     const current = angle;
     const currentNorm = norm360(current);
-    const POINTER_DEG = 0;                         // стрелка вправо (0°)
-    // Доводим так, чтобы (currentNorm + delta + center) % 360 == POINTER_DEG
-    const deltaToCenter = norm360(POINTER_DEG - (currentNorm + seg.center));
+    const POINTER_DEG = 0; // стрелка вправо (0°)
+
+    // --- РАНДОМ ВНУТРИ СЕКТОРА ---
+    // небольшой отступ от краёв сектора (чтобы не попадать на границы)
+    const edgePad = Math.min(12, seg.sweep * 0.2); // в градусах
+    const minDeg = seg.start + edgePad;
+    const maxDeg = seg.start + Math.max(edgePad, seg.sweep - edgePad);
+    const targetDegInSector = minDeg + Math.random() * (maxDeg - minDeg);
+
+    // Доводим так, чтобы (currentNorm + delta + targetDegInSector) % 360 == POINTER_DEG
+    const deltaToTarget = norm360(POINTER_DEG - (currentNorm + targetDegInSector));
+
     const spins = 5;
-    const final = current + 360 * spins + deltaToCenter;
+    const final = current + 360 * spins + deltaToTarget;
 
     const duration = 3200 + Math.random() * 400;
 
@@ -86,9 +95,13 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
       sweep_deg: +seg.sweep.toFixed(2),
       center_deg: +seg.center.toFixed(2),
     });
+    console.log("Точка остановки (рандом в секторе):", {
+      edge_pad_deg: +edgePad.toFixed(2),
+      target_deg_in_sector: +targetDegInSector.toFixed(2),
+    });
     console.log("Геометрия доводки:", {
       current_norm_deg: +currentNorm.toFixed(2),
-      delta_to_center_deg: +deltaToCenter.toFixed(2),
+      delta_to_target_deg: +deltaToTarget.toFixed(2),
       rotate_by_deg: +(final - current).toFixed(2),
       final_angle_deg: +final.toFixed(2),
       final_angle_norm_deg: +norm360(final).toFixed(2),
