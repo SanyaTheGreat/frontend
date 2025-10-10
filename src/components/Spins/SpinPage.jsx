@@ -202,8 +202,10 @@ export default function SpinPage() {
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
       setShowModal(false); // закрыть после обмена
 
-      // тост: показать тот же текст, что на кнопке "Обменять на N ..."
-      if (labelFromUI) setToast({ text: labelFromUI });
+      if (labelFromUI) {
+        const amountText = String(labelFromUI).replace(/^Обменять на\s*/i, "").trim();
+        setToast({ text: `Успешно обменяли на ${amountText}` });
+      }
       setTimeout(() => setToast(null), 2000);
 
       // обновить баланс
