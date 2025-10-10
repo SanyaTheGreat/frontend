@@ -160,7 +160,7 @@ export default function SpinPage() {
         spinWatchdogRef.current = setTimeout(() => {
           setSpinning(false);
           spinWatchdogRef.current = null;
-        }, 2600);
+        }, 7000);
       } else {
         setTargetId(resp.prize?.chance_id || null);
         setResult({ status: "pending", prize: resp.prize });
@@ -168,7 +168,7 @@ export default function SpinPage() {
         spinWatchdogRef.current = setTimeout(() => {
           setSpinning(false);
           spinWatchdogRef.current = null;
-        }, 2600);
+        }, 7000);
       }
 
       // обновляем баланс после списания
