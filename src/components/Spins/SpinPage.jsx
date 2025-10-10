@@ -186,8 +186,10 @@ export default function SpinPage() {
       clearTimeout(spinWatchdogRef.current);
       spinWatchdogRef.current = null;
     }
-    setSpinning(false);
-  }
+    setTimeout(() => {
+      setSpinning(false);
+      }, 6000);
+    }
 
   async function handleClaim() {
     if (!spinId) return;
