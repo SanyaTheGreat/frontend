@@ -1,16 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./spins.css";
 
-/**
- * props:
- *  - segments: [{ id, label, slug, percent }]
- *  - targetId: id выигравшего сегмента (chance_id) или null
- *  - isSpinning: bool
- *  - onSpinEnd: () => void
- */
 export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd }) {
   const wheelRef = useRef(null);
-
   const [angle, setAngle] = useState(0);
 
   const rafRef = useRef(null);
@@ -40,12 +32,14 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     "#F59E0B",
   ];
 
+  // серый фон для lose
   const wheelBg = useMemo(() => {
     if (!cumulated.length) return "#0f1218";
     let from = 0;
     const stops = cumulated.map((s, i) => {
       const to = from + (s.sweep / 360) * 100;
-      const color = COLORS[i % COLORS.length];
+      const color =
+        s.label === "lose" ? "#3a3d42" : COLORS[i % COLORS.length];
       const part = `${color} ${from.toFixed(4)}% ${to.toFixed(4)}%`;
       from = to;
       return part;
@@ -58,16 +52,13 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
-
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
     const center = seg.start + seg.sweep / 2;
-
     const current = angle;
     const deltaToCenter = 360 - center;
     const fullTurns = 5 + Math.random() * 1;
     const final = current + fullTurns * 360 + deltaToCenter;
-
     const duration = 3200 + Math.random() * 400;
 
     cancelAnim();
@@ -75,25 +66,19 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     startAngleRef.current = current;
     endAngleRef.current = final;
     durationRef.current = duration;
-
     rafRef.current = requestAnimationFrame(tick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpinning, targetId, cumulated]);
 
   const tick = (now) => {
     const start = startTimeRef.current;
     const end = endAngleRef.current;
     const dur = durationRef.current;
-
     const t = Math.min(1, (now - start) / dur);
     const k = easeOutCubic(t);
-
     const value = startAngleRef.current + (end - startAngleRef.current) * k;
     setAngle(value);
-
-    if (t < 1) {
-      rafRef.current = requestAnimationFrame(tick);
-    } else {
+    if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    else {
       setAngle(end);
       rafRef.current = null;
       onSpinEnd?.();
@@ -141,7 +126,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 }
 
 function Segment({ start, sweep, label, slug }) {
-  const ICON_RADIUS = 135;
+  const ICON_RADIUS = 130;
   const TEXT_RADIUS = 105;
 
   const container = {
@@ -150,6 +135,9 @@ function Segment({ start, sweep, label, slug }) {
     transform: `rotate(${start}deg)`,
     transformOrigin: "50% 50%",
   };
+
+  // небольшой поправочный сдвиг (чтобы иконки не уплывали)
+  const offset = -sweep * 0.02; // примерно 2% сектора влево
 
   return (
     <div style={container}>
@@ -164,9 +152,9 @@ function Segment({ start, sweep, label, slug }) {
           width: 48,
           height: 48,
           transform: `
-            rotate(${sweep / 2}deg)
+            rotate(${sweep / 2 + offset}deg)
             translateY(-${ICON_RADIUS}px)
-            rotate(${-(start + sweep / 2)}deg)
+            rotate(${-(start + sweep / 2 + offset)}deg)
           `,
           transformOrigin: "center",
           objectFit: "contain",
@@ -175,7 +163,7 @@ function Segment({ start, sweep, label, slug }) {
         onError={(e) => (e.currentTarget.style.display = "none")}
       />
 
-      {/* Подпись только для "lose" */}
+      {/* Текст только для lose */}
       {label === "lose" && (
         <div
           style={{
@@ -183,15 +171,15 @@ function Segment({ start, sweep, label, slug }) {
             left: "50%",
             top: "50%",
             transform: `
-              rotate(${sweep / 2}deg)
+              rotate(${sweep / 2 + offset}deg)
               translateY(-${TEXT_RADIUS}px)
-              rotate(${-(start + sweep / 2)}deg)
+              rotate(${-(start + sweep / 2 + offset)}deg)
             `,
-            width: 120,
-            marginLeft: -60,
+            width: 140,
+            marginLeft: -70,
             textAlign: "center",
             color: "#b0b3b8",
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: 700,
             textShadow: "0 1px 3px rgba(0,0,0,.4)",
             pointerEvents: "none",
