@@ -9,6 +9,7 @@ import Profile from './pages/Profile/Profile';
 import InGame from './pages/InGame/InGame.jsx';
 import Leaderboard from './pages/Leaderboard/Leaderboard';
 import SpinPage from "./components/Spins/SpinPage"
+import InventoryPage from "./components/Spins/InventoryPage";
 
 
 import TabBar from './components/TabBar';
@@ -34,6 +35,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/spins" element={<SpinPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
         </Routes>
       </div>
     </TonConnectUIProvider>
