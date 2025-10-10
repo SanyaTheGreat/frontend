@@ -70,7 +70,7 @@
 
 .wheel-pointer {
   position: absolute;
-  right: -12px;      /* вынос стрелки за край колеса */
+  right: -2px;      /* вынос стрелки за край колеса */
   top: 50%;
   transform: translateY(-50%) rotate(90deg); /* поворот направо */
   width: 0;
