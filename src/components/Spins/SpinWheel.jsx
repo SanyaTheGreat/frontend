@@ -53,7 +53,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
       from = to;
       return part;
     });
-    return `conic-gradient(${stops.join(",")})`;
+    return `conic-gradient(from 90deg, ${stops.join(",")})`;
   }, [cumulated]);
 
   const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
