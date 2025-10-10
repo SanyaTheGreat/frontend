@@ -161,3 +161,17 @@
 .case-range-dots .dot.active {
   background: #ffd24d; opacity: 1; transform: scale(1.2);
 }
+
+.spin-toast{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,.8);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 9999;
+  pointer-events: none;
+}

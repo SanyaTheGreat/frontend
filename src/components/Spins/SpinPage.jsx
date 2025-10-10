@@ -32,6 +32,9 @@ export default function SpinPage() {
   // курс конвертации из таблицы fx_rates
   const [fx, setFx] = useState({ stars_per_ton: 0, ton_per_100stars: 0, fee_markup: 0 });
 
+  // лёгкий тост после обмена
+  const [toast, setToast] = useState(null); // { text: string } | null
+
   const activeCase = cases[index] || null;
 
   // загрузка кейсов
@@ -191,12 +194,19 @@ export default function SpinPage() {
     }
   }
 
-  async function handleReroll() {
+  // теперь принимаем текст на кнопке, чтобы показать его в тосте
+  async function handleReroll(labelFromUI) {
     if (!spinId) return;
     try {
       const resp = await postReroll(spinId);
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
       setShowModal(false); // закрыть после обмена
+
+      // тост: показать тот же текст, что на кнопке "Обменять на N ..."
+      if (labelFromUI) setToast({ text: labelFromUI });
+      setTimeout(() => setToast(null), 2000);
+
+      // обновить баланс
       const { data } = await supabase
         .from("users")
         .select("stars, tickets")
@@ -284,6 +294,9 @@ export default function SpinPage() {
           </div>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && <div className="spin-toast">{toast.text}</div>}
     </>
   );
 }
@@ -347,7 +360,9 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, 
         </div>
         <div className="result-cta">
           <button className="primary-btn" onClick={onClaim}>Забрать</button>
-          <button className="ghost-btn" onClick={onReroll}>{exchangeLabel}</button>
+          <button className="ghost-btn" onClick={() => onReroll(exchangeLabel)}>
+            {exchangeLabel}
+          </button>
         </div>
       </div>
     );

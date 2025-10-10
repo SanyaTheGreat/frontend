@@ -190,7 +190,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 }
 
 function Segment({ start, sweep, label, slug, angle }) {
-  const ICON_RADIUS = 110;
+  const ICON_RADIUS = 120;
   const TEXT_RADIUS = 105;
   
 
