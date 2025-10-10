@@ -192,7 +192,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 function Segment({ start, sweep, label, slug, angle }) {
   const ICON_RADIUS = 110;
   const TEXT_RADIUS = 105;
-  const ICON_OFFSET = -7; // тонкая подстройка по дуге (против часовой)
+  
 
   const container = {
     position: "absolute",
@@ -214,11 +214,12 @@ function Segment({ start, sweep, label, slug, angle }) {
           width: 48,
           height: 48,
           transform: `
-            rotate(${sweep / 2 + ICON_OFFSET}deg)
-            translateX(${ICON_RADIUS}px)
-            rotate(${-sweep / 2}deg)
-            rotate(${-angle}deg)                /* компенсация вращения колеса */
-          `,
+          rotate(${start + sweep / 2}deg)
+          translateX(${ICON_RADIUS}px)
+          rotate(${-start - sweep / 2}deg)
+          rotate(${-angle}deg)
+        `,
+
           transformOrigin: "center",
           objectFit: "contain",
           pointerEvents: "none",
