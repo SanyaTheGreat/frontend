@@ -264,8 +264,7 @@ export default function SpinPage() {
       <button
         type="button"
         className="inventory-badge"
-        onClick={() => {() => navigate("/inventory")
-        }}
+        onClick={() => navigate("/inventory")}
         aria-label="Инвентарь"
       >
         🧰 Инвентарь{invCount ? ` (${invCount})` : ""}
