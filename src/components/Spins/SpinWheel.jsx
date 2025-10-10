@@ -11,17 +11,14 @@ import "./spins.css";
 export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd }) {
   const wheelRef = useRef(null);
 
-  // текущий угол (в градусах, 0..∞)
   const [angle, setAngle] = useState(0);
 
-  // rAF-анимация
   const rafRef = useRef(null);
   const startTimeRef = useRef(0);
   const startAngleRef = useRef(0);
   const endAngleRef = useRef(0);
   const durationRef = useRef(0);
 
-  // предрасчёт сегментов (стартовый угол и дуга)
   const cumulated = useMemo(() => {
     let acc = 0;
     return segments.map((s) => {
@@ -32,15 +29,22 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     });
   }, [segments]);
 
-  // палитра для секций
-  const COLORS = ["#2C7BE5", "#6C5CE7", "#20C997", "#FFB020", "#E53E3E", "#0EA5E9", "#10B981", "#F59E0B"];
+  const COLORS = [
+    "#2C7BE5",
+    "#6C5CE7",
+    "#20C997",
+    "#FFB020",
+    "#E53E3E",
+    "#0EA5E9",
+    "#10B981",
+    "#F59E0B",
+  ];
 
-  // фон колеса как conic-gradient — точная разметка по углам
   const wheelBg = useMemo(() => {
     if (!cumulated.length) return "#0f1218";
     let from = 0;
     const stops = cumulated.map((s, i) => {
-      const to = from + (s.sweep / 360) * 100; // проценты круга
+      const to = from + (s.sweep / 360) * 100;
       const color = COLORS[i % COLORS.length];
       const part = `${color} ${from.toFixed(4)}% ${to.toFixed(4)}%`;
       from = to;
@@ -49,47 +53,35 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     return `conic-gradient(${stops.join(",")})`;
   }, [cumulated]);
 
-  // нормализация угла
   const normalize360 = (deg) => ((deg % 360) + 360) % 360;
-
-  // easeOutCubic: плавная инерционная остановка
   const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
-  // запуск анимации: на каждый новый спин с целевым сегментом
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
 
-    // вычисляем центр целевого сегмента
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
-    const center = seg.start + seg.sweep / 2; // градусы
+    const center = seg.start + seg.sweep / 2;
 
-    // текущий и финальный угол
-    const current = angle; // не нормализуем — копим обороты
+    const current = angle;
     const currentNorm = normalize360(current);
 
-    // хотим поставить центр под 0° (указатель сверху)
     const deltaToCenter = 360 - center;
-    // 5–6 полных оборотов + немного рандома
     const fullTurns = 5 + Math.random() * 1;
     const final = current + fullTurns * 360 + deltaToCenter;
 
-    // длительность 3.2–3.6s
     const duration = 3200 + Math.random() * 400;
 
-    // подготовка анимации
     cancelAnim();
     startTimeRef.current = performance.now();
     startAngleRef.current = current;
     endAngleRef.current = final;
     durationRef.current = duration;
 
-    // запуск rAF
     rafRef.current = requestAnimationFrame(tick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpinning, targetId, cumulated]);
 
-  // кадр анимации
   const tick = (now) => {
     const start = startTimeRef.current;
     const end = endAngleRef.current;
@@ -130,7 +122,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
           borderRadius: "50%",
           position: "relative",
           transform: `rotate(${angle}deg)`,
-          background: wheelBg,              // ← точные сектора
+          background: wheelBg,
           border: "6px solid #1f2229",
           boxShadow: "0 6px 30px rgba(0,0,0,.45)",
           overflow: "hidden",
@@ -151,10 +143,9 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 }
 
 function Segment({ start, sweep, label, slug }) {
-  const ICON_RADIUS = 135;   // подгоняй под размер колеса (для 340px: 120–140)
+  const ICON_RADIUS = 135;
   const TEXT_RADIUS = 105;
 
-  // контейнер сектора (для позиционирования содержимого по углу)
   const container = {
     position: "absolute",
     inset: 0,
@@ -164,7 +155,7 @@ function Segment({ start, sweep, label, slug }) {
 
   return (
     <div style={container}>
-      {/* Иконка — в центр своего сектора */}
+      {/* Иконка */}
       <img
         src={`/animations/${slug}.png`}
         alt={label}
@@ -175,9 +166,9 @@ function Segment({ start, sweep, label, slug }) {
           width: 48,
           height: 48,
           transform: `
-            rotate(${start + sweep / 2}deg)
+            rotate(${sweep / 2}deg)
             translateY(-${ICON_RADIUS}px)
-            rotate(${-start - sweep / 2}deg)
+            rotate(${-(start + sweep / 2)}deg)
           `,
           transformOrigin: "center",
           objectFit: "contain",
@@ -186,16 +177,16 @@ function Segment({ start, sweep, label, slug }) {
         onError={(e) => (e.currentTarget.style.display = "none")}
       />
 
-      {/* Подпись — также привязана к центру дуги */}
+      {/* Подпись */}
       <div
         style={{
           position: "absolute",
           left: "50%",
           top: "50%",
           transform: `
-            rotate(${start + sweep / 2}deg)
+            rotate(${sweep / 2}deg)
             translateY(-${TEXT_RADIUS}px)
-            rotate(${-start - sweep / 2}deg)
+            rotate(${-(start + sweep / 2)}deg)
           `,
           width: 80,
           marginLeft: -40,
