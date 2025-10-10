@@ -165,7 +165,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 function Segment({ start, sweep, label, slug }) {
   const ICON_RADIUS = 110;
   const TEXT_RADIUS = 105;
-  const ICON_OFFSET = -5; // смещение иконки против часовой (тонкая подстройка)
+  const ICON_OFFSET = -7; // смещение иконки против часовой (тонкая подстройка)
 
   // Контейнер уже повёрнут на начало сектора (0°=вправо)
   const container = {
