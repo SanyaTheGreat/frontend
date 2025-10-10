@@ -214,10 +214,11 @@ function Segment({ start, sweep, label, slug, angle }) {
           width: 48,
           height: 48,
           transform: `
-           rotate(${start + sweep / 2}deg)
-           translateX(${ICON_RADIUS}px)
-           rotate(${-start - sweep / 2}deg)
-           rotate(${-angle}deg) `,
+            rotate(${sweep / 2}deg)
+            translateX(${ICON_RADIUS}px)
+            rotate(${-sweep / 2}deg)
+            rotate(${-angle}deg)
+          `,
           transformOrigin: "center",
           objectFit: "contain",
           pointerEvents: "none",
