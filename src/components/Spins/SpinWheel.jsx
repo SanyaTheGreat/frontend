@@ -161,9 +161,9 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 }
 
 function Segment({ start, sweep, label, slug }) {
-  const ICON_RADIUS = 130;
+  const ICON_RADIUS = 110;
   const TEXT_RADIUS = 105;
-  const ICON_OFFSET = -10; 
+  const ICON_OFFSET = -6;
 
   // Контейнер уже повернут на начало сектора (0°=вправо)
   const container = {
