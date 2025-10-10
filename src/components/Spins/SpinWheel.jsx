@@ -21,14 +21,25 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     });
   }, [segments]);
 
-  const COLORS = ["#2C7BE5","#6C5CE7","#20C997","#FFB020","#E53E3E","#0EA5E9","#10B981","#F59E0B"];
+  const COLORS = [
+    "#2C7BE5",
+    "#6C5CE7",
+    "#20C997",
+    "#FFB020",
+    "#E53E3E",
+    "#0EA5E9",
+    "#10B981",
+    "#F59E0B",
+  ];
 
+  // серый фон для lose
   const wheelBg = useMemo(() => {
     if (!cumulated.length) return "#0f1218";
     let from = 0;
     const stops = cumulated.map((s, i) => {
       const to = from + (s.sweep / 360) * 100;
-      const color = s.label === "lose" ? "#3a3d42" : COLORS[i % COLORS.length];
+      const color =
+        s.label === "lose" ? "#3a3d42" : COLORS[i % COLORS.length];
       const part = `${color} ${from.toFixed(4)}% ${to.toFixed(4)}%`;
       from = to;
       return part;
@@ -36,17 +47,16 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     return `conic-gradient(${stops.join(",")})`;
   }, [cumulated]);
 
+  const normalize360 = (deg) => ((deg % 360) + 360) % 360;
   const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
-
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
     const center = seg.start + seg.sweep / 2;
-
     const current = angle;
-    const deltaToCenter = 360 - center; // указатель сверху
+    const deltaToCenter = 360 - center;
     const fullTurns = 5 + Math.random() * 1;
     const final = current + fullTurns * 360 + deltaToCenter;
     const duration = 3200 + Math.random() * 400;
@@ -56,18 +66,20 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     startAngleRef.current = current;
     endAngleRef.current = final;
     durationRef.current = duration;
-
     rafRef.current = requestAnimationFrame(tick);
-  }, [isSpinning, targetId, cumulated, angle]);
+  }, [isSpinning, targetId, cumulated]);
 
   const tick = (now) => {
-    const t = Math.min(1, (now - startTimeRef.current) / durationRef.current);
+    const start = startTimeRef.current;
+    const end = endAngleRef.current;
+    const dur = durationRef.current;
+    const t = Math.min(1, (now - start) / dur);
     const k = easeOutCubic(t);
-    const value = startAngleRef.current + (endAngleRef.current - startAngleRef.current) * k;
+    const value = startAngleRef.current + (end - startAngleRef.current) * k;
     setAngle(value);
     if (t < 1) rafRef.current = requestAnimationFrame(tick);
     else {
-      setAngle(endAngleRef.current);
+      setAngle(end);
       rafRef.current = null;
       onSpinEnd?.();
     }
@@ -100,7 +112,13 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
         }}
       >
         {cumulated.map((s, i) => (
-          <Segment key={s.id || i} start={s.start} sweep={s.sweep} label={s.label} slug={s.slug} />
+          <Segment
+            key={s.id || i}
+            start={s.start}
+            sweep={s.sweep}
+            label={s.label}
+            slug={s.slug}
+          />
         ))}
       </div>
     </div>
@@ -108,10 +126,9 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 }
 
 function Segment({ start, sweep, label, slug }) {
-  const ICON_RADIUS = 135;
+  const ICON_RADIUS = 130;
   const TEXT_RADIUS = 105;
 
-  // контейнер повёрнут на начало сектора (0° — вправо, как у conic-gradient)
   const container = {
     position: "absolute",
     inset: 0,
@@ -119,9 +136,12 @@ function Segment({ start, sweep, label, slug }) {
     transformOrigin: "50% 50%",
   };
 
+  // небольшой поправочный сдвиг (чтобы иконки не уплывали)
+  const offset = -sweep * 0.02; // примерно 2% сектора влево
+
   return (
     <div style={container}>
-      {/* Иконка — центр сектора по X-радиусу */}
+      {/* Иконка */}
       <img
         src={`/animations/${slug}.png`}
         alt={label}
@@ -132,9 +152,9 @@ function Segment({ start, sweep, label, slug }) {
           width: 48,
           height: 48,
           transform: `
-            rotate(${sweep / 2}deg)
-            translateX(${ICON_RADIUS}px)
-            rotate(${-(start + sweep / 2)}deg)
+            rotate(${sweep / 2 + offset}deg)
+            translateY(-${ICON_RADIUS}px)
+            rotate(${-(start + sweep / 2 + offset)}deg)
           `,
           transformOrigin: "center",
           objectFit: "contain",
@@ -143,7 +163,7 @@ function Segment({ start, sweep, label, slug }) {
         onError={(e) => (e.currentTarget.style.display = "none")}
       />
 
-      {/* Подпись только для lose */}
+      {/* Текст только для lose */}
       {label === "lose" && (
         <div
           style={{
@@ -151,9 +171,9 @@ function Segment({ start, sweep, label, slug }) {
             left: "50%",
             top: "50%",
             transform: `
-              rotate(${sweep / 2}deg)
-              translateX(${TEXT_RADIUS}px)
-              rotate(${-(start + sweep / 2)}deg)
+              rotate(${sweep / 2 + offset}deg)
+              translateY(-${TEXT_RADIUS}px)
+              rotate(${-(start + sweep / 2 + offset)}deg)
             `,
             width: 140,
             marginLeft: -70,
