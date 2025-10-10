@@ -170,6 +170,10 @@ export default function InventoryPage() {
 
         <div
           style={{
+            position: "fixed",
+            top: 12,
+            right: 12,
+            zIndex: 1000,
             background: "rgba(0,0,0,0.5)",
             borderRadius: 20,
             padding: "6px 12px",
