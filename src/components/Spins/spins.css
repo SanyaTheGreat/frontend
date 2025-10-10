@@ -21,6 +21,9 @@
   display: grid;
   place-items: center;
   margin: 8px 0;
+  position: relative;     /* ← добавляем */
+  width: 340px;           /* ← совпадает с колесом */
+  height: 340px;          /* ← совпадает с колесом */
 }
 
 .spin-action {
