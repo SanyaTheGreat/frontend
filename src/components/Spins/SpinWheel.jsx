@@ -53,30 +53,31 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
       from = to;
       return part;
     });
+    // 0° = вправо
     return `conic-gradient(from 90deg, ${stops.join(",")})`;
   }, [cumulated]);
 
   const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
   const norm360 = (deg) => ((deg % 360) + 360) % 360;
 
-  // ===== Запуск анимации (формула как в твоём Wheel.jsx) =====
+  // ===== Запуск анимации с учётом текущего угла =====
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
 
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
 
-    const center = seg.center;                // целимся центром сектора
     const current = angle;
-    const spins = 5;                          // целое число оборотов
-    const deltaToCenter = (360 - center) % 360;
+    const currentNorm = norm360(current);
+    const POINTER_DEG = 0;                         // стрелка вправо (0°)
+    // Доводим так, чтобы (currentNorm + delta + center) % 360 == POINTER_DEG
+    const deltaToCenter = norm360(POINTER_DEG - (currentNorm + seg.center));
+    const spins = 5;
     const final = current + 360 * spins + deltaToCenter;
 
-    // длительность 3.2–3.6s
     const duration = 3200 + Math.random() * 400;
 
-    // Логи: что выбрано и куда придём
-    const finalNorm = norm360(final);
+    // Логи
     console.group("[SPIN]");
     console.log("Выбран сектор:", {
       id: seg.id,
@@ -85,10 +86,12 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
       sweep_deg: +seg.sweep.toFixed(2),
       center_deg: +seg.center.toFixed(2),
     });
-    console.log("Финальная геометрия (0°=right):", {
+    console.log("Геометрия доводки:", {
+      current_norm_deg: +currentNorm.toFixed(2),
       delta_to_center_deg: +deltaToCenter.toFixed(2),
+      rotate_by_deg: +(final - current).toFixed(2),
       final_angle_deg: +final.toFixed(2),
-      final_angle_norm_deg: +finalNorm.toFixed(2),
+      final_angle_norm_deg: +norm360(final).toFixed(2),
     });
     console.groupEnd();
 
@@ -113,7 +116,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     if (t < 1) {
       rafRef.current = requestAnimationFrame(tick);
     } else {
-      setAngle(end); // фиксируем финал
+      setAngle(end);
       rafRef.current = null;
       onSpinEnd?.();
     }
@@ -130,7 +133,6 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 
   return (
     <div className="spin-wheel-wrap">
-      {/* Стрелка рисуется в CSS справа: .wheel-pointer { right:-12px; top:50%; transform:translateY(-50%) rotate(90deg); ... } */}
       <div className="wheel-pointer" />
       <div
         ref={wheelRef}
@@ -163,9 +165,9 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 function Segment({ start, sweep, label, slug }) {
   const ICON_RADIUS = 110;
   const TEXT_RADIUS = 105;
-  const ICON_OFFSET = -5;
+  const ICON_OFFSET = -5; // смещение иконки против часовой (тонкая подстройка)
 
-  // Контейнер уже повернут на начало сектора (0°=вправо)
+  // Контейнер уже повёрнут на начало сектора (0°=вправо)
   const container = {
     position: "absolute",
     inset: 0,
@@ -175,7 +177,7 @@ function Segment({ start, sweep, label, slug }) {
 
   return (
     <div style={container}>
-      {/* Иконка — центр сектора: rotate(sweep/2) + translateX(R) */}
+      {/* Иконка — центр сектора */}
       <img
         src={`/animations/${slug}.png`}
         alt={label}
