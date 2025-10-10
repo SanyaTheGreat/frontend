@@ -175,3 +175,46 @@
   z-index: 9999;
   pointer-events: none;
 }
+
+/* зона колеса, чтобы можно было позиционировать тост поверх него */
+.wheel-zone{
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* базовый тост */
+.spin-toast{
+  padding: 10px 14px;
+  background: rgba(0,0,0,.8);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* тост именно "на уровне колеса" — центр по колесу */
+.spin-toast--on-wheel{
+  position: absolute;
+  inset: 0;               /* растягиваем на всю зону колеса */
+  display: flex;
+  align-items: center;    /* вертикальный центр по колесу */
+  justify-content: center;/* горизонтальный центр */
+  transform: none;        /* без сдвигов */
+  background: none;       /* фон уберём у контейнера, оставим у самого тоста */
+  pointer-events: none;
+}
+
+.spin-toast--on-wheel::before{
+  content: attr(data-empty); /* хак, не влияет; можно удалить */
+}
+
+/* чтобы сам бокс тоста не был растянут, оборачиваем его */
+.spin-toast.spin-toast--on-wheel{
+  background: rgba(0,0,0,.8);
+  padding: 8px 12px;
+  border-radius: 10px;
+  width: max-content;
+  height: auto;
+}

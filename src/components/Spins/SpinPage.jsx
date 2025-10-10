@@ -202,6 +202,7 @@ export default function SpinPage() {
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
       setShowModal(false); // закрыть после обмена
 
+      // тост: "Успешно обменяли на N ..." — берём N из текста кнопки
       if (labelFromUI) {
         const amountText = String(labelFromUI).replace(/^Обменять на\s*/i, "").trim();
         setToast({ text: `Успешно обменяли на ${amountText}` });
@@ -255,13 +256,16 @@ export default function SpinPage() {
           <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
         </div>
 
-        {/* Колесо */}
-        <SpinWheel
-          segments={wheelSegments}
-          targetId={targetId}
-          isSpinning={spinning}
-          onSpinEnd={handleSpinEnd}
-        />
+        {/* Колесо + тост поверх него */}
+        <div className="wheel-zone">{/* [toast-on-wheel] */}
+          <SpinWheel
+            segments={wheelSegments}
+            targetId={targetId}
+            isSpinning={spinning}
+            onSpinEnd={handleSpinEnd}
+          />
+          {toast && <div className="spin-toast spin-toast--on-wheel">{toast.text}</div>}
+        </div>
 
         {/* Ползунок выбора кейса */}
         <CaseRange count={cases.length} index={index} onChange={setIndex} />
@@ -296,9 +300,6 @@ export default function SpinPage() {
           </div>
         )}
       </div>
-
-      {/* Toast */}
-      {toast && <div className="spin-toast">{toast.text}</div>}
     </>
   );
 }
