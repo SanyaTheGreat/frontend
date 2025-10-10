@@ -68,17 +68,16 @@
   color: #fff; 
 }
 
-.wheel-pointer {
-  position: absolute;
-  right: 0px;      /* вынос стрелки за край колеса */
-  top: 50%;
-  transform: translateY(-50%) rotate(90deg); /* поворот направо */
-  width: 0;
-  height: 0;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  border-left: 12px solid #fff; /* треугольник стрелки */
-  z-index: 10;
+.wheel-pointer{
+  position:absolute;
+  top:50%;
+  right:-12px;
+  transform:translateY(-50%) rotate(90deg);
+  width:0;height:0;
+  border-top:8px solid transparent;
+  border-bottom:8px solid transparent;
+  border-left:12px solid #fff;
+  z-index:10;
 }
 
 
