@@ -131,6 +131,10 @@ export default function SpinPage() {
     setTargetId(null);
     setSpinId(null);
 
+    setTimeout(() => {
+    setShowModal(true);
+  }, 7000);
+
     if (spinWatchdogRef.current) {
       clearTimeout(spinWatchdogRef.current);
       spinWatchdogRef.current = null;
@@ -186,10 +190,7 @@ export default function SpinPage() {
       clearTimeout(spinWatchdogRef.current);
       spinWatchdogRef.current = null;
     }
-    setTimeout(() => {
-      setSpinning(false);
-      }, 6000);
-    }
+  }
 
   async function handleClaim() {
     if (!spinId) return;
