@@ -10,6 +10,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
   const startAngleRef = useRef(0);
   const endAngleRef = useRef(0);
   const durationRef = useRef(0);
+  const endedRef = useRef(false); // защита от повторного onSpinEnd
 
   // ===== Предрасчёт углов секторов (0° = вправо, по часовой) =====
   const cumulated = useMemo(() => {
@@ -64,6 +65,9 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
 
+    // сбрасываем флаг завершения перед новым запуском
+    endedRef.current = false;
+
     const seg = cumulated.find((s) => s.id === targetId);
     if (!seg) return;
 
@@ -71,8 +75,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     const currentNorm = norm360(current);
     const POINTER_DEG = 0; // стрелка вправо (0°)
 
-    // --- РАНДОМ ВНУТРИ СЕКТОРА ---
-    // небольшой отступ от краёв сектора (чтобы не попадать на границы)
+    // --- РАНДОМ ВНУТРИ СЕКТОРА (твои настройки сохраняю как есть) ---
     const edgePad = Math.min(12, seg.sweep * 0.2); // в градусах
     const minDeg = seg.start + edgePad;
     const maxDeg = seg.start + Math.max(edgePad, seg.sweep - edgePad);
@@ -117,6 +120,11 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpinning, targetId, cumulated]);
 
+  // если извне спин внезапно остановили — аккуратно завершаем RAF
+  useEffect(() => {
+    if (!isSpinning) cancelAnim();
+  }, [isSpinning]);
+
   // ===== Кадр анимации =====
   const tick = (now) => {
     const start = startTimeRef.current;
@@ -126,12 +134,17 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     const k = easeOutCubic(t);
     const value = startAngleRef.current + (end - startAngleRef.current) * k;
     setAngle(value);
+
     if (t < 1) {
       rafRef.current = requestAnimationFrame(tick);
     } else {
-      setAngle(end);
-      rafRef.current = null;
-      onSpinEnd?.();
+      // защищаемся от повторного вызова при возможных гонках
+      if (!endedRef.current) {
+        endedRef.current = true;
+        setAngle(end);
+        rafRef.current = null;
+        onSpinEnd?.();
+      }
     }
   };
 
@@ -168,7 +181,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
             sweep={s.sweep}
             label={s.label}
             slug={s.slug}
-            angle={angle}            // ← передаём текущий угол для компенсации
+            angle={angle} // компенсация вращения
           />
         ))}
       </div>
@@ -181,7 +194,6 @@ function Segment({ start, sweep, label, slug, angle }) {
   const TEXT_RADIUS = 105;
   const ICON_OFFSET = -7; // тонкая подстройка по дуге (против часовой)
 
-  // Контейнер уже повёрнут на начало сектора (0°=вправо)
   const container = {
     position: "absolute",
     inset: 0,

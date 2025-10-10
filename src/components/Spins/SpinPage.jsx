@@ -20,6 +20,7 @@ export default function SpinPage() {
   const [error, setError] = useState("");
 
   const [spinning, setSpinning] = useState(false);
+  const [animDone, setAnimDone] = useState(false);       // ← флаг конца анимации
   const [targetId, setTargetId] = useState(null);
   const [spinId, setSpinId] = useState(null);
   const [result, setResult] = useState(null); // {status, prize?}
@@ -30,9 +31,6 @@ export default function SpinPage() {
 
   // курс конвертации из таблицы fx_rates
   const [fx, setFx] = useState({ stars_per_ton: 0, ton_per_100stars: 0, fee_markup: 0 });
-
-  // сторожевой таймер окончания анимации
-  const spinWatchdogRef = useRef(null);
 
   const activeCase = cases[index] || null;
 
@@ -55,8 +53,8 @@ export default function SpinPage() {
         const { data, error } = await supabase
           .from("fx_rates")
           .select("stars_per_ton, ton_per_100stars, fee_markup")
-          .eq("id", 1)       // точечный выбор первой записи
-          .maybeSingle();    // не падать, если строк нет (RLS/фильтр)
+          .eq("id", 1)
+          .maybeSingle();
 
         if (error) {
           console.warn("[fx_rates] select error:", error);
@@ -123,24 +121,21 @@ export default function SpinPage() {
   const priceStars = useMemo(() => Number(activeCase?.price_in_stars || 0), [activeCase]);
   const allowStars = !!activeCase?.allow_stars;
 
+  // показываем модалку строго когда есть результат И анимация закончилась
+  useEffect(() => {
+    if (animDone && result) setShowModal(true);
+  }, [animDone, result]);
+
   // запуск спина
   async function handleSpin() {
     if (!activeCase) return;
     setError("");
     setResult(null);
     setSpinning(true);
+    setAnimDone(false);         // ← сбрасываем флаг перед стартом
     setTargetId(null);
     setSpinId(null);
-    setShowModal(false); // (1) сбрасываем флаг перед стартом
-
-    setTimeout(() => {
-      setShowModal(true);
-    }, 5500);
-
-    if (spinWatchdogRef.current) {
-      clearTimeout(spinWatchdogRef.current);
-      spinWatchdogRef.current = null;
-    }
+    setShowModal(false);        // ← сбрасываем модалку
 
     try {
       const payload = {
@@ -158,19 +153,9 @@ export default function SpinPage() {
           chances[0];
         setTargetId(loseSeg?.id || null);
         setResult({ status: "lose" });
-
-        spinWatchdogRef.current = setTimeout(() => {
-          setSpinning(false);
-          spinWatchdogRef.current = null;
-        }, 2600);
       } else {
         setTargetId(resp.prize?.chance_id || null);
         setResult({ status: "pending", prize: resp.prize });
-
-        spinWatchdogRef.current = setTimeout(() => {
-          setSpinning(false);
-          spinWatchdogRef.current = null;
-        }, 2600);
       }
 
       // обновляем баланс после списания
@@ -183,15 +168,14 @@ export default function SpinPage() {
     } catch (e) {
       setError(e.message);
       setSpinning(false);
+      setAnimDone(true); // аварийно считаем анимацию завершённой, чтобы не зависнуть
     }
   }
 
-  // окончание 
+  // конец анимации от колеса
   function handleSpinEnd() {
-    if (spinWatchdogRef.current) {
-      clearTimeout(spinWatchdogRef.current);
-      spinWatchdogRef.current = null;
-    }
+    setSpinning(false);
+    setAnimDone(true);
   }
 
   async function handleClaim() {
@@ -200,7 +184,7 @@ export default function SpinPage() {
       const resp = await postClaim(spinId);
       if (resp?.status === "reward_sent") {
         setResult((r) => ({ ...r, status: "reward_sent" }));
-        setShowModal(false); // (3) закрыть после успешной выдачи
+        setShowModal(false); // закрыть после успешной выдачи
       }
     } catch (e) {
       setError(e.message);
@@ -212,7 +196,7 @@ export default function SpinPage() {
     try {
       const resp = await postReroll(spinId);
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
-      setShowModal(false); // (3) закрыть после обмена
+      setShowModal(false); // закрыть после обмена
       const { data } = await supabase
         .from("users")
         .select("stars, tickets")
