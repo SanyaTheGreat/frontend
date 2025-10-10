@@ -214,17 +214,18 @@ function Segment({ start, sweep, label, slug, angle }) {
           width: 48,
           height: 48,
           transform: `
-            rotate(${sweep / 2}deg)
-            translateX(${ICON_RADIUS}px)
-            rotate(${-sweep / 2}deg)
-            rotate(${-angle}deg)
+            translate(-50%, -50%)   /* центр картинки в центр колеса */
+            rotate(${sweep / 2}deg) /* на биссектрису сектора (контейнер уже rotate(start)) */
+            translateX(${ICON_RADIUS}px) /* выносим на радиус */
+            rotate(90deg)           /* "головой" к краю (поставь -90deg если нужно) */
           `,
           transformOrigin: "center",
           objectFit: "contain",
           pointerEvents: "none",
         }}
-        onError={(e) => (e.currentTarget.style.display = "none")}
+         onError={(e) => (e.currentTarget.style.display = "none")}
       />
+
 
       {/* Текст только для lose — тоже компенсируем вращение */}
       {label === "lose" && (
