@@ -9,6 +9,7 @@
   position: relative;
   z-index: 1;
   background: transparent;
+  padding-top: 72px;
 }
 
 .case-chip.active { 
