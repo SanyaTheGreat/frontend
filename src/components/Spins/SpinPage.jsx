@@ -135,7 +135,7 @@ export default function SpinPage() {
 
     setTimeout(() => {
       setShowModal(true);
-    }, 7000);
+    }, 6000);
 
     if (spinWatchdogRef.current) {
       clearTimeout(spinWatchdogRef.current);
