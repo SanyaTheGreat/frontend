@@ -69,13 +69,18 @@
 }
 
 .wheel-pointer {
+  position: absolute;
+  right: -12px;      /* вынос стрелки за край колеса */
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg); /* поворот направо */
   width: 0;
   height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-bottom: 16px solid #fff;
-  margin-bottom: 6px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid #fff; /* треугольник стрелки */
+  z-index: 10;
 }
+
 
 /* ==== Глубокий фон — звёздное небо ==== */
 .space-bg {
