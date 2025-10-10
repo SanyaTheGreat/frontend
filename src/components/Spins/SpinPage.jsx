@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   fetchCases,
   fetchCaseChance,
@@ -20,7 +19,6 @@ export default function SpinPage() {
   const [chances, setChances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
   const [spinning, setSpinning] = useState(false);
   const [animDone, setAnimDone] = useState(false); // флаг конца анимации
@@ -252,6 +250,12 @@ export default function SpinPage() {
     }
   }
 
+  // МИНИМАЛЬНО: оставить приз pending и закрыть модалку
+  function handleKeepPending() {
+    setShowModal(false);
+    if (typeof loadInvCount === "function") loadInvCount();
+  }
+
   // сегменты для колеса
   const wheelSegments = useMemo(() => chances, [chances]);
 
@@ -264,7 +268,10 @@ export default function SpinPage() {
       <button
         type="button"
         className="inventory-badge"
-        onClick={() => navigate("/inventory")}
+        onClick={() => {
+          // откроем модалку позже; пока — просто подгрузим актуальный счётчик
+          loadInvCount();
+        }}
         aria-label="Инвентарь"
       >
         🧰 Инвентарь{invCount ? ` (${invCount})` : ""}
@@ -330,7 +337,7 @@ export default function SpinPage() {
             allowStars={allowStars}
             starsPerTon={fx.stars_per_ton}
             feeMarkup={fx.fee_markup}
-            onClaim={handleClaim}
+            onKeep={handleKeepPending}
             onReroll={handleReroll}
           />
         )}
@@ -369,7 +376,7 @@ function CaseRange({ count, index, onChange }) {
 }
 
 /* Блок результата со встроенной логикой обмена */
-function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, onClaim, onReroll }) {
+function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, onKeep, onReroll }) {
   if (result.status === "lose") {
     return <div className="result-banner">Не повезло. Попробуй ещё!</div>;
   }
@@ -378,23 +385,15 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, 
     const ch = chances.find((x) => x.id === result.prize?.chance_id);
 
     // базовая сумма в TON: берём первое валидное > 0 из списка кандидатов
-    const candidates = [
-      ch?.payout_value,
-      ch?.price,
-      result.prize?.payout_value,
-      result.prize?.price,
-    ].map((v) => Number(v));
+    const candidates = [ch?.payout_value, ch?.price, result.prize?.payout_value, result.prize?.price].map((v) =>
+      Number(v)
+    );
     const baseTon = candidates.find((v) => Number.isFinite(v) && v > 0) || 0;
 
     // конвертация TON -> ⭐ с учётом fee_markup (уменьшаем выдачу)
-    const starsAmount = Math.max(
-      0,
-      Math.ceil(baseTon * (starsPerTon || 0) * (1 - (feeMarkup || 0)))
-    );
+    const starsAmount = Math.max(0, Math.ceil(baseTon * (starsPerTon || 0) * (1 - (feeMarkup || 0))));
 
-    const exchangeLabel = allowStars
-      ? `Обменять на ${starsAmount} ⭐`
-      : `Обменять на ${baseTon} TON`;
+    const exchangeLabel = allowStars ? `Обменять на ${starsAmount} ⭐` : `Обменять на ${baseTon} TON`;
 
     return (
       <div className="result-banner" style={{ display: "grid", gap: 8 }}>
@@ -403,8 +402,8 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, 
           <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
         </div>
         <div className="result-cta">
-          <button className="primary-btn" onClick={onClaim}>
-            Забрать
+          <button className="primary-btn" onClick={onKeep}>
+            В инвентарь
           </button>
           <button className="ghost-btn" onClick={() => onReroll(exchangeLabel)}>
             {exchangeLabel}
