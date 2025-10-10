@@ -23,6 +23,8 @@ export const postSpin = (payload) => http(`/api/case/spin`, { method: "POST", bo
 export const postClaim = (spinId) => http(`/api/case/spin/${spinId}/claim`, { method: "POST" });
 export const postReroll = (spinId) => http(`/api/case/spin/${spinId}/reroll`, { method: "POST" });
 
+export const fetchInventory = (telegramId) =>
+  http(`/api/inventory?telegram_id=${encodeURIComponent(telegramId)}`);
 
 export function getTelegramId() {
 const tg = window?.Telegram?.WebApp?.initDataUnsafe;

@@ -295,7 +295,7 @@ export default function SpinPage() {
       <div className="spins-page">
         {/* Header */}
         <div className="spins-header">
-          <div style={{ fontWeight: 800, fontSize: 18 }}>Spins</div>
+          <div style={{ fontWeight: 800, fontSize: 18 }}></div>
         </div>
 
         {/* Колесо + тост поверх него */}
