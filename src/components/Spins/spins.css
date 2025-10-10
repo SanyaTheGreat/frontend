@@ -73,7 +73,7 @@
 
 .wheel-pointer{
   position:absolute;
-  top: calc(50% - 8px);
+  top: 52%;
   right:-12px;
   transform: rotate(180deg);
   width:0;height:0;
