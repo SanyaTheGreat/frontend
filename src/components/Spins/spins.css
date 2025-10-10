@@ -197,13 +197,13 @@
 /* тост именно "на уровне колеса" — центр по колесу */
 .spin-toast--on-wheel{
   position: absolute;
-  inset: 0;               /* растягиваем на всю зону колеса */
-  display: flex;
-  align-items: center;    /* вертикальный центр по колесу */
-  justify-content: center;/* горизонтальный центр */
-  transform: none;        /* без сдвигов */
-  background: none;       /* фон уберём у контейнера, оставим у самого тоста */
-  pointer-events: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 32px); /* на всякий */
+  white-space: nowrap;          /* чтобы не разъезжался в высоту */
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
 
 .spin-toast--on-wheel::before{
