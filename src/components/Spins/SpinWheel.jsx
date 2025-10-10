@@ -64,8 +64,6 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     const center = seg.start + seg.sweep / 2;
 
     const current = angle;
-    const currentNorm = normalize360(current);
-
     const deltaToCenter = 360 - center;
     const fullTurns = 5 + Math.random() * 1;
     const final = current + fullTurns * 360 + deltaToCenter;
@@ -177,30 +175,31 @@ function Segment({ start, sweep, label, slug }) {
         onError={(e) => (e.currentTarget.style.display = "none")}
       />
 
-      {/* Подпись */}
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: `
-            rotate(${sweep / 2}deg)
-            translateY(-${TEXT_RADIUS}px)
-            rotate(${-(start + sweep / 2)}deg)
-          `,
-          width: 80,
-          marginLeft: -40,
-          textAlign: "center",
-          color: "#e9eef9",
-          fontSize: 12,
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          textShadow: "0 1px 2px rgba(0,0,0,.35)",
-          pointerEvents: "none",
-        }}
-      >
-        {label}
-      </div>
+      {/* Подпись только для "lose" */}
+      {label === "lose" && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: `
+              rotate(${sweep / 2}deg)
+              translateY(-${TEXT_RADIUS}px)
+              rotate(${-(start + sweep / 2)}deg)
+            `,
+            width: 120,
+            marginLeft: -60,
+            textAlign: "center",
+            color: "#b0b3b8",
+            fontSize: 16,
+            fontWeight: 700,
+            textShadow: "0 1px 3px rgba(0,0,0,.4)",
+            pointerEvents: "none",
+          }}
+        >
+          Next one
+        </div>
+      )}
     </div>
   );
 }
