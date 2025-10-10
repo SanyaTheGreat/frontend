@@ -6,6 +6,7 @@ import {
   postClaim,
   postReroll,
   postSpin,
+  fetchInventory,            // ← добавлено
 } from "./spinsApi";
 import { supabase } from "../../supabaseClient"; // как в проекте
 import SpinWheel from "./SpinWheel";
@@ -20,7 +21,7 @@ export default function SpinPage() {
   const [error, setError] = useState("");
 
   const [spinning, setSpinning] = useState(false);
-  const [animDone, setAnimDone] = useState(false);       // ← флаг конца анимации
+  const [animDone, setAnimDone] = useState(false); // флаг конца анимации
   const [targetId, setTargetId] = useState(null);
   const [spinId, setSpinId] = useState(null);
   const [result, setResult] = useState(null); // {status, prize?}
@@ -32,8 +33,11 @@ export default function SpinPage() {
   // курс конвертации из таблицы fx_rates
   const [fx, setFx] = useState({ stars_per_ton: 0, ton_per_100stars: 0, fee_markup: 0 });
 
-  // лёгкий тост после обмена
+  // тост после обмена
   const [toast, setToast] = useState(null); // { text: string } | null
+
+  // инвентарь: счётчик и флаг (пока только кнопка)
+  const [invCount, setInvCount] = useState(0);
 
   const activeCase = cases[index] || null;
 
@@ -49,7 +53,7 @@ export default function SpinPage() {
     })();
   }, []);
 
-  // загрузка курсов (с учётом RLS / 406)
+  // загрузка курсов
   useEffect(() => {
     (async () => {
       try {
@@ -94,8 +98,8 @@ export default function SpinPage() {
             label: x.nft_name,
             slug: x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
             percent: Number(x.percent || 0),
-            price: Number(x.price || 0),              // TON (fallback)
-            payout_value: Number(x.payout_value || 0) // TON для обмена
+            price: Number(x.price || 0), // TON (fallback)
+            payout_value: Number(x.payout_value || 0), // TON для обмена
           }))
         );
       } catch (e) {
@@ -124,10 +128,29 @@ export default function SpinPage() {
   const priceStars = useMemo(() => Number(activeCase?.price_in_stars || 0), [activeCase]);
   const allowStars = !!activeCase?.allow_stars;
 
-  // показываем модалку строго когда есть результат И анимация закончилась
+  // модалка: открывать только когда есть результат и анимация завершилась
   useEffect(() => {
     if (animDone && result) setShowModal(true);
   }, [animDone, result]);
+
+  // загрузка счётчика инвентаря
+  const loadInvCount = useMemo(
+    () => async () => {
+      const tgId = telegramIdRef.current;
+      if (!tgId) return;
+      try {
+        const items = await fetchInventory(tgId);
+        setInvCount(items.length || 0);
+      } catch (e) {
+        console.warn("[inventory] count failed:", e?.message || e);
+      }
+    },
+    [telegramIdRef]
+  );
+
+  useEffect(() => {
+    loadInvCount();
+  }, [loadInvCount]);
 
   // запуск спина
   async function handleSpin() {
@@ -135,10 +158,10 @@ export default function SpinPage() {
     setError("");
     setResult(null);
     setSpinning(true);
-    setAnimDone(false);         // ← сбрасываем флаг перед стартом
+    setAnimDone(false); // сбрасываем флаг перед стартом
     setTargetId(null);
     setSpinId(null);
-    setShowModal(false);        // ← сбрасываем модалку
+    setShowModal(false); // сбрасываем модалку
 
     try {
       const payload = {
@@ -152,13 +175,16 @@ export default function SpinPage() {
 
       if (resp.status === "lose") {
         const loseSeg =
-          chances.find((s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose") ||
-          chances[0];
+          chances.find(
+            (s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose"
+          ) || chances[0];
         setTargetId(loseSeg?.id || null);
         setResult({ status: "lose" });
       } else {
         setTargetId(resp.prize?.chance_id || null);
         setResult({ status: "pending", prize: resp.prize });
+        // инвентарь может увеличиться, если пользователь выберет «позже»;
+        // счётчик обновим после фактического действия (claim/reroll) или при ручном открытии инвентаря.
       }
 
       // обновляем баланс после списания
@@ -188,13 +214,14 @@ export default function SpinPage() {
       if (resp?.status === "reward_sent") {
         setResult((r) => ({ ...r, status: "reward_sent" }));
         setShowModal(false); // закрыть после успешной выдачи
+        loadInvCount(); // обновить счётчик
       }
     } catch (e) {
       setError(e.message);
     }
   }
 
-  // теперь принимаем текст на кнопке, чтобы показать его в тосте
+  // принимаем текст на кнопке, чтобы показать его в тосте
   async function handleReroll(labelFromUI) {
     if (!spinId) return;
     try {
@@ -208,6 +235,8 @@ export default function SpinPage() {
         setToast({ text: `Успешно обменяли на ${amountText}` });
       }
       setTimeout(() => setToast(null), 2000);
+
+      loadInvCount(); // обновить счётчик
 
       // обновить баланс
       const { data } = await supabase
@@ -229,7 +258,20 @@ export default function SpinPage() {
 
   return (
     <>
-      {/* Фиксированный баланс в правом верхнем углу */}
+      {/* Инвентарь слева сверху (напротив баланса) */}
+      <button
+        type="button"
+        className="inventory-badge"
+        onClick={() => {
+          // откроем модалку позже; пока — просто подгрузим актуальный счётчик
+          loadInvCount();
+        }}
+        aria-label="Инвентарь"
+      >
+        🧰 Инвентарь{invCount ? ` (${invCount})` : ""}
+      </button>
+
+      {/* Баланс в правом верхнем углу */}
       <div
         style={{
           position: "fixed",
@@ -257,7 +299,7 @@ export default function SpinPage() {
         </div>
 
         {/* Колесо + тост поверх него */}
-        <div className="wheel-zone">{/* [toast-on-wheel] */}
+        <div className="wheel-zone">
           <SpinWheel
             segments={wheelSegments}
             targetId={targetId}
@@ -362,7 +404,9 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, 
           <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
         </div>
         <div className="result-cta">
-          <button className="primary-btn" onClick={onClaim}>Забрать</button>
+          <button className="primary-btn" onClick={onClaim}>
+            Забрать
+          </button>
           <button className="ghost-btn" onClick={() => onReroll(exchangeLabel)}>
             {exchangeLabel}
           </button>

@@ -218,3 +218,25 @@
   width: max-content;
   height: auto;
 }
+
+/* Кнопка/плашка инвентаря — напротив баланса */
+.inventory-badge{
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: 0;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.inventory-badge:hover{ background: rgba(0,0,0,0.6); }
+.inventory-badge:active{ transform: translateY(1px); }
