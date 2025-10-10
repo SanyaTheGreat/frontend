@@ -23,6 +23,8 @@ export default function SpinPage() {
   const [targetId, setTargetId] = useState(null);
   const [spinId, setSpinId] = useState(null);
   const [result, setResult] = useState(null); // {status, prize?}
+  const [showModal, setShowModal] = useState(false);
+
 
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
   const telegramIdRef = useRef(getTelegramId());
