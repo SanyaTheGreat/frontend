@@ -152,7 +152,7 @@ function Segment({ start, sweep, label, slug }) {
           width: 48,
           height: 48,
           transform: `
-            rotate(${sweep / 2 + offset}deg)
+            rotate(${sweep / 2}deg)
             translateY(-${ICON_RADIUS}px)
             rotate(${-(start + sweep / 2 + offset)}deg)
           `,
