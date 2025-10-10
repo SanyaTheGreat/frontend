@@ -155,6 +155,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
             sweep={s.sweep}
             label={s.label}
             slug={s.slug}
+            angle={angle}            // ← передаём текущий угол для компенсации
           />
         ))}
       </div>
@@ -162,10 +163,10 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
   );
 }
 
-function Segment({ start, sweep, label, slug }) {
+function Segment({ start, sweep, label, slug, angle }) {
   const ICON_RADIUS = 110;
   const TEXT_RADIUS = 105;
-  const ICON_OFFSET = -7; // смещение иконки против часовой (тонкая подстройка)
+  const ICON_OFFSET = -7; // тонкая подстройка по дуге (против часовой)
 
   // Контейнер уже повёрнут на начало сектора (0°=вправо)
   const container = {
@@ -177,7 +178,7 @@ function Segment({ start, sweep, label, slug }) {
 
   return (
     <div style={container}>
-      {/* Иконка — центр сектора */}
+      {/* Иконка — центр сектора, остаётся вертикальной благодаря rotate(-angle) */}
       <img
         src={`/animations/${slug}.png`}
         alt={label}
@@ -191,6 +192,7 @@ function Segment({ start, sweep, label, slug }) {
             rotate(${sweep / 2 + ICON_OFFSET}deg)
             translateX(${ICON_RADIUS}px)
             rotate(${-sweep / 2}deg)
+            rotate(${-angle}deg)                /* компенсация вращения колеса */
           `,
           transformOrigin: "center",
           objectFit: "contain",
@@ -199,7 +201,7 @@ function Segment({ start, sweep, label, slug }) {
         onError={(e) => (e.currentTarget.style.display = "none")}
       />
 
-      {/* Текст только для lose */}
+      {/* Текст только для lose — тоже компенсируем вращение */}
       {label === "lose" && (
         <div
           style={{
@@ -210,6 +212,7 @@ function Segment({ start, sweep, label, slug }) {
               rotate(${sweep / 2}deg)
               translateX(${TEXT_RADIUS}px)
               rotate(${-sweep / 2}deg)
+              rotate(${-angle}deg)              /* компенсация вращения */
             `,
             width: 140,
             marginLeft: -70,
