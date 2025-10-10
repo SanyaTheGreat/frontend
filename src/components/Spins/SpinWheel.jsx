@@ -152,7 +152,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
           height: 340,
           borderRadius: "50%",
           position: "relative",
-          transform: `rotate(${angle}deg)`,
+          transform: `rotate(${angle + 90}deg)`,
           background: wheelBg,
           border: "6px solid #1f2229",
           boxShadow: "0 6px 30px rgba(0,0,0,.45)",
