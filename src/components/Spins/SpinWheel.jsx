@@ -57,11 +57,10 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     return `conic-gradient(from 90deg, ${stops.join(",")})`;
   }, [cumulated]);
 
-  // Более плавное, «инерционное» замедление
-  const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
   const norm360 = (deg) => ((deg % 360) + 360) % 360;
 
-  // ===== Запуск анимации с учётом текущего угла, рандом внутри сектора =====
+  // ===== Запуск анимации с учётом текущего угла =====
   useEffect(() => {
     if (!isSpinning || !targetId || cumulated.length === 0) return;
 
@@ -70,24 +69,13 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
 
     const current = angle;
     const currentNorm = norm360(current);
-    const POINTER_DEG = 0; // стрелка вправо (0°)
+    const POINTER_DEG = 0;                         // стрелка вправо (0°)
+    // Доводим так, чтобы (currentNorm + delta + center) % 360 == POINTER_DEG
+    const deltaToCenter = norm360(POINTER_DEG - (currentNorm + seg.center));
+    const spins = 5;
+    const final = current + 360 * spins + deltaToCenter;
 
-    // Случайная точка ВНУТРИ сектора, не по центру:
-    // берём +-30% ширины сектора относительно центра
-    const maxOffset = seg.sweep * 0.30;
-    const randomOffset = (Math.random() * 2 - 1) * maxOffset;
-    const targetAngleInWheel = seg.center + randomOffset; // цель в системе колеса (0°=вправо)
-
-    // Сколько довернуть от текущего, чтобы цель стала под указателем:
-    // (currentNorm + delta + target) % 360 == POINTER_DEG
-    const deltaToTarget = norm360(POINTER_DEG - (currentNorm + targetAngleInWheel));
-
-    // Реалистично: 5..6 оборотов (слегка варьируем)
-    const spins = 5 + Math.random();
-    const final = current + 360 * spins + deltaToTarget;
-
-    // Длительность: 3.0–4.2s (живее)
-    const duration = 3000 + Math.random() * 1200;
+    const duration = 3200 + Math.random() * 400;
 
     // Логи
     console.group("[SPIN]");
@@ -97,15 +85,11 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
       start_deg: +seg.start.toFixed(2),
       sweep_deg: +seg.sweep.toFixed(2),
       center_deg: +seg.center.toFixed(2),
-      random_offset_deg: +randomOffset.toFixed(2),
-      target_in_wheel_deg: +targetAngleInWheel.toFixed(2),
     });
     console.log("Геометрия доводки:", {
       current_norm_deg: +currentNorm.toFixed(2),
-      delta_to_target_deg: +deltaToTarget.toFixed(2),
+      delta_to_center_deg: +deltaToCenter.toFixed(2),
       rotate_by_deg: +(final - current).toFixed(2),
-      spins: +spins.toFixed(2),
-      duration_ms: Math.round(duration),
       final_angle_deg: +final.toFixed(2),
       final_angle_norm_deg: +norm360(final).toFixed(2),
     });
@@ -126,7 +110,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     const end = endAngleRef.current;
     const dur = durationRef.current;
     const t = Math.min(1, (now - start) / dur);
-    const k = easeOutQuint(t); // новый easing
+    const k = easeOutCubic(t);
     const value = startAngleRef.current + (end - startAngleRef.current) * k;
     setAngle(value);
     if (t < 1) {
@@ -134,7 +118,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
     } else {
       setAngle(end);
       rafRef.current = null;
-      onSpinEnd?.(); // модалка должна открываться ТОЛЬКО здесь
+      onSpinEnd?.();
     }
   };
 
@@ -171,7 +155,7 @@ export default function SpinWheel({ segments, targetId, isSpinning, onSpinEnd })
             sweep={s.sweep}
             label={s.label}
             slug={s.slug}
-            angle={angle} // чтобы иконки/текст оставались вертикальными
+            angle={angle}            // ← передаём текущий угол для компенсации
           />
         ))}
       </div>
