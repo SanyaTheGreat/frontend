@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   fetchCases,
   fetchCaseChance,
@@ -19,6 +20,7 @@ export default function SpinPage() {
   const [chances, setChances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const [spinning, setSpinning] = useState(false);
   const [animDone, setAnimDone] = useState(false); // флаг конца анимации
@@ -262,9 +264,7 @@ export default function SpinPage() {
       <button
         type="button"
         className="inventory-badge"
-        onClick={() => {
-          // откроем модалку позже; пока — просто подгрузим актуальный счётчик
-          loadInvCount();
+        onClick={() => {() => navigate("/inventory")
         }}
         aria-label="Инвентарь"
       >
