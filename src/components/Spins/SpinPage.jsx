@@ -25,7 +25,6 @@ export default function SpinPage() {
   const [result, setResult] = useState(null); // {status, prize?}
   const [showModal, setShowModal] = useState(false);
 
-
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
   const telegramIdRef = useRef(getTelegramId());
 
@@ -132,10 +131,11 @@ export default function SpinPage() {
     setSpinning(true);
     setTargetId(null);
     setSpinId(null);
+    setShowModal(false); // (1) сбрасываем флаг перед стартом
 
     setTimeout(() => {
-    setShowModal(true);
-  }, 7000);
+      setShowModal(true);
+    }, 7000);
 
     if (spinWatchdogRef.current) {
       clearTimeout(spinWatchdogRef.current);
@@ -200,6 +200,7 @@ export default function SpinPage() {
       const resp = await postClaim(spinId);
       if (resp?.status === "reward_sent") {
         setResult((r) => ({ ...r, status: "reward_sent" }));
+        setShowModal(false); // (3) закрыть после успешной выдачи
       }
     } catch (e) {
       setError(e.message);
@@ -211,6 +212,7 @@ export default function SpinPage() {
     try {
       const resp = await postReroll(spinId);
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
+      setShowModal(false); // (3) закрыть после обмена
       const { data } = await supabase
         .from("users")
         .select("stars, tickets")
@@ -280,7 +282,7 @@ export default function SpinPage() {
         />
 
         {/* Результат */}
-        {result && (
+        {result && showModal && (
           <ResultBlock
             result={result}
             chances={chances}
