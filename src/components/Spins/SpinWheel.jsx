@@ -137,7 +137,7 @@ function Segment({ start, sweep, label, slug }) {
   };
 
   // небольшой поправочный сдвиг (чтобы иконки не уплывали)
-  const offset = -sweep * 0.02; // примерно 2% сектора влево
+  const offset = 0; // примерно 2% сектора влево
 
   return (
     <div style={container}>
