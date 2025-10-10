@@ -184,7 +184,7 @@ export default function SpinPage() {
     }
   }
 
-  // окончание анимации
+  // окончание 
   function handleSpinEnd() {
     if (spinWatchdogRef.current) {
       clearTimeout(spinWatchdogRef.current);
