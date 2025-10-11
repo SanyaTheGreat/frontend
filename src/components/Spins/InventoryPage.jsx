@@ -21,6 +21,16 @@ export default function InventoryPage() {
   // тост
   const [toast, setToast] = useState(null); // {text}
 
+  // защита от повторов: id спинов "в процессе"
+  const [processing, setProcessing] = useState(new Set());
+  const isBusy = (id) => processing.has(id);
+  const lock = (id) => setProcessing((prev) => {
+    const s = new Set(prev); s.add(id); return s;
+  });
+  const unlock = (id) => setProcessing((prev) => {
+    const s = new Set(prev); s.delete(id); return s;
+  });
+
   // telegram_id: TG → ?tgid= → localStorage (чтобы в dev работало в браузере)
   const queryId = new URLSearchParams(window.location.search).get("tgid");
   const storedId = window.localStorage.getItem("tgid") || null;
@@ -108,6 +118,8 @@ export default function InventoryPage() {
 
   // действия
   async function handleClaim(spin_id) {
+    if (isBusy(spin_id)) return;       // защита от дабл-клика
+    lock(spin_id);
     try {
       const resp = await postClaim(spin_id);
       if (resp?.status === "reward_sent") {
@@ -117,14 +129,19 @@ export default function InventoryPage() {
       }
     } catch (e) {
       setError(e?.message || "Ошибка при выводе приза");
+    } finally {
+      unlock(spin_id);
     }
   }
 
   async function handleReroll(item) {
+    const spin_id = item.spin_id;
+    if (isBusy(spin_id)) return;       // защита от дабл-клика
+    lock(spin_id);
     try {
-      const resp = await postReroll(item.spin_id);
+      const resp = await postReroll(spin_id);
       if (resp) {
-        setItems((xs) => xs.filter((x) => x.spin_id !== item.spin_id));
+        setItems((xs) => xs.filter((x) => x.spin_id !== spin_id));
         const baseTon = Number(item.payout_value || item.price || 0);
         const starsAmount = Math.max(
           0,
@@ -137,6 +154,8 @@ export default function InventoryPage() {
       }
     } catch (e) {
       setError(e?.message || "Ошибка при продаже");
+    } finally {
+      unlock(spin_id);
     }
   }
 
@@ -197,7 +216,6 @@ export default function InventoryPage() {
 
       {/* Контент */}
       <div className="spins-header" style={{ justifyContent: "space-between" }}>
-        {/* убираем текстовый заголовок "Инвентарь" по просьбе */}
         <div />
         <button className="ghost-btn" onClick={loadInventory}>
           Обновить
@@ -227,6 +245,8 @@ export default function InventoryPage() {
             const exchangeLabel = starsAmount
               ? `Продать за ${starsAmount} ⭐`
               : `Продать за ${baseTon} TON`;
+            const busy = isBusy(it.spin_id);
+
             return (
               <div key={it.spin_id} className="result-banner" style={{ display: "grid", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -234,11 +254,11 @@ export default function InventoryPage() {
                   <div style={{ fontWeight: 700 }}>{it.nft_name}</div>
                 </div>
                 <div className="result-cta">
-                  <button className="primary-btn" onClick={() => handleClaim(it.spin_id)}>
+                  <button className="primary-btn" onClick={() => handleClaim(it.spin_id)} disabled={busy}>
                     Вывести
                   </button>
-                  <button className="ghost-btn" onClick={() => handleReroll(it)}>
-                    {exchangeLabel}
+                  <button className="ghost-btn" onClick={() => handleReroll(it)} disabled={busy}>
+                    {busy ? "Обработка…" : exchangeLabel}
                   </button>
                 </div>
               </div>
