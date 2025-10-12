@@ -100,6 +100,9 @@ export default function SpinPage() {
         const list = await fetchCaseChance(activeCase.id);
         // ожидаем поля: id, nft_name, slug, percent, chance, payout_value, price, is_active
         const onlyActive = list.filter((x) => x.is_active);
+
+        onlyActive.sort((a, b) => (Number(a.chance) || 0) - (Number(b.chance) || 0));
+        
         setChances(
           onlyActive.map((x) => ({
             id: x.id,
