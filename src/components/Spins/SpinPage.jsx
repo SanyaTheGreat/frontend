@@ -41,6 +41,9 @@ export default function SpinPage() {
   // инвентарь: счётчик и флаг (пока только кнопка)
   const [invCount, setInvCount] = useState(0);
 
+  // Блокировка повторных кликов на кнопках результата
+  const [actionBusy, setActionBusy] = useState(false);
+
   const activeCase = cases[index] || null;
 
   // загрузка кейсов
@@ -164,6 +167,7 @@ export default function SpinPage() {
     setTargetId(null);
     setSpinId(null);
     setShowModal(false); // сбрасываем модалку
+    setActionBusy(false); // сбрасываем защиту для нового результата
 
     try {
       const payload = {
@@ -210,7 +214,8 @@ export default function SpinPage() {
   }
 
   async function handleClaim() {
-    if (!spinId) return;
+    if (!spinId || actionBusy) return;
+    setActionBusy(true);
     try {
       const resp = await postClaim(spinId);
       if (resp?.status === "reward_sent") {
@@ -220,12 +225,15 @@ export default function SpinPage() {
       }
     } catch (e) {
       setError(e.message);
+    } finally {
+      setActionBusy(false);
     }
   }
 
   // принимаем текст на кнопке, чтобы показать его в тосте
   async function handleReroll(labelFromUI) {
-    if (!spinId) return;
+    if (!spinId || actionBusy) return;
+    setActionBusy(true);
     try {
       const resp = await postReroll(spinId);
       setResult((r) => ({ ...r, status: "reroll", reroll: resp }));
@@ -249,12 +257,15 @@ export default function SpinPage() {
       if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
     } catch (e) {
       setError(e.message);
+    } finally {
+      setActionBusy(false);
     }
   }
 
   // оставить приз pending и просто закрыть модалку
   function handleKeepPending() {
     setShowModal(false);
+    setActionBusy(false);
     loadInvCount();
   }
 
@@ -338,6 +349,7 @@ export default function SpinPage() {
             feeMarkup={fx.fee_markup}
             onKeep={handleKeepPending}
             onReroll={handleReroll}
+            actionBusy={actionBusy}
           />
         )}
 
@@ -375,7 +387,16 @@ function CaseRange({ count, index, onChange }) {
 }
 
 /* Блок результата со встроенной логикой обмена */
-function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, onKeep, onReroll }) {
+function ResultBlock({
+  result,
+  chances,
+  allowStars,
+  starsPerTon,
+  feeMarkup = 0,
+  onKeep,
+  onReroll,
+  actionBusy,
+}) {
   if (result.status === "lose") {
     return <div className="result-banner">Не повезло. Попробуй ещё!</div>;
   }
@@ -409,11 +430,15 @@ function ResultBlock({ result, chances, allowStars, starsPerTon, feeMarkup = 0, 
           <div style={{ fontWeight: 700 }}>Выпало: {ch?.label || result.prize?.nft_name}</div>
         </div>
         <div className="result-cta">
-          <button className="primary-btn" onClick={onKeep}>
-            В инвентарь
+          <button className="primary-btn" onClick={onKeep} disabled={actionBusy}>
+            {actionBusy ? "Обработка..." : "В инвентарь"}
           </button>
-          <button className="ghost-btn" onClick={() => onReroll(exchangeLabel)}>
-            {exchangeLabel}
+          <button
+            className="ghost-btn"
+            onClick={() => onReroll(exchangeLabel)}
+            disabled={actionBusy}
+          >
+            {actionBusy ? "Обработка..." : exchangeLabel}
           </button>
         </div>
       </div>
