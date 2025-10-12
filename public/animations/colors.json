@@ -544,5 +544,41 @@
     "edge_color": "#6b7d54",
     "pattern_color": "#39501b",
     "text_color": "#d3e6bb"
+  },
+  "EasterEgg-104989": {
+    "center_color": "#64695c",
+    "edge_color": "#4b5241",
+    "pattern_color": "#0f120b",
+    "text_color": "#c3c7bd"
+  },
+  "BigYear-47590": {
+    "center_color": "#b17da5",
+    "edge_color": "#8c577a",
+    "pattern_color": "#652852",
+    "text_color": "#f0c4e2"
+  },
+  "GingerCookie-53194": {
+    "center_color": "#b2aea7",
+    "edge_color": "#88847e",
+    "pattern_color": "#3d382d",
+    "text_color": "#e9e7e2"
+  },
+  "CloverPin-133258": {
+    "center_color": "#a35e66",
+    "edge_color": "#6d414a",
+    "pattern_color": "#340307",
+    "text_color": "#e7bcc0"
+  },
+  "WitchHat-29653": {
+    "center_color": "#7eb1b4",
+    "edge_color": "#588390",
+    "pattern_color": "#164552",
+    "text_color": "#daf5fd"
+  },
+  "SnoopDogg-235321": {
+    "center_color": "#58a3c8",
+    "edge_color": "#5379c2",
+    "pattern_color": "#0d45b6",
+    "text_color": "#c1deff"
   }
 }
