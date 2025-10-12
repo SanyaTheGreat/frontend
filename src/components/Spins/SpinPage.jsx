@@ -44,6 +44,9 @@ export default function SpinPage() {
   // Блокировка повторных кликов на кнопках результата
   const [actionBusy, setActionBusy] = useState(false);
 
+  // Показ панели шансов
+  const [showChances, setShowChances] = useState(false);
+
   const activeCase = cases[index] || null;
 
   // загрузка кейсов
@@ -95,16 +98,19 @@ export default function SpinPage() {
       setLoading(true);
       try {
         const list = await fetchCaseChance(activeCase.id);
-        // ожидаем поля: id, nft_name, slug, percent, payout_value, price, is_active
+        // ожидаем поля: id, nft_name, slug, percent, chance, payout_value, price, is_active
         const onlyActive = list.filter((x) => x.is_active);
         setChances(
           onlyActive.map((x) => ({
             id: x.id,
             label: x.nft_name,
             slug: x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
-            percent: Number(x.percent || 0),
-            price: Number(x.price || 0), // TON (fallback)
-            payout_value: Number(x.payout_value || 0), // TON для обмена
+            percent: Number(x.percent || 0),            // остаётся для вашей другой логики
+            chance: Number.isFinite(Number(x.chance))   // НОВОЕ: шанс из БД
+              ? Number(x.chance)
+              : null,
+            price: Number(x.price || 0),                // TON (fallback)
+            payout_value: Number(x.payout_value || 0),  // TON для обмена
           }))
         );
       } catch (e) {
@@ -324,6 +330,123 @@ export default function SpinPage() {
           />
           {toast && <div className="spin-toast spin-toast--on-wheel">{toast.text}</div>}
         </div>
+
+        {/* Кнопка "Показать шансы" справа под колесом */}
+        <div style={{ padding: "6px 8px 0", display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={() => setShowChances((v) => !v)}
+            className="ghost-btn"
+            style={{
+              fontSize: 13,
+              padding: "6px 10px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.25)",
+              background: "rgba(0,0,0,0.35)",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+            aria-expanded={showChances}
+            aria-controls="chances-panel"
+          >
+            {showChances ? "Скрыть шансы" : "Показать шансы"}
+          </button>
+        </div>
+
+        {/* Панель со шансами — справа под колесом */}
+        {showChances && (
+          <div
+            id="chances-panel"
+            style={{
+              margin: "6px 8px 8px",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 360,
+                width: "100%",
+                background: "rgba(0,0,0,0.55)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 14,
+                padding: 10,
+                color: "#fff",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 8, fontSize: 14 }}>
+                Шансы текущего колеса
+              </div>
+
+              {loading ? (
+                <div style={{ opacity: 0.8, fontSize: 13 }}>Загрузка…</div>
+              ) : chances && chances.length ? (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}>
+                  {chances.map((c) => {
+                    const hasChance = Number.isFinite(c.chance);
+                    const display = hasChance ? `${c.chance.toFixed(2)}%` : "—";
+                    return (
+                      <li
+                        key={c.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          padding: "6px 8px",
+                          borderRadius: 10,
+                          background: "rgba(255,255,255,0.05)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                          <img
+                            src={`/animations/${c.slug}.png`}
+                            alt=""
+                            width={28}
+                            height={28}
+                            style={{ borderRadius: 6, objectFit: "cover" }}
+                            onError={(e) => {
+                              e.currentTarget.style.visibility = "hidden";
+                              e.currentTarget.width = 0;
+                              e.currentTarget.height = 0;
+                            }}
+                          />
+                          <span
+                            title={c.label}
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: 220,
+                            }}
+                          >
+                            {c.label}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontVariantNumeric: "tabular-nums",
+                            fontWeight: 800,
+                            fontSize: 13,
+                            opacity: hasChance ? 1 : 0.6,
+                          }}
+                          title={hasChance ? `${c.chance}%` : "Шанс не указан"}
+                        >
+                          {display}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div style={{ opacity: 0.8, fontSize: 13 }}>Шансы пока не указаны</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Ползунок выбора кейса */}
         <CaseRange count={cases.length} index={index} onChange={setIndex} />
