@@ -1,25 +1,42 @@
 import React from "react";
-import "./spins.css";
-
 
 export default function SpinControls({
-allowStars,
-priceTon,
-priceStars,
-onSpin,
-spinning,
-balanceStars,
-balanceTickets,
+  allowStars,
+  priceTon,
+  priceStars,
+  balanceStars,     // пробрасываются как раньше (не используем здесь)
+  balanceTickets,   // пробрасываются как раньше (не используем здесь)
+  spinning,
+  onSpin,
+  freeAvailable = false,
+  onSpinFree,
 }) {
-const priceLabel = allowStars ? `${priceStars} ⭐` : `${priceTon} TON`;
-const canAfford = allowStars ? balanceStars >= priceStars : balanceTickets >= priceTon;
+  // единый обработчик основной кнопки
+  const handlePrimary = () => {
+    if (spinning) return;
+    if (freeAvailable && onSpinFree) return onSpinFree(); // фриспин
+    return onSpin(); // обычный спин
+  };
 
+  // подпись на кнопке
+  const primaryLabel = (() => {
+    if (spinning) return "Крутим...";
+    if (freeAvailable) return "Крутить бесплатно 🎁";
+    return allowStars
+      ? `Крутить за ${Math.ceil(priceStars)} ⭐`
+      : `Крутить за ${priceTon} TON`;
+  })();
 
-return (
-<div className="spin-action">
-<button className="spin-button" disabled={spinning || !canAfford} onClick={onSpin}>
-{spinning ? "Крутим..." : `1 Roll за ${priceLabel}`}
-</button>
-</div>
-);
+  return (
+    <div className="spin-action">
+      <button
+        className="spin-button"
+        onClick={handlePrimary}
+        disabled={spinning}
+        aria-label="spin"
+      >
+        {primaryLabel}
+      </button>
+    </div>
+  );
 }
