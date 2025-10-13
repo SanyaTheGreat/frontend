@@ -13,6 +13,7 @@ import { supabase } from "../../supabaseClient"; // как в проекте
 import SpinWheel from "./SpinWheel";
 import SpinControls from "./SpinControls";
 import "./spins.css";
+import WinsTicker from "./WinsTicker";
 
 export default function SpinPage() {
   const [cases, setCases] = useState([]);
