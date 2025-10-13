@@ -29,6 +29,9 @@ export const fetchInventory = async (telegramId) => {
 };
 
 
+export const fetchFreeSpinAvailability = (telegramId) =>
+  http(`/api/free-spin/availability?telegram_id=${encodeURIComponent(telegramId)}`);
+
 export function getTelegramId() {
 const tg = window?.Telegram?.WebApp?.initDataUnsafe;
 return tg?.user?.id || null;

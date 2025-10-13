@@ -7,7 +7,8 @@ import {
   postClaim,
   postReroll,
   postSpin,
-  fetchInventory,            // ← добавлено
+  fetchInventory,            // ← как было
+  fetchFreeSpinAvailability, // ← добавлено
 } from "./spinsApi";
 import { supabase } from "../../supabaseClient"; // как в проекте
 import SpinWheel from "./SpinWheel";
@@ -48,6 +49,13 @@ export default function SpinPage() {
   // Показ панели шансов
   const [showChances, setShowChances] = useState(false);
 
+  // Доступность бесплатного спина
+  const [freeInfo, setFreeInfo] = useState({
+    available: false,
+    cheapest_case_id: null,
+    next_at: null,
+  });
+
   const activeCase = cases[index] || null;
 
   // загрузка кейсов
@@ -58,6 +66,20 @@ export default function SpinPage() {
         setCases(cs.filter((c) => c.is_active));
       } catch (e) {
         setError(e.message);
+      }
+    })();
+  }, []);
+
+  // загрузка доступности бесплатного спина (1 раз при монтировании)
+  useEffect(() => {
+    (async () => {
+      try {
+        const tgId = telegramIdRef.current;
+        if (!tgId) return;
+        const info = await fetchFreeSpinAvailability(tgId);
+        setFreeInfo(info);
+      } catch (e) {
+        console.warn("[free-spin] availability:", e?.message || e);
       }
     })();
   }, []);
@@ -103,18 +125,16 @@ export default function SpinPage() {
         const onlyActive = list.filter((x) => x.is_active);
 
         onlyActive.sort((a, b) => (Number(a.chance) || 0) - (Number(b.chance) || 0));
-        
+
         setChances(
           onlyActive.map((x) => ({
             id: x.id,
             label: x.nft_name,
             slug: x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
-            percent: Number(x.percent || 0),            // остаётся для вашей другой логики
-            chance: Number.isFinite(Number(x.chance))   // НОВОЕ: шанс из БД
-              ? Number(x.chance)
-              : null,
-            price: Number(x.price || 0),                // TON (fallback)
-            payout_value: Number(x.payout_value || 0),  // TON для обмена
+            percent: Number(x.percent || 0),
+            chance: Number.isFinite(Number(x.chance)) ? Number(x.chance) : null,
+            price: Number(x.price || 0),               // TON (fallback)
+            payout_value: Number(x.payout_value || 0), // TON для обмена
           }))
         );
       } catch (e) {
@@ -167,7 +187,11 @@ export default function SpinPage() {
     loadInvCount();
   }, [loadInvCount]);
 
-  // запуск спина
+  // доступен ли фриспин для текущего выбранного кейса
+  const freeEnabledForActiveCase =
+    freeInfo.available && activeCase && activeCase.id === freeInfo.cheapest_case_id;
+
+  // запуск спина (обычный)
   async function handleSpin() {
     if (!activeCase) return;
     setError("");
@@ -214,6 +238,48 @@ export default function SpinPage() {
       setError(e.message);
       setSpinning(false);
       setAnimDone(true); // аварийно считаем анимацию завершённой, чтобы не зависнуть
+    }
+  }
+
+  // отдельный запуск БЕСПЛАТНОГО спина
+  async function handleFreeSpin() {
+    if (!activeCase || !freeEnabledForActiveCase) return;
+    setError("");
+    setResult(null);
+    setSpinning(true);
+    setAnimDone(false);
+    setTargetId(null);
+    setSpinId(null);
+    setShowModal(false);
+    setActionBusy(false);
+
+    try {
+      const payload = {
+        case_id: activeCase.id,
+        telegram_id: telegramIdRef.current,
+        pay_with: "free",
+      };
+      const resp = await postSpin(payload);
+      setSpinId(resp.spin_id);
+
+      if (resp.status === "lose") {
+        const loseSeg =
+          chances.find(
+            (s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose"
+          ) || chances[0];
+        setTargetId(loseSeg?.id || null);
+        setResult({ status: "lose" });
+      } else {
+        setTargetId(resp.prize?.chance_id || null);
+        setResult({ status: "pending", prize: resp.prize });
+      }
+
+      // free израсходован — выключаем кнопку локально
+      setFreeInfo((x) => ({ ...x, available: false }));
+    } catch (e) {
+      setError(e.message);
+      setSpinning(false);
+      setAnimDone(true);
     }
   }
 
@@ -319,7 +385,6 @@ export default function SpinPage() {
       </div>
 
       <div className="spins-page">
-
         <div
           style={{
             color: "#fff",
@@ -329,8 +394,8 @@ export default function SpinPage() {
             opacity: 0.85,
             textAlign: "center",
           }}
-          >
-           Лента недавних призов:
+        >
+          Лента недавних призов:
         </div>
 
         <WinsTicker />
@@ -339,9 +404,7 @@ export default function SpinPage() {
         <div className="spins-header">
           <div style={{ fontWeight: 800, fontSize: 18 }}></div>
         </div>
-        
-        
-        
+
         {/* Колесо + тост поверх него */}
         <div className="wheel-zone">
           <SpinWheel
@@ -482,6 +545,8 @@ export default function SpinPage() {
           balanceTickets={balance.tickets}
           spinning={spinning}
           onSpin={handleSpin}
+          freeAvailable={freeEnabledForActiveCase} // ← добавлено
+          onSpinFree={handleFreeSpin}             // ← добавлено
         />
 
         {/* Результат */}
