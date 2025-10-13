@@ -318,11 +318,15 @@ export default function SpinPage() {
       </div>
 
       <div className="spins-page">
+        <WinsTicker />
+
         {/* Header */}
         <div className="spins-header">
           <div style={{ fontWeight: 800, fontSize: 18 }}></div>
         </div>
-
+        
+        
+        
         {/* Колесо + тост поверх него */}
         <div className="wheel-zone">
           <SpinWheel
