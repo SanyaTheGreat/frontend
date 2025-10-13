@@ -203,7 +203,7 @@ function Segment({ start, sweep, label, slug, angle }) {
 
   return (
     <div style={container}>
-      {/* Иконка — центр сектора, остаётся вертикальной благодаря rotate(-angle) */}
+      {/* Иконка — центр сектора, остаётся вертикальнойasd благодаря rotate(-angle) */}
       <img
         src={`/animations/${slug}.png`}
         alt={label}
