@@ -319,6 +319,20 @@ export default function SpinPage() {
       </div>
 
       <div className="spins-page">
+
+        <div
+          style={{
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 14,
+            marginBottom: 4,
+            opacity: 0.85,
+            textAlign: "center",
+          }}
+          >
+           Лента недавних призов:
+        </div>
+
         <WinsTicker />
 
         {/* Header */}
