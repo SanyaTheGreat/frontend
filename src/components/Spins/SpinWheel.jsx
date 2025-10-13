@@ -211,8 +211,8 @@ function Segment({ start, sweep, label, slug, angle }) {
           position: "absolute",
           left: "50%",
           top: "50%",
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           transform: `
             translate(-50%, -50%)   /* центр картинки в центр колеса */
             rotate(${sweep / 2}deg) /* на биссектрису сектора (контейнер уже rotate(start)) */
