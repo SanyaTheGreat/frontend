@@ -31,6 +31,10 @@ function useCountdown(endIso) {
 }
 
 export default function Leaderboard() {
+  const [mode, setMode] = useState('spend'); // 'spend' | 'referrals'
+  const unit = mode === 'referrals' ? '👥' : '💎';
+  const path = mode === 'referrals' ? '/users/leaderboard-referrals' : '/users/leaderboard';
+
   const telegramId = useMemo(() => {
     const tg = window?.Telegram?.WebApp;
     return tg?.initDataUnsafe?.user?.id ?? null;
@@ -58,7 +62,7 @@ export default function Leaderboard() {
         setErr(null);
         setLoading(true);
 
-        const url = new URL(`${API_BASE}/users/leaderboard`);
+        const url = new URL(`${API_BASE}${path}`);
         if (telegramId) url.searchParams.set('telegram_id', telegramId);
         url.searchParams.set('limit', '10');
         url.searchParams.set('offset', '0');
@@ -81,7 +85,7 @@ export default function Leaderboard() {
       }
     }
     load();
-  }, [telegramId]);
+  }, [telegramId, path, mode]);
 
   // место -> slug/nft_name (имя json в /public/animations)
   const slugByPlace = useMemo(() => {
@@ -125,7 +129,22 @@ export default function Leaderboard() {
         {!!countdown && <div className="lb-badge">{countdown}</div>}
       </div>
 
-      <TopThree items={top3} a1Ref={a1Ref} a2Ref={a2Ref} a3Ref={a3Ref} />
+      <div className="lb-tabs">
+        <button
+          className={`lb-tab ${mode === 'spend' ? 'active' : ''}`}
+          onClick={() => setMode('spend')}
+        >
+          💎 Траты
+        </button>
+        <button
+          className={`lb-tab ${mode === 'referrals' ? 'active' : ''}`}
+          onClick={() => setMode('referrals')}
+        >
+          👥 Рефералы
+        </button>
+      </div>
+
+      <TopThree items={top3} a1Ref={a1Ref} a2Ref={a2Ref} a3Ref={a3Ref} unit={unit} />
 
       <div className="lb-me-card">
         <div className="lb-me-left">
@@ -138,7 +157,7 @@ export default function Leaderboard() {
         </div>
         <div className="lb-me-right">
           <div className="lb-amount">{formatAmount(me?.total_spent)}</div>
-          <div className="lb-amount-sub">💎</div>
+          <div className="lb-amount-sub">{unit}</div>
         </div>
       </div>
 
@@ -149,7 +168,7 @@ export default function Leaderboard() {
           <div className="lb-error">{err}</div>
         ) : (
           list.slice(0, 10).map(row => (
-            <Row key={`${row.user_id}-${row.rank}`} row={row} highlight={row.telegram_id === telegramId} />
+            <Row key={`${row.user_id}-${row.rank}`} row={row} highlight={row.telegram_id === telegramId} unit={unit} />
           ))
         )}
       </div>
@@ -157,7 +176,7 @@ export default function Leaderboard() {
   );
 }
 
-function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
+function TopThree({ items, a1Ref, a2Ref, a3Ref, unit }) {
   if (!items || items.length === 0) return null;
   const first = items[0], second = items[1], third = items[2];
 
@@ -169,7 +188,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
           <div ref={a2Ref} className="lb-tgs" />
           <Avatar src={second.avatar_url} username={second.username} size={56} />
           <div className="lb-username small">{formatUsername(second.username)}</div>
-          <div className="lb-amount small">{formatAmount(second.total_spent)} 💎</div>
+          <div className="lb-amount small">{formatAmount(second.total_spent)} {unit}</div>
           <div className="block base base-2">2</div>
         </div>
       )}
@@ -179,7 +198,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
           <div ref={a1Ref} className="lb-tgs lb-tgs-big" />
           <Avatar src={first.avatar_url} username={first.username} size={72} />
           <div className="lb-username">{formatUsername(first.username)}</div>
-          <div className="lb-amount">{formatAmount(first.total_spent)} 💎</div>
+          <div className="lb-amount">{formatAmount(first.total_spent)} {unit}</div>
           <div className="block base base-1">1</div>
         </div>
       )}
@@ -189,7 +208,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
           <div ref={a3Ref} className="lb-tgs" />
           <Avatar src={third.avatar_url} username={third.username} size={56} />
           <div className="lb-username small">{formatUsername(third.username)}</div>
-          <div className="lb-amount small">{formatAmount(third.total_spent)} 💎</div>
+          <div className="lb-amount small">{formatAmount(third.total_spent)} {unit}</div>
           <div className="block base base-3">3</div>
         </div>
       )}
@@ -197,7 +216,7 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref }) {
   );
 }
 
-function Row({ row, highlight }) {
+function Row({ row, highlight, unit }) {
   return (
     <div className={`lb-row ${highlight ? 'me' : ''}`}>
       <div className="lb-col-rank">#{row.rank}</div>
@@ -207,7 +226,7 @@ function Row({ row, highlight }) {
       </div>
       <div className="lb-col-amount">
         <span className="lb-amount">{formatAmount(row.total_spent)}</span>
-        <span className="lb-star">💎</span>
+        <span className="lb-star">{unit}</span>
       </div>
     </div>
   );

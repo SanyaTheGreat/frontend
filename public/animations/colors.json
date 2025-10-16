@@ -634,5 +634,101 @@
     "edge_color": "#3d6657",
     "pattern_color": "#07261d",
     "text_color": "#b5e0d4"
+  },
+  "InputKey-76604": {
+    "center_color": "#5c9bc4",
+    "edge_color": "#37739a",
+    "pattern_color": "#073b5c",
+    "text_color": "#c1e3f9"
+  },
+  "InputKey-20283": {
+    "center_color": "#d66f3c",
+    "edge_color": "#b54b2d",
+    "pattern_color": "#6b0902",
+    "text_color": "#ffccb0"
+  },
+  "MadPumpkin-17140": {
+    "center_color": "#ae6cae",
+    "edge_color": "#844784",
+    "pattern_color": "#470c47",
+    "text_color": "#f3cbf3"
+  },
+  "InputKey-12311": {
+    "center_color": "#ae6cae",
+    "edge_color": "#844784",
+    "pattern_color": "#470c47",
+    "text_color": "#f3cbf3"
+  },
+  "SnoopCigar-11729": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "IonicDryer-5214": {
+    "center_color": "#5c9bc4",
+    "edge_color": "#37739a",
+    "pattern_color": "#073b5c",
+    "text_color": "#c1e3f9"
+  },
+  "PetSnake-79021": {
+    "center_color": "#5ec0b8",
+    "edge_color": "#3d928e",
+    "pattern_color": "#11534c",
+    "text_color": "#bdf8f2"
+  },
+  "PetSnake-63559": {
+    "center_color": "#58b4c8",
+    "edge_color": "#538bc2",
+    "pattern_color": "#07609b",
+    "text_color": "#cde8fd"
+  },
+  "PetSnake-130436": {
+    "center_color": "#5c9bc4",
+    "edge_color": "#37739a",
+    "pattern_color": "#073b5c",
+    "text_color": "#c1e3f9"
+  },
+  "PetSnake-10150": {
+    "center_color": "#5db1cb",
+    "edge_color": "#448bab",
+    "pattern_color": "#025074",
+    "text_color": "#b5ecff"
+  },
+  "PetSnake-53432": {
+    "center_color": "#adb070",
+    "edge_color": "#6b7d54",
+    "pattern_color": "#39501b",
+    "text_color": "#d3e6bb"
+  },
+  "SnoopDogg-476279": {
+    "center_color": "#7eb1b4",
+    "edge_color": "#588390",
+    "pattern_color": "#164552",
+    "text_color": "#daf5fd"
+  },
+  "SnoopDogg-476207": {
+    "center_color": "#b789e4",
+    "edge_color": "#8a5abc",
+    "pattern_color": "#5b10ab",
+    "text_color": "#e8d1ff"
+  },
+  "SnoopDogg-443608": {
+    "center_color": "#7ecb82",
+    "edge_color": "#459e5a",
+    "pattern_color": "#026b22",
+    "text_color": "#bdffcc"
+  },
+  "PetSnake-93417": {
+    "center_color": "#6c9edd",
+    "edge_color": "#5c6ec9",
+    "pattern_color": "#1239a2",
+    "text_color": "#d3e1ff"
+  },
+  "SnoopCigar-81495": {
+    "center_color": "#64695c",
+    "edge_color": "#4b5241",
+    "pattern_color": "#0f120b",
+    "text_color": "#c3c7bd"
   }
 }
