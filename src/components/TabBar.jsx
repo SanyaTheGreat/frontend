@@ -63,7 +63,7 @@ const items = [
   { to: "/", label: "Главная", icon: "home" },
   { to: "/history", label: "История", icon: "history" },
   { to: "/spins", label: "Ролл", icon: "spin", emph: true },
-  { to: "/ingame", label: "Мои Игры", icon: "games" },
+  { to: "/ingame", label: "В игре", icon: "games" },
   { to: "/profile", label: "Профиль", icon: "profile" },
   { to: "/leaderboard", label: "Топ", icon: "trophy" },
 ];
