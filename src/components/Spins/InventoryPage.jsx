@@ -124,7 +124,7 @@ export default function InventoryPage() {
       const resp = await postClaim(spin_id);
       if (resp?.status === "reward_sent") {
         setItems((xs) => xs.filter((x) => x.spin_id !== spin_id));
-        showToast("Подарок отправлен! 🎁");
+        showToast("Подарок отправлен! Отправь стикер @fightforgift для получения 🎁");
         loadBalance();
       }
     } catch (e) {
