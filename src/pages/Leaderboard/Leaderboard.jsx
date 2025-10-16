@@ -153,7 +153,9 @@ export default function Leaderboard() {
         </div>
         <div className="lb-me-center">
           <Avatar src={me?.avatar_url} username={me?.username} size={40} />
-          <div className="lb-username">{formatUsername(me?.username)}</div>
+          <div className="lb-username" title={formatUsername(me?.username)}>
+            {displayUsername(me?.username, 10)}
+          </div>
         </div>
         <div className="lb-me-right">
           <div className="lb-amount">{formatAmount(me?.total_spent)}</div>
@@ -168,7 +170,12 @@ export default function Leaderboard() {
           <div className="lb-error">{err}</div>
         ) : (
           list.slice(0, 10).map(row => (
-            <Row key={`${row.user_id}-${row.rank}`} row={row} highlight={row.telegram_id === telegramId} unit={unit} />
+            <Row
+              key={`${row.user_id}-${row.rank}`}
+              row={row}
+              highlight={row.telegram_id === telegramId}
+              unit={unit}
+            />
           ))
         )}
       </div>
@@ -187,7 +194,9 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref, unit }) {
         <div className="step step-2">
           <div ref={a2Ref} className="lb-tgs" />
           <Avatar src={second.avatar_url} username={second.username} size={56} />
-          <div className="lb-username small">{formatUsername(second.username)}</div>
+          <div className="lb-username small" title={formatUsername(second.username)}>
+            {displayUsername(second.username, 10)}
+          </div>
           <div className="lb-amount small">{formatAmount(second.total_spent)} {unit}</div>
           <div className="block base base-2">2</div>
         </div>
@@ -197,7 +206,9 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref, unit }) {
         <div className="step step-1">
           <div ref={a1Ref} className="lb-tgs lb-tgs-big" />
           <Avatar src={first.avatar_url} username={first.username} size={72} />
-          <div className="lb-username">{formatUsername(first.username)}</div>
+          <div className="lb-username" title={formatUsername(first.username)}>
+            {displayUsername(first.username, 10)}
+          </div>
           <div className="lb-amount">{formatAmount(first.total_spent)} {unit}</div>
           <div className="block base base-1">1</div>
         </div>
@@ -207,7 +218,9 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref, unit }) {
         <div className="step step-3">
           <div ref={a3Ref} className="lb-tgs" />
           <Avatar src={third.avatar_url} username={third.username} size={56} />
-          <div className="lb-username small">{formatUsername(third.username)}</div>
+          <div className="lb-username small" title={formatUsername(third.username)}>
+            {displayUsername(third.username, 10)}
+          </div>
           <div className="lb-amount small">{formatAmount(third.total_spent)} {unit}</div>
           <div className="block base base-3">3</div>
         </div>
@@ -222,7 +235,9 @@ function Row({ row, highlight, unit }) {
       <div className="lb-col-rank">#{row.rank}</div>
       <div className="lb-col-user">
         <Avatar src={row.avatar_url} username={row.username} size={36} />
-        <span className="lb-username">{formatUsername(row.username)}</span>
+        <span className="lb-username" title={formatUsername(row.username)}>
+          {displayUsername(row.username, 10)}
+        </span>
       </div>
       <div className="lb-col-amount">
         <span className="lb-amount">{formatAmount(row.total_spent)}</span>
@@ -278,4 +293,11 @@ function formatAmount(v) {
 function formatUsername(u) {
   if (!u) return '@unknown';
   return u.startsWith('@') ? u : `@${u}`;
+}
+
+// Ограничение отображаемого ника (с добавлением '…')
+function displayUsername(u, max = 10) {
+  const at = formatUsername(u || '');
+  if (at.length <= max) return at;
+  return at.slice(0, Math.max(0, max - 1)) + '…';
 }
