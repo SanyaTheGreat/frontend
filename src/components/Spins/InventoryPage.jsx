@@ -300,26 +300,29 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Тост поверх, под балансом */}
       {toast && (
         <div
           className="spin-toast"
           style={{
-              position: "fixed",
-              top: 70, // под верхней панелью
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: "rgba(0,0,0,0.8)",
-              color: "#fff",
-              padding: "8px 16px",
-              borderRadius: 20,
-              fontSize: 14,
-              zIndex: 2000,
-            }}
-          >
-            {toast.text}
-          </div>
-        )}
+            position: "fixed",
+            top: 70,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(0,0,0,0.85)",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: 20,
+            fontSize: 14,
+            zIndex: 2000,
+            display: "inline-block",     // ✅ фон только под текст
+            maxWidth: "80%",             // ✅ не шире экрана
+            whiteSpace: "nowrap",        // ✅ не переносится
+          }}
+        >
+          {toast.text}
+        </div>
+      )}
+
     </div>
   );
 }
