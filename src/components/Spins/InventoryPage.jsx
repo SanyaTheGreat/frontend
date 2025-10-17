@@ -24,12 +24,18 @@ export default function InventoryPage() {
   // защита от повторов: id спинов "в процессе"
   const [processing, setProcessing] = useState(new Set());
   const isBusy = (id) => processing.has(id);
-  const lock = (id) => setProcessing((prev) => {
-    const s = new Set(prev); s.add(id); return s;
-  });
-  const unlock = (id) => setProcessing((prev) => {
-    const s = new Set(prev); s.delete(id); return s;
-  });
+  const lock = (id) =>
+    setProcessing((prev) => {
+      const s = new Set(prev);
+      s.add(id);
+      return s;
+    });
+  const unlock = (id) =>
+    setProcessing((prev) => {
+      const s = new Set(prev);
+      s.delete(id);
+      return s;
+    });
 
   // telegram_id: TG → ?tgid= → localStorage (чтобы в dev работало в браузере)
   const queryId = new URLSearchParams(window.location.search).get("tgid");
@@ -77,7 +83,7 @@ export default function InventoryPage() {
           return;
         }
         const list = await fetchInventory(tgId); // ожидаем массив
-        setItems(Array.isArray(list) ? list : (list?.items || []));
+        setItems(Array.isArray(list) ? list : list?.items || []);
       } catch (e) {
         setError(e?.message || "Не удалось загрузить инвентарь");
       } finally {
@@ -117,8 +123,25 @@ export default function InventoryPage() {
   }, [loadFx, loadInventory, loadBalance]);
 
   // действия
-  async function handleClaim(spin_id) {
-    if (isBusy(spin_id)) return;       // защита от дабл-клика
+  async function handleClaim(item) {
+    const spin_id = item.spin_id;
+    if (isBusy(spin_id)) return; // защита от дабл-клика
+
+    // ---- правило: если claim_price=25 → требуем >=25⭐ ----
+    const claimPrice = Number(item.claim_price || 0);
+    const starsInt = Math.floor(Number(balance.stars) || 0);
+    const requiresFee = claimPrice === 25;
+
+    if (requiresFee && starsInt < 25) {
+      showToast("Нужно 25⭐ для вывода");
+      return;
+    }
+    // опционально: подтверждение списания
+    if (requiresFee && !window.confirm("Списать 25⭐ за вывод приза?")) {
+      return;
+    }
+    // ------------------------------------------------------
+
     lock(spin_id);
     try {
       const resp = await postClaim(spin_id);
@@ -136,7 +159,7 @@ export default function InventoryPage() {
 
   async function handleReroll(item) {
     const spin_id = item.spin_id;
-    if (isBusy(spin_id)) return;       // защита от дабл-клика
+    if (isBusy(spin_id)) return; // защита от дабл-клика
     lock(spin_id);
     try {
       const resp = await postReroll(spin_id);
@@ -247,6 +270,11 @@ export default function InventoryPage() {
               : `Продать за ${baseTon} TON`;
             const busy = isBusy(it.spin_id);
 
+            const claimPrice = Number(it.claim_price || 0);
+            const requiresFee = claimPrice === 25;
+            const canClaim = !requiresFee || displayStars >= 25;
+            const claimLabel = requiresFee ? (canClaim ? "Вывести (−25⭐)" : "Вывести (25⭐)") : "Вывести";
+
             return (
               <div key={it.spin_id} className="result-banner" style={{ display: "grid", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -254,8 +282,13 @@ export default function InventoryPage() {
                   <div style={{ fontWeight: 700 }}>{it.nft_name}</div>
                 </div>
                 <div className="result-cta">
-                  <button className="primary-btn" onClick={() => handleClaim(it.spin_id)} disabled={busy}>
-                    Вывести
+                  <button
+                    className="primary-btn"
+                    onClick={() => handleClaim(it)}
+                    disabled={busy || !canClaim}
+                    title={!canClaim ? "Нужно 25⭐ для вывода" : undefined}
+                  >
+                    {claimLabel}
                   </button>
                   <button className="ghost-btn" onClick={() => handleReroll(it)} disabled={busy}>
                     {busy ? "Обработка…" : exchangeLabel}
