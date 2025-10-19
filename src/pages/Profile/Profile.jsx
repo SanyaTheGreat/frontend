@@ -6,39 +6,64 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [referrals, setReferrals] = useState(null);
-  const [purchases, setPurchases] = useState([]);
+  const [profile, setProfile] = useState(null);      // { telegram_id, username, avatar_url, wallet, tickets, payload }
+  const [referrals, setReferrals] = useState(null);  // { referral_count, referral_earnings }
+  const [purchases, setPurchases] = useState([]);    // [{ amount, created_at }, ...]
   const [loading, setLoading] = useState(true);
 
   const [tonConnectUI] = useTonConnectUI();
   const tonWallet = useTonWallet();
 
-  const fetchProfile = async (telegram_id) => {
-    const [profileData, referralData, sellsData] = await Promise.all([
-      fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
-      fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
-      fetch(`https://lottery-server-waif.onrender.com/users/sells/${telegram_id}`).then(res => res.json()),
-    ]);
-    setProfile(profileData);
-    setReferrals(referralData);
-    setPurchases(sellsData);
-    setLoading(false);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('jwt');
+    if (!token) return null;
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  };
+
+  const fetchProfile = async () => {
+    const auth = getAuthHeaders();
+    if (!auth) {
+      toast.error('Открой Mini App внутри Telegram (нет токена)');
+      setLoading(false);
+      return;
+    }
+    try {
+      const [profileRes, refRes, sellsRes] = await Promise.all([
+        fetch('https://lottery-server-waif.onrender.com/users/profile', { headers: auth }),
+        fetch('https://lottery-server-waif.onrender.com/users/referrals', { headers: auth }),
+        fetch('https://lottery-server-waif.onrender.com/users/sells', { headers: auth }),
+      ]);
+
+      if (profileRes.status === 401 || refRes.status === 401 || sellsRes.status === 401 ||
+          profileRes.status === 403 || refRes.status === 403 || sellsRes.status === 403) {
+        localStorage.removeItem('jwt');
+        toast.error('Сессия истекла. Открой Mini App заново.');
+        setLoading(false);
+        return;
+      }
+
+      const [profileData, referralData, sellsData] = await Promise.all([
+        profileRes.json(), refRes.json(), sellsRes.json()
+      ]);
+
+      setProfile(profileData || null);
+      setReferrals(referralData || null);
+      setPurchases(Array.isArray(sellsData) ? sellsData : (sellsData?.items || []));
+    } catch (e) {
+      console.error(e);
+      toast.error('Ошибка загрузки профиля');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    const telegramUser = tg?.initDataUnsafe?.user;
-
-    if (!telegramUser || !telegramUser.id) return;
-
-    setUser(telegramUser);
-    fetchProfile(telegramUser.id);
+    fetchProfile();
   }, []);
 
+  // Автосинхронизация TON-кошелька при коннекте
   useEffect(() => {
-    if (!tonWallet?.account?.address || !user || !profile) return;
+    if (!tonWallet?.account?.address || !profile) return;
 
     const walletFromServer = profile.wallet;
     const rawAddress = tonWallet.account.address;
@@ -47,57 +72,65 @@ export default function Profile() {
     if (friendlyAddress && friendlyAddress !== walletFromServer) {
       handleWalletUpdate(friendlyAddress);
     }
-  }, [tonWallet, user, profile]);
+  }, [tonWallet, profile]);
 
   const handleWalletUpdate = async (walletValue) => {
-    await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegram_id: user.id, wallet: walletValue }),
-    });
-    fetchProfile(user.id);
+    const auth = getAuthHeaders();
+    if (!auth) return toast.error('Нет токена авторизации');
+
+    try {
+      const res = await fetch('https://lottery-server-waif.onrender.com/users/wallet', {
+        method: 'PATCH',
+        headers: auth,
+        body: JSON.stringify({ wallet: walletValue }), // ⚠️ без telegram_id
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return toast.error(data?.error || 'Не удалось сохранить кошелек');
+      }
+      toast.success('Кошелек сохранён');
+      fetchProfile();
+    } catch (e) {
+      console.error(e);
+      toast.error('Ошибка сервера при сохранении кошелька');
+    }
   };
 
   const handleCopyRefLink = () => {
-    navigator.clipboard.writeText(`https://t.me/FightForGift_bot?start=${user.id}`);
+    if (!profile?.telegram_id) return;
+    navigator.clipboard.writeText(`https://t.me/FightForGift_bot?start=${profile.telegram_id}`);
     toast.success('Скопировано!');
   };
 
-  // ---- Новый метод: пополнение звёздами ----
+  // ---- Пополнение звёздами (через Telegram Stars) ----
   const handleTopUpStars = async () => {
     const tg = window.Telegram?.WebApp;
-    const uid = tg?.initDataUnsafe?.user?.id || user?.id;
+    if (!tg) return toast.error('Открой Mini App в Telegram');
 
-    if (!uid) {
-      toast.error('Telegram user not found');
-      return;
-    }
-
-    const input = prompt('Введите сумму пополнения в TON (мин.шаг 0.1)  21⭐= 0.1💎 :', '0.1');
+    const input = prompt('Введите сумму пополнения в TON (мин.шаг 0.1)  21⭐ = 0.1💎 :', '0.1');
     const tickets = parseFloat(input);
     const valid = Number.isFinite(tickets) && tickets >= 0.1 && Math.abs(tickets * 10 - Math.round(tickets * 10)) < 1e-9;
-    if (!valid) {
-      toast.warning('Сумма должна быть ≥ 0.1 с минимальным шагом 0.1 ');
-      return;
-    }
+    if (!valid) return toast.warning('Сумма должна быть ≥ 0.1 с минимальным шагом 0.1');
+
+    const auth = getAuthHeaders();
+    if (!auth) return toast.error('Нет токена авторизации');
 
     try {
       const resp = await fetch('https://lottery-server-waif.onrender.com/payments/create-invoice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegram_id: uid, tickets_desired: tickets }),
+        headers: auth,
+        body: JSON.stringify({ tickets_desired: tickets }), // ⚠️ без telegram_id
       });
 
       const data = await resp.json();
       if (!resp.ok || !data?.invoice_link) {
-        toast.error(data?.error || 'Failed to create invoice');
-        return;
+        return toast.error(data?.error || 'Failed to create invoice');
       }
 
       tg.openInvoice(data.invoice_link, async (status) => {
         if (status === 'paid') {
-          toast.success('Paid ✅ Balance will update shortly');
-          setTimeout(() => fetchProfile(uid), 1500);
+          toast.success('Paid ✅ Баланс обновится скоро');
+          setTimeout(() => fetchProfile(), 1500);
         } else if (status === 'cancelled') {
           toast.info('Payment cancelled');
         } else if (status === 'failed') {
@@ -110,83 +143,93 @@ export default function Profile() {
     }
   };
 
+  // ---- Пополнение TON через TonConnect (ончейн) ----
   const handleTopUp = async () => {
-    const amountInput = prompt('введите сумму в TON:');
+    if (!profile) return;
+    const amountInput = prompt('Введите сумму в TON:');
     const amount = parseFloat(amountInput);
     if (isNaN(amount) || amount <= 0) {
       toast.warning('Введите корректную сумму.');
       return;
     }
     const nanoTON = (amount * 1e9).toFixed(0);
-    const comment = profile?.payload || '';
-    const payloadBase64 = comment || undefined;
+    const payloadBase64 = profile?.payload || undefined;
+
     try {
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
-            address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
+            address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87', // адрес твоего кошелька
             amount: nanoTON,
             payload: payloadBase64,
           },
         ],
       });
-      toast.success('Тразакция отправлена');
+      toast.success('Транзакция отправлена');
     } catch (error) {
       toast.error('Error Sending TON');
     }
   };
 
-  const handleWithdraw = () => {
-    const address = prompt('Enter TON wallet address for withdrawal:');
-    const amount = prompt('Enter the amount to withdraw (TON):');
-    if (!address || !amount) return;
-    fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        telegram_id: user.id,
-        address,
-        amount: parseFloat(amount),
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => toast.success(data.message || 'Запрос на вывод отправлен'))
-      .catch(() => toast.error('Ошибка при отправке запроса'));
+  // ---- Запрос на вывод ----
+  const handleWithdraw = async () => {
+    const address = prompt('Введите TON адрес для вывода:');
+    const amountStr = prompt('Введите сумму к выводу (TON):');
+    const amount = parseFloat(amountStr);
+    if (!address || !amount || amount <= 0) return;
+
+    const auth = getAuthHeaders();
+    if (!auth) return toast.error('Нет токена авторизации');
+
+    try {
+      const res = await fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
+        method: 'POST',
+        headers: auth,
+        body: JSON.stringify({ address, amount }), // ⚠️ без telegram_id
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Запрос на вывод отправлен');
+        fetchProfile();
+      } else {
+        toast.error(data.error || 'Ошибка при выводе');
+      }
+    } catch (e) {
+      toast.error('Server error при выводе');
+      console.error(e);
+    }
   };
 
+  // ---- Вывод реферальных ----
   const handleReferralWithdraw = async () => {
     if (!profile?.wallet) {
       toast.error('Кошелек не подключен');
       return;
     }
-
     const amount = referrals?.referral_earnings ?? 0;
     if (amount < 3) {
-      toast.warning('мин.сумма — 3 TON');
+      toast.warning('Мин. сумма — 3 TON');
       return;
     }
-
-    const confirmed = window.confirm(`Withdraw ${amount} TON on ${profile.wallet}?`);
+    const confirmed = window.confirm(`Вывести ${amount} TON на ${profile.wallet}?`);
     if (!confirmed) return;
+
+    const auth = getAuthHeaders();
+    if (!auth) return toast.error('Нет токена авторизации');
 
     try {
       const res = await fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          telegram_id: user.id,
-          wallet: profile.wallet,
-          amount,
-        }),
+        headers: auth,
+        body: JSON.stringify({ wallet: profile.wallet, amount }), // ⚠️ без telegram_id
       });
-
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Successful withdrawal');
-        fetchProfile(user.id);
+        toast.success(data.message || 'Успешный вывод');
+        fetchProfile();
       } else {
-        toast.error(data.error || 'Error during output');
+        toast.error(data.error || 'Ошибка при выводе');
       }
     } catch (err) {
       toast.error('SERVER Error during output');
@@ -194,11 +237,14 @@ export default function Profile() {
     }
   };
 
-  if (loading || !user) {
+  if (loading) {
     return <p className="profile-wrapper">Loading Profile...</p>;
   }
+  if (!profile) {
+    return <p className="profile-wrapper">Нет данных профиля</p>;
+  }
 
-  const avatarLetter = user.username ? user.username[0].toUpperCase() : '?';
+  const avatarLetter = profile.username ? profile.username[0].toUpperCase() : '?';
 
   return (
     <div className="profile-wrapper">
@@ -208,15 +254,15 @@ export default function Profile() {
           alt="Avatar"
           className="profile-avatar"
           onError={(e) => {
-            console.error("Ошибка загрузки аватара:", e);
-            e.currentTarget.style.display = "none";
+            console.error('Ошибка загрузки аватара:', e);
+            e.currentTarget.style.display = 'none';
           }}
         />
       ) : (
         <div className="avatar-placeholder">{avatarLetter}</div>
       )}
 
-      <div className="username-text">@{user.username}</div>
+      <div className="username-text">@{profile.username || 'user'}</div>
 
       <div className="ton-connect-wrapper">
         <TonConnectButton />
@@ -228,8 +274,8 @@ export default function Profile() {
           <span className="ton-icon">🪙</span>
           <span>
             {profile?.tickets !== undefined
-              ? parseFloat(profile.tickets).toFixed(2).replace(/\.?0+$/, "")
-              : "—"}
+              ? parseFloat(profile.tickets).toFixed(2).replace(/\.?0+$/, '')
+              : '—'}
           </span>
         </div>
         <div className="balance-buttons">
@@ -239,7 +285,7 @@ export default function Profile() {
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">👥 Реферралы</div>
+        <div className="profile-title">👥 Рефералы</div>
         <div className="referral-flex-row">
           <div>
             <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
@@ -254,23 +300,23 @@ export default function Profile() {
       </div>
 
       <div className="profile-block">
-        <div className="profile-title">🔗 Твоя Реферралка </div>
+        <div className="profile-title">🔗 Твоя Рефералка</div>
         <div className="profile-ref-wrapper">
           <input
             type="text"
             readOnly
             className="profile-ref-link"
-            value={`https://t.me/FightForGift_bot?start=${user.id}`}
+            value={profile?.telegram_id ? `https://t.me/FightForGift_bot?start=${profile.telegram_id}` : ''}
             onClick={(e) => e.target.select()}
           />
-          <button onClick={handleCopyRefLink} className="copy-btn"> 🔗</button>
+          <button onClick={handleCopyRefLink} className="copy-btn">🔗</button>
         </div>
       </div>
 
       <div className="profile-block">
         <div className="profile-title">🕘 История Пополнений</div>
         <ul className="profile-history-list">
-          {purchases.length === 0 && <li>Still nothing...</li>}
+          {(!purchases || purchases.length === 0) && <li>Пока пусто…</li>}
           {purchases.map((item, i) => (
             <li key={i}>
               {item.amount} TON — {new Date(item.created_at).toLocaleString()}
