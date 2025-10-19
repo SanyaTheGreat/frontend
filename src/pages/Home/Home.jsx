@@ -22,12 +22,11 @@ function Home() {
       wa?.initDataUnsafe?.start_param ||
       new URLSearchParams(window.location.search).get('tgWebAppStartParam');
 
-      if (p?.startsWith('lobby_')) {
-        const wheelId = p.slice('lobby_'.length);
-        if (wheelId) navigate(`/lobby/${wheelId}`, { replace: true });
-      }
-    }, [navigate]);
-
+    if (p?.startsWith('lobby_')) {
+      const wheelId = p.slice('lobby_'.length);
+      if (wheelId) navigate(`/lobby/${wheelId}`, { replace: true });
+    }
+  }, [navigate]);
 
   const containerRefs = useRef({});
   const animRefs = useRef({});
@@ -43,6 +42,7 @@ function Home() {
   const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
   const fetchWheels = async () => {
+    // ПУБЛИЧНОЕ чтение — оставляем через Supabase
     const { data, error } = await supabase
       .from('wheels')
       .select('*')
@@ -177,37 +177,26 @@ function Home() {
   }, [wheels, sortBy]);
 
   const handleJoin = async (wheel, skipModal = false) => {
-    const tg = window.Telegram?.WebApp;
-    const user = tg?.initDataUnsafe?.user;
-
-    if (!user) {
-      toast.error('Пользователь не найден');
-      return;
-    }
+    // 1) базовые проверки (как раньше)
     if ((wheel.participants_count ?? 0) >= wheel.size) {
       toast.warn('Колесо уже заполнено');
       return;
     }
-
     if (wheel.mode === 'subscription' && !skipModal) {
       setSubscriptionModal(wheel);
       return;
     }
 
-    setLoadingId(wheel.id);
-
-    const { data: foundUser, error } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', user.id)
-      .single();
-
-    if (error || !foundUser) {
-      toast.error('Пользователь не зарегистрирован');
-      setLoadingId(null);
+    // 2) проверяем наличие JWT
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      toast.error('Требуется авторизация. Открой Mini App в Telegram.');
       return;
     }
 
+    setLoadingId(wheel.id);
+
+    // 3) промокод (как и раньше — по желанию)
     let extra = {};
     if (wheel.mode === 'promo') {
       const code = window.prompt('Введите пароль');
@@ -218,21 +207,25 @@ function Home() {
       extra.promokey = code.trim();
     }
 
+    // 4) отправляем ТОЛЬКО wheel_id (+ promokey), user определяется на сервере из JWT
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({
         wheel_id: wheel.id,
-        user_id: foundUser.id,
-        telegram_id: user.id,
-        username: user.username || '',
         ...extra,
       }),
     });
 
     if (res.status === 201) {
-      toast.success('Ты успешно присоеденился к розыгрышу!');
+      toast.success('Ты успешно присоединился к розыгрышу!');
       await fetchWheels();
+    } else if (res.status === 401 || res.status === 403) {
+      toast.error('Сессия истекла. Открой Mini App заново.');
+      localStorage.removeItem('jwt');
     } else {
       const err = await res.json().catch(() => ({}));
       toast.error(err.error || 'Error Join');

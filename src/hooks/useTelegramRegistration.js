@@ -1,87 +1,60 @@
 import { useEffect, useState } from 'react';
 
 export function useTelegramRegistration() {
-  const [referrerId, setReferrerId] = useState(null);
+  const [authOk, setAuthOk] = useState(false);
 
+  // опционально: сохраним рефку, если передали в URL — пригодится позже
   useEffect(() => {
-    // Получаем referrer_id из URL параметров
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('referrer');
-    if (ref) {
-      setReferrerId(ref);
-      console.log(`🔗 Найден referrer_id в URL: ${ref}`);
-    } else {
-      console.log('ℹ️ referrer_id не найден в URL');
-    }
+    if (ref) localStorage.setItem('referrer_id', ref);
   }, []);
 
   useEffect(() => {
-    console.log('📲 useTelegramRegistration: хук активирован');
+    let timer;
+    const boot = () => {
+      timer = setInterval(() => {
+        const tg = window?.Telegram?.WebApp;
+        if (!tg) return; // ждём инициализацию Telegram WebApp
+        clearInterval(timer);
 
-    const interval = setInterval(() => {
-      const tg = window.Telegram?.WebApp;
+        tg.ready?.();
+        tg.expand?.();
 
-      if (!tg) {
-        console.warn('⏳ [Ожидание] Telegram.WebApp не найден');
-        return;
-      }
+        const initData = tg.initData || '';
+        if (!initData) {
+          console.warn('⚠️ initData пуст — открой Mini App внутри Telegram');
+          setAuthOk(false);
+          return;
+        }
 
-      clearInterval(interval);
-      console.log('✅ [Найден] Telegram.WebApp доступен');
-
-      tg.ready();
-      tg.expand();
-
-      const user = tg.initDataUnsafe?.user;
-      console.log('🧩 [initDataUnsafe]:', tg.initDataUnsafe);
-      console.log('👤 [User из initDataUnsafe]:', user);
-
-      if (!user || !user.id) {
-        console.warn('⚠️ [Ошибка] Нет user.id в initDataUnsafe');
-        return;
-      }
-
-      const avatar_url = user.photo_url || null;
-      if (avatar_url) {
-        console.log(`🖼️ Найден аватар пользователя: ${avatar_url}`);
-      } else {
-        console.log('ℹ️ Аватар пользователя отсутствует');
-      }
-
-      const payload = {
-        telegram_id: user.id,
-        username: user.username || '',
-        avatar_url,
-        ...(referrerId && { referrer_id: referrerId }),  // Добавляем referrer_id, если есть
-      };
-
-      console.log('📦 [Payload для отправки]:', payload);
-
-      fetch('https://lottery-server-waif.onrender.com/users/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-        .then(async (res) => {
-          console.log('📬 [Ответ от backend]:', res.status);
-          if (res.status === 201) {
-            console.log('✅ [Успех] Пользователь зарегистрирован');
-          } else if (res.status === 409) {
-            console.log('ℹ️ [Инфо] Пользователь уже существует');
-          } else {
-            const err = await res.json();
-            console.error('❌ [Ошибка от backend]:', err);
-          }
+        // НОВОЕ: обмениваем initData на JWT
+        fetch('https://lottery-server-waif.onrender.com/auth/telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
         })
-        .catch((err) => {
-          console.error('❌ [Сетевая ошибка]:', err);
-        });
-
-    }, 300);
-
-    return () => {
-      console.log('🧹 useTelegramRegistration: очистка таймера');
-      clearInterval(interval);
+          .then(res => res.json())
+          .then(data => {
+            if (data?.ok && data?.token) {
+              localStorage.setItem('jwt', data.token);
+              setAuthOk(true);
+              console.log('✅ Авторизация прошла, токен получен');
+            } else {
+              console.error('❌ /auth/telegram ошибка:', data);
+              setAuthOk(false);
+            }
+          })
+          .catch(err => {
+            console.error('❌ Сеть /auth/telegram:', err);
+            setAuthOk(false);
+          });
+      }, 300);
     };
-  }, [referrerId]);
+
+    boot();
+    return () => clearInterval(timer);
+  }, []);
+
+  return { authOk };
 }
