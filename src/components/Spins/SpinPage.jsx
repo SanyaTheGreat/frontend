@@ -7,10 +7,10 @@ import {
   postClaim,
   postReroll,
   postSpin,
-  fetchInventory,            // ← как было
-  fetchFreeSpinAvailability, // ← добавлено
+  fetchInventory,
+  fetchFreeSpinAvailability,
 } from "./spinsApi";
-import { supabase } from "../../supabaseClient"; // как в проекте
+import { supabase } from "../../supabaseClient";
 import SpinWheel from "./SpinWheel";
 import SpinControls from "./SpinControls";
 import "./spins.css";
@@ -55,6 +55,9 @@ export default function SpinPage() {
     cheapest_case_id: null,
     next_at: null,
   });
+
+  // Готовность сегментов для текущего колеса (страховка от гонок)
+  const [segmentsReady, setSegmentsReady] = useState(false);
 
   const activeCase = cases[index] || null;
 
@@ -114,14 +117,25 @@ export default function SpinPage() {
     })();
   }, []);
 
+  // Жёсткий reset UI при смене активного кейса
+  useEffect(() => {
+    setLoading(true);
+    setSegmentsReady(false);
+    setSpinning(false);
+    setAnimDone(false);
+    setResult(null);
+    setTargetId(null);
+    setSpinId(null);
+    setShowModal(false);
+    setActionBusy(false);
+  }, [activeCase?.id]);
+
   // загрузка шансов для активного кейса
   useEffect(() => {
     (async () => {
       if (!activeCase) return;
-      setLoading(true);
       try {
         const list = await fetchCaseChance(activeCase.id);
-        // ожидаем поля: id, nft_name, slug, percent, chance, payout_value, price, is_active
         const onlyActive = list.filter((x) => x.is_active);
 
         onlyActive.sort((a, b) => (Number(a.chance) || 0) - (Number(b.chance) || 0));
@@ -133,10 +147,11 @@ export default function SpinPage() {
             slug: x.slug || (x.nft_name || "").toLowerCase().replaceAll(" ", "-"),
             percent: Number(x.percent || 0),
             chance: Number.isFinite(Number(x.chance)) ? Number(x.chance) : null,
-            price: Number(x.price || 0),               // TON (fallback)
+            price: Number(x.price || 0), // TON (fallback)
             payout_value: Number(x.payout_value || 0), // TON для обмена
           }))
         );
+        setSegmentsReady(true);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -191,9 +206,27 @@ export default function SpinPage() {
   const freeEnabledForActiveCase =
     freeInfo.available && activeCase && activeCase.id === freeInfo.cheapest_case_id;
 
+  // безопасное определение targetId, если сегмент пропал/не найден
+  function resolveTargetIdSafe(chanceId) {
+    const exists = chanceId && chances.some((c) => c.id === chanceId);
+    if (exists) return chanceId;
+    const loseSeg =
+      chances.find(
+        (s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose"
+      ) || chances[0];
+    return loseSeg?.id ?? null;
+  }
+
   // запуск спина (обычный)
   async function handleSpin() {
     if (!activeCase) return;
+
+    // защита: не крутить, пока колесо/сегменты не готовы
+    if (loading || !segmentsReady || !chances.length) {
+      setError("Подождите, колесо обновляется…");
+      return;
+    }
+
     setError("");
     setResult(null);
     setSpinning(true);
@@ -203,6 +236,9 @@ export default function SpinPage() {
     setShowModal(false); // сбрасываем модалку
     setActionBusy(false); // сбрасываем защиту для нового результата
 
+    // фиксируем id кейса на момент нажатия (чтобы игнорить поздние ответы)
+    const caseIdAtClick = activeCase.id;
+
     try {
       const payload = {
         case_id: activeCase.id,
@@ -210,21 +246,18 @@ export default function SpinPage() {
         pay_with: allowStars ? "stars" : "tickets",
       };
       const resp = await postSpin(payload);
-      // resp: { spin_id, status: 'pending'|'lose', prize?{chance_id,...} }
+      // если пользователь успел переключить колесо — игнорируем этот ответ
+      if (!activeCase || activeCase.id !== caseIdAtClick) return;
+
       setSpinId(resp.spin_id);
 
       if (resp.status === "lose") {
-        const loseSeg =
-          chances.find(
-            (s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose"
-          ) || chances[0];
-        setTargetId(loseSeg?.id || null);
+        setTargetId(resolveTargetIdSafe(null));
         setResult({ status: "lose" });
       } else {
-        setTargetId(resp.prize?.chance_id || null);
+        const tid = resolveTargetIdSafe(resp.prize?.chance_id || null);
+        setTargetId(tid);
         setResult({ status: "pending", prize: resp.prize });
-        // инвентарь может увеличиться, если пользователь выберет «позже»;
-        // счётчик обновим после фактического действия (claim/reroll) или при ручном открытии инвентаря.
       }
 
       // обновляем баланс после списания
@@ -244,6 +277,12 @@ export default function SpinPage() {
   // отдельный запуск БЕСПЛАТНОГО спина
   async function handleFreeSpin() {
     if (!activeCase || !freeEnabledForActiveCase) return;
+
+    if (loading || !segmentsReady || !chances.length) {
+      setError("Подождите, колесо обновляется…");
+      return;
+    }
+
     setError("");
     setResult(null);
     setSpinning(true);
@@ -253,6 +292,8 @@ export default function SpinPage() {
     setShowModal(false);
     setActionBusy(false);
 
+    const caseIdAtClick = activeCase.id;
+
     try {
       const payload = {
         case_id: activeCase.id,
@@ -260,17 +301,17 @@ export default function SpinPage() {
         pay_with: "free",
       };
       const resp = await postSpin(payload);
+
+      if (!activeCase || activeCase.id !== caseIdAtClick) return;
+
       setSpinId(resp.spin_id);
 
       if (resp.status === "lose") {
-        const loseSeg =
-          chances.find(
-            (s) => s.label?.toLowerCase() === "lose" || s.slug?.toLowerCase() === "lose"
-          ) || chances[0];
-        setTargetId(loseSeg?.id || null);
+        setTargetId(resolveTargetIdSafe(null));
         setResult({ status: "lose" });
       } else {
-        setTargetId(resp.prize?.chance_id || null);
+        const tid = resolveTargetIdSafe(resp.prize?.chance_id || null);
+        setTargetId(tid);
         setResult({ status: "pending", prize: resp.prize });
       }
 
@@ -351,6 +392,8 @@ export default function SpinPage() {
   // баланс для отображения: звёзды только целые
   const displayBalance = allowStars ? Math.floor(balance.stars) : `${balance.tickets} TON`;
 
+  const wheelKey = activeCase ? `wheel-${activeCase.id}` : "wheel-none";
+
   return (
     <>
       {/* Инвентарь слева сверху (напротив баланса) */}
@@ -408,6 +451,7 @@ export default function SpinPage() {
         {/* Колесо + тост поверх него */}
         <div className="wheel-zone">
           <SpinWheel
+            key={wheelKey}
             segments={wheelSegments}
             targetId={targetId}
             isSpinning={spinning}
@@ -534,7 +578,12 @@ export default function SpinPage() {
         )}
 
         {/* Ползунок выбора кейса */}
-        <CaseRange count={cases.length} index={index} onChange={setIndex} />
+        <CaseRange
+          count={cases.length}
+          index={index}
+          onChange={setIndex}
+          disabled={spinning || loading}
+        />
 
         {/* Управление */}
         <SpinControls
@@ -545,8 +594,8 @@ export default function SpinPage() {
           balanceTickets={balance.tickets}
           spinning={spinning}
           onSpin={handleSpin}
-          freeAvailable={freeEnabledForActiveCase} // ← добавлено
-          onSpinFree={handleFreeSpin}             // ← добавлено
+          freeAvailable={freeEnabledForActiveCase}
+          onSpinFree={handleFreeSpin}
         />
 
         {/* Результат */}
@@ -574,7 +623,7 @@ export default function SpinPage() {
 }
 
 /* Ползунок выбора кейса — точки вместо названий */
-function CaseRange({ count, index, onChange }) {
+function CaseRange({ count, index, onChange, disabled }) {
   if (!count) return null;
   return (
     <div style={{ padding: "6px 8px 2px" }}>
@@ -586,10 +635,11 @@ function CaseRange({ count, index, onChange }) {
         value={index}
         onChange={(e) => onChange(Number(e.target.value))}
         className="case-range"
+        disabled={disabled}
       />
       <div className="case-range-dots">
         {Array.from({ length: count }).map((_, i) => (
-          <span key={i} className={`dot ${i === index ? "active" : ""}`} />
+          <span key={i} className={`dot ${i === index ? "active" : ""} ${disabled ? "dim" : ""}`} />
         ))}
       </div>
     </div>
@@ -615,23 +665,15 @@ function ResultBlock({
     const ch = chances.find((x) => x.id === result.prize?.chance_id);
 
     // базовая сумма в TON: берём первое валидное > 0 из списка кандидатов
-    const candidates = [
-      ch?.payout_value,
-      ch?.price,
-      result.prize?.payout_value,
-      result.prize?.price,
-    ].map((v) => Number(v));
+    const candidates = [ch?.payout_value, ch?.price, result.prize?.payout_value, result.prize?.price].map(
+      (v) => Number(v)
+    );
     const baseTon = candidates.find((v) => Number.isFinite(v) && v > 0) || 0;
 
     // конвертация TON -> ⭐ с учётом fee_markup (уменьшаем выдачу)
-    const starsAmount = Math.max(
-      0,
-      Math.ceil(baseTon * (starsPerTon || 0) * (1 - (feeMarkup || 0)))
-    );
+    const starsAmount = Math.max(0, Math.ceil(baseTon * (starsPerTon || 0) * (1 - (feeMarkup || 0))));
 
-    const exchangeLabel = allowStars
-      ? `Обменять на ${starsAmount} ⭐`
-      : `Обменять на ${baseTon} TON`;
+    const exchangeLabel = allowStars ? `Обменять на ${starsAmount} ⭐` : `Обменять на ${baseTon} TON`;
 
     return (
       <div className="result-banner" style={{ display: "grid", gap: 8 }}>
@@ -643,11 +685,7 @@ function ResultBlock({
           <button className="primary-btn" onClick={onKeep} disabled={actionBusy}>
             {actionBusy ? "Обработка..." : "В инвентарь"}
           </button>
-          <button
-            className="ghost-btn"
-            onClick={() => onReroll(exchangeLabel)}
-            disabled={actionBusy}
-          >
+          <button className="ghost-btn" onClick={() => onReroll(exchangeLabel)} disabled={actionBusy}>
             {actionBusy ? "Обработка..." : exchangeLabel}
           </button>
         </div>

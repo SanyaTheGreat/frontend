@@ -315,9 +315,8 @@ export default function InventoryPage() {
             fontSize: 14,
             zIndex: 2000,
             display: "inline-block",     // ✅ фон только под текст
-            maxWidth: "80%",             // ✅ не шире экрана
-            whiteSpace: "nowrap",        // ✅ не переносится
-            height: 36,
+            maxWidth: "90%",             // ✅ не шире экрана
+            height: 40,
           }}
         >
           {toast.text}
