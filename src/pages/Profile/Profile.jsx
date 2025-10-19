@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Wheel from '../../components/Wheel/Wheel';
-import './WheelPage.css';
+import './Profile.css';
 
 const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
 
