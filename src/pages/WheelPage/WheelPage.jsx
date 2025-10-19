@@ -1,235 +1,295 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import Wheel from '../../components/Wheel/Wheel';
-import './WheelPage.css';
+import { useEffect, useState } from 'react';
+import './Profile.css';
+import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { toUserFriendlyAddress } from '@tonconnect/sdk';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
+export default function Profile() {
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [referrals, setReferrals] = useState(null);
+  const [purchases, setPurchases] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-export default function WheelPage() {
-  const { id: wheel_id } = useParams();
-  const navigate = useNavigate();
+  const [tonConnectUI] = useTonConnectUI();
+  const tonWallet = useTonWallet();
 
-  const [participants, setParticipants] = useState([]);
-  const [wheelSize, setWheelSize] = useState(0);
-  const [winner, setWinner] = useState(null);
-  const [completedAt, setCompletedAt] = useState(null);
-  const [loading, setLoading] = useState(true);          // только для первого рендера
-  const [refreshing, setRefreshing] = useState(false);   // мягкая подгрузка без «перезагрузки страницы»
-  const [animStarted, setAnimStarted] = useState(false);
-  const [status, setStatus] = useState('active');
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [runAt, setRunAt] = useState(null);
-  const [showWinnerModal, setShowWinnerModal] = useState(false);
-
-  const timerRef = useRef(null);
-  const pollRef = useRef(null); // хранить id интервала
-
-  const fetchData = async (isInitial = false) => {
-    try {
-      if (isInitial) setLoading(true);
-      else setRefreshing(true);
-
-      const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
-      if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
-      const partData = await partRes.json();
-
-      const participantsRaw = partData.participants || [];
-      const uniqueMap = new Map();
-      participantsRaw.forEach(p => {
-        if (!uniqueMap.has(p.user_id)) {
-          uniqueMap.set(p.user_id, p);
-        } else {
-          const existing = uniqueMap.get(p.user_id);
-          if (new Date(p.joined_at) < new Date(existing.joined_at)) {
-            uniqueMap.set(p.user_id, p);
-          }
-        }
-      });
-      const uniqueParticipants = Array.from(uniqueMap.values())
-        .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
-        .map(p => ({ username: p.username || `user${p.user_id}` }));
-
-      setParticipants(uniqueParticipants);
-
-      const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`);
-      if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
-      const wheelData = await wheelRes.json();
-      setWheelSize(wheelData.size || 0);
-      setRunAt(wheelData.run_at || null);
-
-      const resultRes = await fetch(`${API_BASE_URL}/results`);
-      if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
-      const resultData = await resultRes.json();
-
-      const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
-      if (thisResult) {
-        const winnerNormalized = thisResult.winner.replace(/^@/, '');
-        if (!animStarted) { // не трогаем победителя во время анимации
-          setWinner(winnerNormalized || null);
-          setCompletedAt(thisResult.completed_at || null);
-          setStatus('completed');
-        }
-      } else {
-        if (!animStarted) {
-          setWinner(null);
-          setCompletedAt(null);
-          setStatus('active');
-        }
-      }
-    } catch (e) {
-      alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
-    } finally {
-      if (isInitial) setLoading(false);
-      else setRefreshing(false);
-    }
+  const fetchProfile = async (telegram_id) => {
+    const [profileData, referralData, sellsData] = await Promise.all([
+      fetch(`https://lottery-server-waif.onrender.com/users/profile/${telegram_id}`).then(res => res.json()),
+      fetch(`https://lottery-server-waif.onrender.com/users/referrals/${telegram_id}`).then(res => res.json()),
+      fetch(`https://lottery-server-waif.onrender.com/users/sells/${telegram_id}`).then(res => res.json()),
+    ]);
+    setProfile(profileData);
+    setReferrals(referralData);
+    setPurchases(sellsData);
+    setLoading(false);
   };
 
-  // 1) Первый загрузочный вызов + запуск интервала опроса (только на маунт)
   useEffect(() => {
-    fetchData(true);
-    pollRef.current = setInterval(() => {
-      // мягкая подгрузка, без «Загрузка…»
-      if (!(status === 'completed' && animStarted)) {
-        fetchData(false);
-      }
-    }, 50000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wheel_id]); // при смене id — пересоздаём
+    const tg = window.Telegram?.WebApp;
+    const telegramUser = tg?.initDataUnsafe?.user;
 
-  // 2) Отсчёт до старта (по completedAt из результатов)
+    if (!telegramUser || !telegramUser.id) return;
+
+    setUser(telegramUser);
+    fetchProfile(telegramUser.id);
+  }, []);
+
   useEffect(() => {
-    if (status !== 'completed' || !completedAt || !winner) {
-      setTimeLeft(null);
+    if (!tonWallet?.account?.address || !user || !profile) return;
+
+    const walletFromServer = profile.wallet;
+    const rawAddress = tonWallet.account.address;
+    const friendlyAddress = toUserFriendlyAddress(rawAddress, tonWallet.account.chain === 'testnet');
+
+    if (friendlyAddress && friendlyAddress !== walletFromServer) {
+      handleWalletUpdate(friendlyAddress);
+    }
+  }, [tonWallet, user, profile]);
+
+  const handleWalletUpdate = async (walletValue) => {
+    await fetch(`https://lottery-server-waif.onrender.com/users/wallet`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_id: user.id, wallet: walletValue }),
+    });
+    fetchProfile(user.id);
+  };
+
+  const handleCopyRefLink = () => {
+    navigator.clipboard.writeText(`https://t.me/FightForGift_bot?start=${user.id}`);
+    toast.success('Скопировано!');
+  };
+
+  // ---- Новый метод: пополнение звёздами ----
+  const handleTopUpStars = async () => {
+    const tg = window.Telegram?.WebApp;
+    const uid = tg?.initDataUnsafe?.user?.id || user?.id;
+
+    if (!uid) {
+      toast.error('Telegram user not found');
       return;
     }
 
-    let remaining = 30;
-    setTimeLeft(remaining);
+    const input = prompt('Введите сумму пополнения в TON (мин.шаг 0.1)  21⭐= 0.1💎 :', '0.1');
+    const tickets = parseFloat(input);
+    const valid = Number.isFinite(tickets) && tickets >= 0.1 && Math.abs(tickets * 10 - Math.round(tickets * 10)) < 1e-9;
+    if (!valid) {
+      toast.warning('Сумма должна быть ≥ 0.1 с минимальным шагом 0.1 ');
+      return;
+    }
 
-    timerRef.current = setInterval(() => {
-      remaining -= 1;
-      if (remaining < 0) {
-        clearInterval(timerRef.current);
-        setTimeLeft(null);
-        setAnimStarted(true); // плавный переход: запускаем колесо без fetchData()
-        // как только пошла анимация — можно остановить общий опрос
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
+    try {
+      const resp = await fetch('https://lottery-server-waif.onrender.com/payments/create-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegram_id: uid, tickets_desired: tickets }),
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data?.invoice_link) {
+        toast.error(data?.error || 'Failed to create invoice');
+        return;
+      }
+
+      tg.openInvoice(data.invoice_link, async (status) => {
+        if (status === 'paid') {
+          toast.success('Paid ✅ Balance will update shortly');
+          setTimeout(() => fetchProfile(uid), 1500);
+        } else if (status === 'cancelled') {
+          toast.info('Payment cancelled');
+        } else if (status === 'failed') {
+          toast.error('Payment failed');
         }
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Server error while creating invoice');
+    }
+  };
+
+  const handleTopUp = async () => {
+    const amountInput = prompt('введите сумму в TON:');
+    const amount = parseFloat(amountInput);
+    if (isNaN(amount) || amount <= 0) {
+      toast.warning('Введите корректную сумму.');
+      return;
+    }
+    const nanoTON = (amount * 1e9).toFixed(0);
+    const comment = profile?.payload || '';
+    const payloadBase64 = comment || undefined;
+    try {
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
+            address: 'UQDEUvNIMwUS03T-OknCGDhcKIADjY_hw5KRl0z8g41PKs87',
+            amount: nanoTON,
+            payload: payloadBase64,
+          },
+        ],
+      });
+      toast.success('Тразакция отправлена');
+    } catch (error) {
+      toast.error('Error Sending TON');
+    }
+  };
+
+  const handleWithdraw = () => {
+    const address = prompt('Enter TON wallet address for withdrawal:');
+    const amount = prompt('Enter the amount to withdraw (TON):');
+    if (!address || !amount) return;
+    fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegram_id: user.id,
+        address,
+        amount: parseFloat(amount),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => toast.success(data.message || 'Запрос на вывод отправлен'))
+      .catch(() => toast.error('Ошибка при отправке запроса'));
+  };
+
+  const handleReferralWithdraw = async () => {
+    if (!profile?.wallet) {
+      toast.error('Кошелек не подключен');
+      return;
+    }
+
+    const amount = referrals?.referral_earnings ?? 0;
+    if (amount < 3) {
+      toast.warning('мин.сумма — 3 TON');
+      return;
+    }
+
+    const confirmed = window.confirm(`Withdraw ${amount} TON on ${profile.wallet}?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_id: user.id,
+          wallet: profile.wallet,
+          amount,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Successful withdrawal');
+        fetchProfile(user.id);
       } else {
-        setTimeLeft(remaining);
+        toast.error(data.error || 'Error during output');
       }
-    }, 1000);
-
-    return () => clearInterval(timerRef.current);
-  }, [status, completedAt, winner]);
-
-  // 3) Таймер по runAt для «active» колёс (без перезапроса)
-  useEffect(() => {
-    if (!runAt || status !== 'active') return;
-
-    const interval = setInterval(() => {
-      const now = new Date();
-      const runTime = new Date(runAt);
-
-      if (now >= runTime) {
-        clearInterval(interval);
-        setAnimStarted(true); // запуск анимации локально
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [runAt, status]);
-
-  const handleAnimFinish = () => {
-    setShowWinnerModal(true);
+    } catch (err) {
+      toast.error('SERVER Error during output');
+      console.error(err);
+    }
   };
 
-  const handleCloseModal = () => {
-    setShowWinnerModal(false);
-    navigate('/');
-  };
+  if (loading || !user) {
+    return <p className="profile-wrapper">Loading Profile...</p>;
+  }
+
+  const avatarLetter = user.username ? user.username[0].toUpperCase() : '?';
 
   return (
-    <div className="wheel-page-wrapper" style={{ position: 'relative' }}>
-      {/* Мягкий индикатор фоновой подгрузки */}
-      {refreshing && (
-        <div style={{
-          position: 'absolute', top: 8, right: 8, padding: '6px 10px',
-          background: 'rgba(0,0,0,0.5)', color: '#fff', borderRadius: 8, fontSize: 12
-        }}>
-          обновление…
-        </div>
-      )}
-
-      <h2>Колесо №{wheel_id}</h2>
-      <p>Участников: {participants.length}</p>
-
-      {status === 'active' && <p>Набор участников</p>}
-      {status === 'completed' && timeLeft !== null && <p>Запуск через: {timeLeft} сек.</p>}
-
-      {/* Не выходим в полный экран «Загрузка…» после первого рендера */}
-      {loading ? (
-        <div style={{ padding: 20 }}>Загрузка…</div>
+    <div className="profile-wrapper">
+      {profile?.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt="Avatar"
+          className="profile-avatar"
+          onError={(e) => {
+            console.error("Ошибка загрузки аватара:", e);
+            e.currentTarget.style.display = "none";
+          }}
+        />
       ) : (
-        <>
-          <Wheel
-            participants={participants}
-            wheelSize={wheelSize}
-            winnerUsername={animStarted ? winner : null}
-            spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
-            onFinish={handleAnimFinish}
-          />
-
-          <button onClick={() => navigate('/')}>Главное меню</button>
-        </>
+        <div className="avatar-placeholder">{avatarLetter}</div>
       )}
 
-      {showWinnerModal && (
-        <div className="modal-overlay" style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999,
-        }}>
-          <div className="modal" style={{
-            background: '#222',
-            padding: '15px 20px',
-            borderRadius: '12px',
-            color: 'white',
-            textAlign: 'center',
-            minWidth: '200px',
-          }}>
-            <h2>Победитель {winner}</h2>
-            <button
-              onClick={handleCloseModal}
-              style={{
-                marginTop: '20px',
-                padding: '10px 20px',
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                fontSize: '16px',
-              }}
-            >
-              OK
+      <div className="username-text">@{user.username}</div>
+
+      <div className="ton-connect-wrapper">
+        <TonConnectButton />
+      </div>
+
+      <div className="balance-actions-row">
+        <div className="balance-label">Баланс</div>
+        <div className="balance-display">
+          <span className="ton-icon">🪙</span>
+          <span>
+            {profile?.tickets !== undefined
+              ? parseFloat(profile.tickets).toFixed(2).replace(/\.?0+$/, "")
+              : "—"}
+          </span>
+        </div>
+        <div className="balance-buttons">
+          <button className="btn btn-stars" onClick={handleTopUpStars}>Пополнить⭐</button>
+          <button className="btn btn-ton" onClick={handleTopUp}>Пополнить💎</button>
+        </div>
+      </div>
+
+      <div className="profile-block">
+        <div className="profile-title">👥 Реферралы</div>
+        <div className="referral-flex-row">
+          <div>
+            <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
+            <div className="profile-row">Заработано: {referrals?.referral_earnings ?? 0} 💎 TON</div>
+          </div>
+          <div className="referral-button-wrapper">
+            <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
+              Вывод
             </button>
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="profile-block">
+        <div className="profile-title">🔗 Твоя Реферралка </div>
+        <div className="profile-ref-wrapper">
+          <input
+            type="text"
+            readOnly
+            className="profile-ref-link"
+            value={`https://t.me/FightForGift_bot?start=${user.id}`}
+            onClick={(e) => e.target.select()}
+          />
+          <button onClick={handleCopyRefLink} className="copy-btn"> 🔗</button>
+        </div>
+      </div>
+
+      <div className="profile-block">
+        <div className="profile-title">🕘 История Пополнений</div>
+        <ul className="profile-history-list">
+          {purchases.length === 0 && <li>Still nothing...</li>}
+          {purchases.map((item, i) => (
+            <li key={i}>
+              {item.amount} TON — {new Date(item.created_at).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 }
