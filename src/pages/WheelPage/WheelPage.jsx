@@ -13,8 +13,8 @@ export default function WheelPage() {
   const [wheelSize, setWheelSize] = useState(0);
   const [winner, setWinner] = useState(null);
   const [completedAt, setCompletedAt] = useState(null);
-  const [loading, setLoading] = useState(true);          // только для первого рендера
-  const [refreshing, setRefreshing] = useState(false);   // мягкая подгрузка без «перезагрузки страницы»
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [animStarted, setAnimStarted] = useState(false);
   const [status, setStatus] = useState('active');
   const [timeLeft, setTimeLeft] = useState(null);
@@ -22,49 +22,70 @@ export default function WheelPage() {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
 
   const timerRef = useRef(null);
-  const pollRef = useRef(null); // хранить id интервала
+  const pollRef = useRef(null);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('jwt');
+    if (!token) return null;
+    return { Authorization: `Bearer ${token}` };
+  };
 
   const fetchData = async (isInitial = false) => {
     try {
+      const auth = getAuthHeaders();
+      if (!auth) {
+        if (isInitial) setLoading(false);
+        alert('Требуется авторизация в Telegram. Открой Mini App внутри Telegram.');
+        return;
+      }
+
       if (isInitial) setLoading(true);
       else setRefreshing(true);
 
-      const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`);
+      // Участники
+      const partRes = await fetch(`${API_BASE_URL}/${wheel_id}/participants`, {
+        headers: { ...auth }
+      });
+      if (partRes.status === 401 || partRes.status === 403) throw new Error('unauthorized');
       if (!partRes.ok) throw new Error(`Ошибка запроса участников: ${partRes.status}`);
       const partData = await partRes.json();
 
       const participantsRaw = partData.participants || [];
       const uniqueMap = new Map();
       participantsRaw.forEach(p => {
-        if (!uniqueMap.has(p.user_id)) {
-          uniqueMap.set(p.user_id, p);
-        } else {
+        if (!uniqueMap.has(p.user_id)) uniqueMap.set(p.user_id, p);
+        else {
           const existing = uniqueMap.get(p.user_id);
-          if (new Date(p.joined_at) < new Date(existing.joined_at)) {
-            uniqueMap.set(p.user_id, p);
-          }
+          if (new Date(p.joined_at) < new Date(existing.joined_at)) uniqueMap.set(p.user_id, p);
         }
       });
       const uniqueParticipants = Array.from(uniqueMap.values())
         .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
         .map(p => ({ username: p.username || `user${p.user_id}` }));
-
       setParticipants(uniqueParticipants);
 
-      const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`);
+      // Данные колеса
+      const wheelRes = await fetch(`${API_BASE_URL}/${wheel_id}`, {
+        headers: { ...auth }
+      });
+      if (wheelRes.status === 401 || wheelRes.status === 403) throw new Error('unauthorized');
       if (!wheelRes.ok) throw new Error(`Ошибка запроса колеса: ${wheelRes.status}`);
       const wheelData = await wheelRes.json();
       setWheelSize(wheelData.size || 0);
       setRunAt(wheelData.run_at || null);
 
-      const resultRes = await fetch(`${API_BASE_URL}/results`);
+      // Результаты
+      const resultRes = await fetch(`${API_BASE_URL}/results`, {
+        headers: { ...auth }
+      });
+      if (resultRes.status === 401 || resultRes.status === 403) throw new Error('unauthorized');
       if (!resultRes.ok) throw new Error(`Ошибка запроса результатов: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
       const thisResult = resultData.results.find(r => String(r.wheel_id) === String(wheel_id));
       if (thisResult) {
         const winnerNormalized = thisResult.winner.replace(/^@/, '');
-        if (!animStarted) { // не трогаем победителя во время анимации
+        if (!animStarted) {
           setWinner(winnerNormalized || null);
           setCompletedAt(thisResult.completed_at || null);
           setStatus('completed');
@@ -77,29 +98,29 @@ export default function WheelPage() {
         }
       }
     } catch (e) {
-      alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
+      if (e?.message === 'unauthorized') {
+        localStorage.removeItem('jwt');
+        alert('Сессия истекла. Пожалуйста, заново открой Mini App в Telegram.');
+      } else {
+        alert(`Ошибка загрузки данных колеса: ${e.message || e}`);
+      }
     } finally {
       if (isInitial) setLoading(false);
       else setRefreshing(false);
     }
   };
 
-  // 1) Первый загрузочный вызов + запуск интервала опроса (только на маунт)
   useEffect(() => {
     fetchData(true);
     pollRef.current = setInterval(() => {
-      // мягкая подгрузка, без «Загрузка…»
-      if (!(status === 'completed' && animStarted)) {
-        fetchData(false);
-      }
+      if (!(status === 'completed' && animStarted)) fetchData(false);
     }, 50000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wheel_id]); // при смене id — пересоздаём
+  }, [wheel_id]);
 
-  // 2) Отсчёт до старта (по completedAt из результатов)
   useEffect(() => {
     if (status !== 'completed' || !completedAt || !winner) {
       setTimeLeft(null);
@@ -114,8 +135,7 @@ export default function WheelPage() {
       if (remaining < 0) {
         clearInterval(timerRef.current);
         setTimeLeft(null);
-        setAnimStarted(true); // плавный переход: запускаем колесо без fetchData()
-        // как только пошла анимация — можно остановить общий опрос
+        setAnimStarted(true);
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
@@ -128,7 +148,6 @@ export default function WheelPage() {
     return () => clearInterval(timerRef.current);
   }, [status, completedAt, winner]);
 
-  // 3) Таймер по runAt для «active» колёс (без перезапроса)
   useEffect(() => {
     if (!runAt || status !== 'active') return;
 
@@ -138,7 +157,7 @@ export default function WheelPage() {
 
       if (now >= runTime) {
         clearInterval(interval);
-        setAnimStarted(true); // запуск анимации локально
+        setAnimStarted(true);
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
@@ -149,10 +168,7 @@ export default function WheelPage() {
     return () => clearInterval(interval);
   }, [runAt, status]);
 
-  const handleAnimFinish = () => {
-    setShowWinnerModal(true);
-  };
-
+  const handleAnimFinish = () => setShowWinnerModal(true);
   const handleCloseModal = () => {
     setShowWinnerModal(false);
     navigate('/');
@@ -160,7 +176,6 @@ export default function WheelPage() {
 
   return (
     <div className="wheel-page-wrapper" style={{ position: 'relative' }}>
-      {/* Мягкий индикатор фоновой подгрузки */}
       {refreshing && (
         <div style={{
           position: 'absolute', top: 8, right: 8, padding: '6px 10px',
@@ -176,7 +191,6 @@ export default function WheelPage() {
       {status === 'active' && <p>Набор участников</p>}
       {status === 'completed' && timeLeft !== null && <p>Запуск через: {timeLeft} сек.</p>}
 
-      {/* Не выходим в полный экран «Загрузка…» после первого рендера */}
       {loading ? (
         <div style={{ padding: 20 }}>Загрузка…</div>
       ) : (
@@ -188,41 +202,27 @@ export default function WheelPage() {
             spinDuration={Math.min(15000 + participants.length * 1000, 25000)}
             onFinish={handleAnimFinish}
           />
-
           <button onClick={() => navigate('/')}>Главное меню</button>
         </>
       )}
 
       {showWinnerModal && (
         <div className="modal-overlay" style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999,
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', zIndex: 9999,
         }}>
           <div className="modal" style={{
-            background: '#222',
-            padding: '15px 20px',
-            borderRadius: '12px',
-            color: 'white',
-            textAlign: 'center',
-            minWidth: '200px',
+            background: '#222', padding: '15px 20px', borderRadius: '12px',
+            color: 'white', textAlign: 'center', minWidth: '200px',
           }}>
             <h2>Победитель {winner}</h2>
             <button
               onClick={handleCloseModal}
               style={{
-                marginTop: '20px',
-                padding: '10px 20px',
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                fontSize: '16px',
+                marginTop: '20px', padding: '10px 20px', borderRadius: '6px',
+                border: 'none', cursor: 'pointer', backgroundColor: '#4CAF50',
+                color: 'white', fontSize: '16px',
               }}
             >
               OK
