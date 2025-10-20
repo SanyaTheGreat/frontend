@@ -4,6 +4,31 @@ import './Leaderboard.css';
 
 const API_BASE = 'https://lottery-server-waif.onrender.com';
 
+/** Берём JWT из sessionStorage или меняем Telegram initData на токен */
+async function getJwt() {
+  try {
+    const cached = sessionStorage.getItem('jwt');
+    if (cached) return cached;
+
+    const tg = window?.Telegram?.WebApp;
+    const initData = tg?.initData;
+    if (!initData) return null;
+
+    const res = await fetch(`${API_BASE}/auth/exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    });
+    if (!res.ok) return null;
+
+    const { token } = await res.json();
+    if (token) sessionStorage.setItem('jwt', token);
+    return token || null;
+  } catch {
+    return null;
+  }
+}
+
 /* обратный отсчёт в форматах:
    ≥ 24ч  => "Xd Yч"
    < 24ч  => "Xч Ym" */
@@ -55,19 +80,21 @@ export default function Leaderboard() {
   const a2Ref = useRef(null);
   const a3Ref = useRef(null);
 
-  // Загрузка данных
+  // Загрузка данных (с JWT, если он есть)
   useEffect(() => {
     async function load() {
       try {
         setErr(null);
         setLoading(true);
 
+        const token = await getJwt(); // может быть null
         const url = new URL(`${API_BASE}${path}`);
-        if (telegramId) url.searchParams.set('telegram_id', telegramId);
         url.searchParams.set('limit', '10');
         url.searchParams.set('offset', '0');
 
-        const res = await fetch(url.toString());
+        const res = await fetch(url.toString(), {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
 
@@ -85,7 +112,7 @@ export default function Leaderboard() {
       }
     }
     load();
-  }, [telegramId, path, mode]);
+  }, [path, mode]);
 
   // место -> slug/nft_name (имя json в /public/animations)
   const slugByPlace = useMemo(() => {
@@ -187,7 +214,6 @@ function TopThree({ items, a1Ref, a2Ref, a3Ref, unit }) {
   if (!items || items.length === 0) return null;
   const first = items[0], second = items[1], third = items[2];
 
-  // Пьедестал, без карточных контейнеров
   return (
     <div className="lb-podium-wrap">
       {second && (
@@ -294,8 +320,6 @@ function formatUsername(u) {
   if (!u) return '@unknown';
   return u.startsWith('@') ? u : `@${u}`;
 }
-
-// Ограничение отображаемого ника (с добавлением '…')
 function displayUsername(u, max = 10) {
   const at = formatUsername(u || '');
   if (at.length <= max) return at;
