@@ -32,7 +32,6 @@ export default function SpinPage() {
   const [showModal, setShowModal] = useState(false);
 
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
-  const telegramIdRef = useRef(getTelegramId());
 
   // курс конвертации из таблицы fx_rates
   const [fx, setFx] = useState({ stars_per_ton: 0, ton_per_100stars: 0, fee_markup: 0 });
@@ -60,6 +59,50 @@ export default function SpinPage() {
   const [segmentsReady, setSegmentsReady] = useState(false);
 
   const activeCase = cases[index] || null;
+
+  // =========================
+  //  TELEGRAM_ID (унификация)
+  // =========================
+
+  // безопасный декодер JWT → telegram_id
+  function decodeJwtTelegramId() {
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) return null;
+      const [, payloadB64] = jwt.split(".");
+      if (!payloadB64) return null;
+      const json = JSON.parse(
+        decodeURIComponent(
+          escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))
+        )
+      );
+      return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 1) из JWT (главный источник)
+  const jwtTelegramId = decodeJwtTelegramId();
+
+  // 2) из Telegram WebApp (если открыто внутри TG) или helper из spinsApi
+  const tgApiId = getTelegramId?.() || window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
+
+  // 3) dev-фоллбек: query/localStorage
+  const queryId = new URLSearchParams(window.location.search).get("tgid");
+  const storedId = window.localStorage.getItem("tgid") || null;
+  if (queryId && queryId !== storedId) window.localStorage.setItem("tgid", queryId);
+
+  // итоговый id: JWT → TG API → ?tgid → stored
+  const effectiveId = jwtTelegramId || tgApiId || queryId || storedId || null;
+
+  // ref с текущим значением (используем во всех async-функциях)
+  const telegramIdRef = useRef(effectiveId);
+  useEffect(() => {
+    telegramIdRef.current = effectiveId;
+  }, [effectiveId]);
+
+  // =========================
 
   // загрузка кейсов
   useEffect(() => {
@@ -172,7 +215,8 @@ export default function SpinPage() {
         .single();
       if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
     })();
-  }, [telegramIdRef.current]);
+    // следим за effectiveId — если сменился пользователь, обновим баланс
+  }, [effectiveId]);
 
   const priceTon = useMemo(() => Number(activeCase?.price || 0), [activeCase]);
   const priceStars = useMemo(() => Number(activeCase?.price_in_stars || 0), [activeCase]);
@@ -195,12 +239,12 @@ export default function SpinPage() {
         console.warn("[inventory] count failed:", e?.message || e);
       }
     },
-    [telegramIdRef]
+    []
   );
 
   useEffect(() => {
     loadInvCount();
-  }, [loadInvCount]);
+  }, [loadInvCount, effectiveId]);
 
   // доступен ли фриспин для текущего выбранного кейса
   const freeEnabledForActiveCase =
@@ -224,6 +268,12 @@ export default function SpinPage() {
     // защита: не крутить, пока колесо/сегменты не готовы
     if (loading || !segmentsReady || !chances.length) {
       setError("Подождите, колесо обновляется…");
+      return;
+    }
+
+    // если нет авторизации/id — подскажем
+    if (!telegramIdRef.current) {
+      setError("Не найден Telegram ID: открой Mini App в Telegram или авторизуйся заново.");
       return;
     }
 
@@ -280,6 +330,11 @@ export default function SpinPage() {
 
     if (loading || !segmentsReady || !chances.length) {
       setError("Подождите, колесо обновляется…");
+      return;
+    }
+
+    if (!telegramIdRef.current) {
+      setError("Не найден Telegram ID: открой Mini App в Telegram или авторизуйся заново.");
       return;
     }
 
