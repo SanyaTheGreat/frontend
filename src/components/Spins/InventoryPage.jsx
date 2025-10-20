@@ -37,11 +37,36 @@ export default function InventoryPage() {
       return s;
     });
 
-  // telegram_id: TG → ?tgid= → localStorage (чтобы в dev работало в браузере)
+  // ====== АВТОРИЗАЦИЯ / ОПРЕДЕЛЕНИЕ TELEGRAM_ID ======
+
+  // аккуратный декодер JWT без внешних либ
+  function decodeJwtTelegramId() {
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) return null;
+      const [, payloadB64] = jwt.split(".");
+      if (!payloadB64) return null;
+      const json = JSON.parse(decodeURIComponent(escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))));
+      // поддержим разные поля
+      return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 1) из JWT (главный источник)
+  const jwtTelegramId = decodeJwtTelegramId();
+
+  // 2) из Telegram WebApp (если открыто в TG)
+  const tgApiId = getTelegramId?.() || window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
+
+  // 3) dev-фоллбек из query/localStorage
   const queryId = new URLSearchParams(window.location.search).get("tgid");
   const storedId = window.localStorage.getItem("tgid") || null;
-  const effectiveId = getTelegramId() || queryId || storedId || null;
   if (queryId && queryId !== storedId) window.localStorage.setItem("tgid", queryId);
+
+  // итоговый id: JWT → TG API → ?tgid → stored
+  const effectiveId = jwtTelegramId || tgApiId || queryId || storedId || null;
   const tgIdRef = useRef(effectiveId);
 
   // helpers
@@ -79,7 +104,9 @@ export default function InventoryPage() {
       try {
         if (!tgId) {
           setItems([]);
-          setError("Telegram ID не найден. Откройте /inventory?tgid=ВАШ_ID для dev.");
+          setError(
+            "Telegram ID не найден. Открой Mini App в Telegram (для авторизации) или используй /inventory?tgid=ВАШ_ID в dev."
+          );
           return;
         }
         const list = await fetchInventory(tgId); // ожидаем массив
@@ -136,7 +163,6 @@ export default function InventoryPage() {
       showToast("Нужно 25⭐ для вывода");
       return;
     }
-    // опционально: подтверждение списания
     if (requiresFee && !window.confirm("Списать 25⭐ за вывод приза?")) {
       return;
     }
@@ -314,15 +340,14 @@ export default function InventoryPage() {
             borderRadius: 20,
             fontSize: 14,
             zIndex: 2000,
-            display: "inline-block",     // ✅ фон только под текст
-            maxWidth: "90%",             // ✅ не шире экрана
+            display: "inline-block",
+            maxWidth: "90%",
             height: 40,
           }}
         >
           {toast.text}
         </div>
       )}
-
     </div>
   );
 }
