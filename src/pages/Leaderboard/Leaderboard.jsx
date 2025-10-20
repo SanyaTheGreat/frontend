@@ -4,29 +4,14 @@ import './Leaderboard.css';
 
 const API_BASE = 'https://lottery-server-waif.onrender.com';
 
-/** Берём JWT из sessionStorage или меняем Telegram initData на токен */
+/** Берём JWT из localStorage. Никакого обмена initData → JWT здесь не делаем. */
 async function getJwt() {
-  try {
-    const cached = sessionStorage.getItem('jwt');
-    if (cached) return cached;
-
-    const tg = window?.Telegram?.WebApp;
-    const initData = tg?.initData;
-    if (!initData) return null;
-
-    const res = await fetch(`${API_BASE}/auth/exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    });
-    if (!res.ok) return null;
-
-    const { token } = await res.json();
-    if (token) sessionStorage.setItem('jwt', token);
-    return token || null;
-  } catch {
+  const token = localStorage.getItem('jwt');
+  if (!token) {
+    console.warn('⚠️ JWT отсутствует — открой Mini App через экран профиля (или переавторизуйся), чтобы получить токен.');
     return null;
   }
+  return token;
 }
 
 /* обратный отсчёт в форматах:
