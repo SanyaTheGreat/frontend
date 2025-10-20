@@ -8,6 +8,35 @@ import './LobbyPage.css';
 
 // ← укажи ник своего бота (без @)
 const BOT = 'fightforgift_bot';
+const API_BASE = 'https://lottery-server-waif.onrender.com';
+
+// === JWT helper (локально в файле) ===
+async function getJwt() {
+  // 1) если есть в localStorage — пробуем использовать
+  const cached = localStorage.getItem('jwt');
+  if (cached) return cached;
+
+  // 2) иначе берём initData из Telegram WebApp и получаем токен с бэка
+  const tg = window.Telegram?.WebApp;
+  const initData = tg?.initData || '';
+  if (!initData) {
+    throw new Error('Telegram initData not found');
+  }
+
+  const resp = await fetch(`${API_BASE}/auth/telegram`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData }),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data?.token) {
+    throw new Error(data?.error || 'Auth failed');
+  }
+
+  localStorage.setItem('jwt', data.token);
+  return data.token;
+}
 
 function LobbyPage() {
   const { id } = useParams();
@@ -18,7 +47,7 @@ function LobbyPage() {
   const [participantCount, setParticipantCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [colorsMap, setColorsMap] = useState({});
-  const [subscriptionModal, setSubscriptionModal] = useState(null); // хранит wheel для модалки
+  const [subscriptionModal, setSubscriptionModal] = useState(null);
   const animRef = useRef(null);
 
   useEffect(() => {
@@ -57,7 +86,7 @@ function LobbyPage() {
       // забираем и новые поля: mode, channel
       const { data: wheelData, error: wheelError } = await supabase
         .from('wheels')
-        .select('id, nft_name, size, price, status, mode, channel') // добавили mode/channel
+        .select('id, nft_name, size, price, status, mode, channel')
         .eq('id', id)
         .single();
 
@@ -97,14 +126,6 @@ function LobbyPage() {
   const handleJoin = async (skipModal = false) => {
     if (!wheel) return;
 
-    const tg = window.Telegram?.WebApp;
-    const user = tg?.initDataUnsafe?.user;
-
-    if (!user) {
-      toast.error('Telegram user not found');
-      return;
-    }
-
     if (participantCount >= (wheel?.size || 0)) {
       toast.warn('The wheel is already full');
       return;
@@ -118,25 +139,8 @@ function LobbyPage() {
 
     setLoading(true);
 
-    const { data: foundUser, error } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', user.id)
-      .single();
-
-    if (error || !foundUser) {
-      toast.error('Пользователь не зарегистрирован');
-      setLoading(false);
-      return;
-    }
-
-    // промокод — через prompt
-    const body = {
-      wheel_id: id,
-      user_id: foundUser.id,
-      telegram_id: user.id,
-      username: user.username || '',
-    };
+    // формируем тело запроса (только wheel_id + promokey)
+    const body = { wheel_id: id };
 
     if (wheel.mode === 'promo') {
       const code = window.prompt('Введите промокод');
@@ -147,22 +151,37 @@ function LobbyPage() {
       body.promokey = code.trim();
     }
 
-    const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    try {
+      const token = await getJwt();
 
-    if (res.status === 201) {
-      toast.success('You have successfully joined!');
-      await fetchLobbyData();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error || 'Error Join ');
+      const res = await fetch(`${API_BASE}/wheel/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 201) {
+        toast.success('You have successfully joined!');
+        await fetchLobbyData();
+      } else if (res.status === 401) {
+        // если токен истёк — почистим и попробуем в следующий раз заново получить
+        localStorage.removeItem('jwt');
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Unauthorized');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Error Join');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || 'Join failed');
+    } finally {
+      setLoading(false);
+      setSubscriptionModal(null);
     }
-
-    setLoading(false);
-    setSubscriptionModal(null);
   };
 
   const handleWatch = () => {
@@ -172,7 +191,6 @@ function LobbyPage() {
   // deep link для шаринга
   const shareDeepLink = `https://t.me/${BOT}?startapp=lobby_${id}`;
 
-  // открыть родной «поделиться в Telegram» со списком чатов/пользователей
   const openTelegramShare = () => {
     const wa = window?.Telegram?.WebApp;
     const url = `https://t.me/share/url?url=${encodeURIComponent(shareDeepLink)}&text=${encodeURIComponent('Залетай в мой розыгрыш!')}`;
