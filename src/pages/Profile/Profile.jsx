@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);      // { telegram_id, username, avatar_url, wallet, tickets, payload }
-  const [referrals, setReferrals] = useState(null);  // { referral_count, referral_earnings }
+  const [referrals, setReferrals] = useState(null);  // { referral_count, referral_earnings, referral_can? }
   const [purchases, setPurchases] = useState([]);    // [{ amount, created_at }, ...]
   const [loading, setLoading] = useState(true);
 
@@ -172,33 +172,11 @@ export default function Profile() {
     }
   };
 
-  // ---- Запрос на вывод ----
-  const handleWithdraw = async () => {
-    const address = prompt('Введите TON адрес для вывода:');
-    const amountStr = prompt('Введите сумму к выводу (TON):');
-    const amount = parseFloat(amountStr);
-    if (!address || !amount || amount <= 0) return;
-
-    const auth = getAuthHeaders();
-    if (!auth) return toast.error('Нет токена авторизации');
-
-    try {
-      const res = await fetch('https://lottery-server-waif.onrender.com/users/withdraw', {
-        method: 'POST',
-        headers: auth,
-        body: JSON.stringify({ address, amount }), // ⚠️ без telegram_id
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || 'Запрос на вывод отправлен');
-        fetchProfile();
-      } else {
-        toast.error(data.error || 'Ошибка при выводе');
-      }
-    } catch (e) {
-      toast.error('Server error при выводе');
-      console.error(e);
-    }
+  const formatTon2 = (n) => {
+    if (n == null) return '0';
+    const num = Number(n);
+    if (!Number.isFinite(num)) return String(n);
+    return num.toFixed(2).replace(/\.?0+$/, '');
   };
 
   // ---- Вывод реферальных ----
@@ -207,12 +185,16 @@ export default function Profile() {
       toast.error('Кошелек не подключен');
       return;
     }
-    const amount = referrals?.referral_earnings ?? 0;
+    // backend уже ограничивает суммой «старше 21 дня»;
+    // берём это поле, а если его нет — старое referral_earnings
+    const canRaw = referrals?.referral_can ?? referrals?.referral_earnings ?? 0;
+    const amount = Math.max(0, Math.floor(Number(canRaw) * 100) / 100); // не больше 2 знаков
+
     if (amount < 3) {
       toast.warning('Мин. сумма — 3 TON');
       return;
     }
-    const confirmed = window.confirm(`Вывести ${amount} TON на ${profile.wallet}?`);
+    const confirmed = window.confirm(`Вывести ${formatTon2(amount)} TON на ${profile.wallet}?`);
     if (!confirmed) return;
 
     const auth = getAuthHeaders();
@@ -245,6 +227,10 @@ export default function Profile() {
   }
 
   const avatarLetter = profile.username ? profile.username[0].toUpperCase() : '?';
+
+  // вычислим отображаемые значения рефералок
+  const earnedTotal = referrals?.referral_earnings ?? 0;
+  const canWithdraw = referrals?.referral_can ?? referrals?.referral_earnings ?? 0;
 
   return (
     <div className="profile-wrapper">
@@ -289,7 +275,10 @@ export default function Profile() {
         <div className="referral-flex-row">
           <div>
             <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
-            <div className="profile-row">Заработано: {referrals?.referral_earnings ?? 0} 💎 TON</div>
+            <div className="profile-row">Заработано всего: {formatTon2(earnedTotal)} 💎 TON</div>
+            <div className="profile-row" style={{ opacity: 0.9 }}>
+              Доступно для вывода: <b>{formatTon2(canWithdraw)}</b> 💎 TON
+            </div>
           </div>
           <div className="referral-button-wrapper">
             <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
