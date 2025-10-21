@@ -271,12 +271,7 @@ export default function Profile() {
             <div className="profile-row" style={{ opacity: 0.95 }}>
               Доступно для вывода: <b>{fmt2(can)}</b> 💎 TON
             </div>
-
-            {frozen > 0 && (
-              <div className="profile-row" style={{ opacity: 0.7 }}>
-                Ожидает разблокировки: {fmt2(frozen)} 💎 TON
-              </div>
-            )}
+            
           </div>
           <div className="referral-button-wrapper">
             <button
