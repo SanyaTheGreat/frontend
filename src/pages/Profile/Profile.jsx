@@ -61,6 +61,7 @@ export default function Profile() {
 
   useEffect(() => { fetchProfile(); }, []);
 
+  // автосинхронизация TON-кошелька при коннекте
   useEffect(() => {
     if (!tonWallet?.account?.address || !profile) return;
     const walletFromServer = profile.wallet;
@@ -99,6 +100,7 @@ export default function Profile() {
     toast.success('Скопировано!');
   };
 
+  // пополнение звёздами
   const handleTopUpStars = async () => {
     const tg = window.Telegram?.WebApp;
     if (!tg) return toast.error('Открой Mini App в Telegram');
@@ -139,6 +141,7 @@ export default function Profile() {
     }
   };
 
+  // пополнение TON
   const handleTopUp = async () => {
     if (!profile) return;
     const amountInput = prompt('Введите сумму в TON:');
@@ -167,27 +170,23 @@ export default function Profile() {
     }
   };
 
+  // утилиты форматирования
   const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const fmt2 = (n) => toNum(n).toFixed(2).replace(/\.?0+$/, '');
 
   // === Рефералы: total vs can ===
-  // Бэкенд может прислать:
-  //  - referral_total (всего начислено) ИЛИ старое referral_earnings
-  //  - referral_can (доступно к выводу) — если нет, эту строку скрываем
+  // всегда считаем числа и показываем (даже если 0)
   const total = toNum(referrals?.referral_total ?? referrals?.referral_earnings ?? 0);
-  const can   = referrals?.referral_can != null ? toNum(referrals.referral_can) : null;
-  const frozen = can != null ? Math.max(0, total - can) : null;
+  const can   = toNum(referrals?.referral_can ?? 0);
+  const frozen = Math.max(0, total - can);
 
   const handleReferralWithdraw = async () => {
     if (!profile?.wallet) {
       toast.error('Кошелек не подключен');
       return;
     }
-    if (can == null) {
-      toast.info('Сумма, доступная к выводу, ещё считается. Попробуйте позже.');
-      return;
-    }
-    const amount = Math.max(0, Math.floor(can * 100) / 100); // ≤ 2 знаков
+    // выводим не больше can, округляя вниз до 2 знаков
+    const amount = Math.max(0, Math.floor(can * 100) / 100);
     if (amount < 3) {
       toast.warning('Мин. сумма — 3 TON');
       return;
@@ -221,6 +220,10 @@ export default function Profile() {
   if (!profile) return <p className="profile-wrapper">Нет данных профиля</p>;
 
   const avatarLetter = profile.username ? profile.username[0].toUpperCase() : '?';
+  const withdrawDisabledReason =
+    !profile?.wallet ? 'Кошелек не подключен'
+    : can < 3 ? 'Меньше 3 TON доступно'
+    : null;
 
   return (
     <div className="profile-wrapper">
@@ -263,25 +266,25 @@ export default function Profile() {
           <div>
             <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
 
-            {/* Всего начислено — всегда можем показать */}
             <div className="profile-row">Заработано всего: {fmt2(total)} 💎 TON</div>
 
-            {/* Доступно и “ожидает” показываем только если бэкенд прислал referral_can */}
-            {can != null && (
-              <>
-                <div className="profile-row" style={{ opacity: 0.95 }}>
-                  Доступно для вывода: <b>{fmt2(can)}</b> 💎 TON
-                </div>
-                {frozen > 0 && (
-                  <div className="profile-row" style={{ opacity: 0.7 }}>
-                    Ожидает разблокировки: {fmt2(frozen)} 💎 TON
-                  </div>
-                )}
-              </>
+            <div className="profile-row" style={{ opacity: 0.95 }}>
+              Доступно для вывода: <b>{fmt2(can)}</b> 💎 TON
+            </div>
+
+            {frozen > 0 && (
+              <div className="profile-row" style={{ opacity: 0.7 }}>
+                Ожидает разблокировки: {fmt2(frozen)} 💎 TON
+              </div>
             )}
           </div>
           <div className="referral-button-wrapper">
-            <button onClick={handleReferralWithdraw} className="referral-withdraw-btn">
+            <button
+              onClick={handleReferralWithdraw}
+              className="referral-withdraw-btn"
+              disabled={!!withdrawDisabledReason}
+              title={withdrawDisabledReason || 'Вывести реферальные'}
+            >
               Вывод
             </button>
           </div>
