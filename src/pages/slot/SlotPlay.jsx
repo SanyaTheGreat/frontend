@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, useAnimationControls } from "framer-motion";
 import { supabase } from "../../supabaseClient";
@@ -6,19 +6,19 @@ import "./SlotPlay.css";
 
 const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", "B": "bar", "7": "seven" };
 const ICONS = ["🍒", "🍋", "B", "7"];
-const iconSrc = (s) => `/slot-symbols/${SYMBOL_MAP[s]}.svg`;
 
-// длинная лента с рандомом + целевой финал
+const iconName = (s) => SYMBOL_MAP[s] ?? "cherry";
+const iconSrcSvg = (s) => `/slot-symbols/${iconName(s)}.svg`;
+const iconSrcPng = (s) => `/slot-symbols/${iconName(s)}.png`;
+
 function buildReel(target, loops = 8, band = ICONS) {
   const reel = [];
-  const perLoop = band.length;
-  const total = loops * perLoop;
+  const total = loops * band.length;
   for (let i = 0; i < total; i++) reel.push(band[Math.floor(Math.random() * band.length)]);
   reel.push(target);
   return reel;
 }
 
-// безопасный uuid для идемпотентности
 function makeIdem() {
   try { return crypto.randomUUID(); } catch {}
   const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
@@ -31,29 +31,24 @@ export default function SlotPlay() {
 
   const [price, setPrice] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState(null); // { status, prize, symbols }
+  const [result, setResult] = useState(null);
   const [reels, setReels] = useState([ICONS, ICONS, ICONS]);
-  const [stars, setStars] = useState(null); // баланс (целые)
+  const [stars, setStars] = useState(null);
 
   const r1 = useAnimationControls();
   const r2 = useAnimationControls();
   const r3 = useAnimationControls();
+  const leverCtrl = useAnimationControls(); // 🔴 рычаг
 
-  const ITEM_H = 72; // высота одного элемента = CSS .reel-item height
+  const ITEM_H = 72;
   const winGlow = result?.status === "win_gift" || result?.status === "win_stars";
 
-  // ==== определяем telegram_id (как в InventoryPage) ====
+  // ====== telegram_id (как в InventoryPage) ======
   function decodeJwtTelegramId() {
     try {
-      const jwt = localStorage.getItem("jwt");
-      if (!jwt) return null;
-      const [, payloadB64] = jwt.split(".");
-      if (!payloadB64) return null;
-      const json = JSON.parse(
-        decodeURIComponent(
-          escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))
-        )
-      );
+      const jwt = localStorage.getItem("jwt"); if (!jwt) return null;
+      const [, payloadB64] = jwt.split("."); if (!payloadB64) return null;
+      const json = JSON.parse(decodeURIComponent(escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))));
       return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
     } catch { return null; }
   }
@@ -64,24 +59,16 @@ export default function SlotPlay() {
   if (queryId && queryId !== storedId) window.localStorage.setItem("tgid", queryId);
   const effectiveId = jwtTelegramId || tgApiId || queryId || storedId || null;
 
-  // загрузка баланса ⭐ из users.stars
-  const loadStars = useMemo(
-    () => async () => {
-      if (!effectiveId) return;
-      try {
-        const { data } = await supabase
-          .from("users")
-          .select("stars")
-          .eq("telegram_id", effectiveId)
-          .single();
-        if (data) setStars(Math.floor(Number(data.stars || 0)));
-      } catch {}
-    },
-    [effectiveId]
-  );
+  const loadStars = useMemo(() => async () => {
+    if (!effectiveId) return;
+    try {
+      const { data } = await supabase.from("users").select("stars").eq("telegram_id", effectiveId).single();
+      if (data) setStars(Math.floor(Number(data.stars || 0)));
+    } catch {}
+  }, [effectiveId]);
+
   useEffect(() => { loadStars(); }, [loadStars]);
 
-  // цена слота для кнопки
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -95,7 +82,7 @@ export default function SlotPlay() {
     return () => { abort = true; };
   }, [slotId]);
 
-  // преспин — равномерный бесконечный скролл (пока ждём сервер)
+  // преспин (пока ждём сервер)
   const startPreSpin = () => {
     const distance = ITEM_H * 6;
     const cfg = { y: [0, -distance], transition: { duration: 0.55, ease: "linear", repeat: Infinity } };
@@ -110,14 +97,15 @@ export default function SlotPlay() {
       r3.start({ y: 0, transition: { duration: 0 } }),
     ]);
   };
-
-  // финальная прокрутка (замедление + bounce)
   const finalSpin = async (ctrl, itemsCount, extra = 0) => {
     const duration = 1.25 + extra;
-    await ctrl.start({
-      y: -ITEM_H * (itemsCount - 1),
-      transition: { duration, ease: [0.12, 0.45, 0.15, 1] },
-    });
+    await ctrl.start({ y: -ITEM_H * (itemsCount - 1), transition: { duration, ease: [0.12, 0.45, 0.15, 1] } });
+  };
+
+  const pullLever = async () => {
+    // анимация рычага: вниз → вверх
+    await leverCtrl.start({ rotate: 28, transition: { duration: 0.18, ease: "easeOut" } });
+    await leverCtrl.start({ rotate: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } });
   };
 
   const doSpin = async () => {
@@ -125,9 +113,11 @@ export default function SlotPlay() {
     setResult(null);
     setSpinning(true);
 
-    // преспин сразу, чтобы не было “паузы”
+    // визуал
+    pullLever();
     startPreSpin();
 
+    // запрос
     let data;
     const idem = makeIdem();
     try {
@@ -147,18 +137,18 @@ export default function SlotPlay() {
       return;
     }
 
-    // tarгеты 3 барабанов
+    // таргеты
     const tL = data.symbols?.l ?? ICONS[0];
     const tM = data.symbols?.m ?? ICONS[1];
     const tR = data.symbols?.r ?? ICONS[2];
 
-    // собираем ленты
+    // ленты
     const reel1 = buildReel(tL, 9);
     const reel2 = buildReel(tM, 10);
     const reel3 = buildReel(tR, 11);
     setReels([reel1, reel2, reel3]);
 
-    // останавливаем преспин и запускаем финал
+    // финал
     await stopPreSpin();
     await finalSpin(r1, reel1.length, 0.0);
     await new Promise(r => setTimeout(r, 120));
@@ -166,7 +156,7 @@ export default function SlotPlay() {
     await new Promise(r => setTimeout(r, 120));
     await finalSpin(r3, reel3.length, 0.25);
 
-    // небольшой bounce
+    // bounce
     await Promise.all([
       r1.start({ y: `+=${10}`, transition: { duration: 0.09, ease: "easeOut" } }),
       r2.start({ y: `+=${9}`, transition: { duration: 0.09, ease: "easeOut" } }),
@@ -178,7 +168,6 @@ export default function SlotPlay() {
 
     setResult({ status: data.status, prize: data.prize, symbols: data.symbols });
 
-    // обновляем баланс
     if (typeof data?.balance_after === "number") setStars(Math.floor(data.balance_after));
     else loadStars();
 
@@ -192,9 +181,7 @@ export default function SlotPlay() {
       <div className="slotplay-top">
         <button className="back-btn" onClick={goBack}>← Назад</button>
         <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
-        <div className="top-right">
-          <span className="stars-chip">{stars === null ? "—" : stars} ⭐</span>
-        </div>
+        <div className="top-right"><span className="stars-chip">{stars === null ? "—" : stars} ⭐</span></div>
       </div>
 
       {/* корпус автомата — фон с прозрачностью */}
@@ -207,18 +194,22 @@ export default function SlotPlay() {
           backgroundSize: "contain",
         }}
       >
-        {/* блок окон — точно позиционируем внутри корпуса */}
+        {/* 🔴 рычаг (оверлей), крутится при спине */}
+        <motion.div className="lever" animate={leverCtrl} />
+
+        {/* окна внутри корпуса */}
         <div className="machine-windows">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
-              <motion.div
-                className="reel"
-                animate={i === 0 ? r1 : i === 1 ? r2 : r3}
-                style={{ y: 0 }}
-              >
+              <motion.div className="reel" animate={i === 0 ? r1 : i === 1 ? r2 : r3} style={{ y: 0 }}>
                 {reels[i].map((sym, idx) => (
                   <div className="reel-item" key={`${i}-${idx}`}>
-                    <img src={iconSrc(sym)} alt={sym} draggable="false" />
+                    <img
+                      src={iconSrcSvg(sym)}
+                      alt={sym}
+                      draggable="false"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = iconSrcPng(sym); }}
+                    />
                   </div>
                 ))}
               </motion.div>
