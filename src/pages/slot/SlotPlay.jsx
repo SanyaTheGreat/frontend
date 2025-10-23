@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, useAnimationControls } from "framer-motion";
+import { supabase } from "../../supabaseClient";
 import "./SlotPlay.css";
 
-// корректные пути под твою структуру public/
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
 const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", "B": "bar", "7": "seven" };
@@ -24,6 +24,22 @@ function buildReel(target, loops = 8, band = ICONS) {
   return reel;
 }
 
+// ====== helpers для telegram_id ======
+function decodeJwtTelegramId() {
+  try {
+    const jwt = localStorage.getItem("jwt");
+    if (!jwt) return null;
+    const [, payloadB64] = jwt.split(".");
+    if (!payloadB64) return null;
+    const json = JSON.parse(
+      decodeURIComponent(escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))))
+    );
+    return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SlotPlay() {
   const { id: slotId } = useParams();
   const nav = useNavigate();
@@ -32,14 +48,23 @@ export default function SlotPlay() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [reels, setReels] = useState([ICONS, ICONS, ICONS]);
+  const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
 
   const r1 = useAnimationControls();
   const r2 = useAnimationControls();
   const r3 = useAnimationControls();
 
+  const tgIdRef = useRef(
+    decodeJwtTelegramId() ||
+      window?.Telegram?.WebApp?.initDataUnsafe?.user?.id ||
+      new URLSearchParams(window.location.search).get("tgid") ||
+      localStorage.getItem("tgid") ||
+      null
+  );
+
   const itemH = 72;
 
-  // грузим цену
+  // ====== загрузка цены ======
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -57,18 +82,45 @@ export default function SlotPlay() {
     };
   }, [slotId]);
 
+  // ====== загрузка баланса ======
+  const loadBalance = useMemo(
+    () => async () => {
+      const tgId = tgIdRef.current;
+      if (!tgId) return;
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("stars, tickets")
+          .eq("telegram_id", tgId)
+          .single();
+        if (data) {
+          setBalance({
+            stars: Number(data.stars || 0),
+            tickets: Number(data.tickets || 0),
+          });
+        }
+      } catch (e) {
+        console.warn("load balance error", e);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    loadBalance();
+  }, [loadBalance]);
+
+  // ====== анимация ======
   const spinAnim = async (ctrl, itemsCount, extra = 0) => {
     await ctrl.start({ y: 0, transition: { duration: 0 } });
     const duration = 1.2 + extra;
     await ctrl.start({
       y: -itemH * (itemsCount - 1),
-      transition: {
-        duration,
-        ease: [0.12, 0.45, 0.15, 1],
-      },
+      transition: { duration, ease: [0.12, 0.45, 0.15, 1] },
     });
   };
 
+  // ====== основной спин ======
   const doSpin = async () => {
     if (spinning) return;
     setResult(null);
@@ -89,7 +141,8 @@ export default function SlotPlay() {
       if (!res.ok) throw new Error(data?.error || "spin error");
     } catch (e) {
       setSpinning(false);
-      return alert(e.message || "Ошибка спина");
+      alert(e.message || "Ошибка спина");
+      return;
     }
 
     const tL = data.symbols?.l ?? ICONS[0];
@@ -108,12 +161,12 @@ export default function SlotPlay() {
     ]);
 
     await Promise.all([
-      r1.start({ y: `+=${12}`, transition: { duration: 0.1, ease: "easeOut" } }),
-      r2.start({ y: `+=${10}`, transition: { duration: 0.1, ease: "easeOut" } }),
-      r3.start({ y: `+=${8}`, transition: { duration: 0.1, ease: "easeOut" } }),
-      r1.start({ y: `-=${12}`, transition: { duration: 0.12, ease: "easeIn" } }),
-      r2.start({ y: `-=${10}`, transition: { duration: 0.12, ease: "easeIn" } }),
-      r3.start({ y: `-=${8}`, transition: { duration: 0.12, ease: "easeIn" } }),
+      r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
+      r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
+      r3.start({ y: "+=8", transition: { duration: 0.1, ease: "easeOut" } }),
+      r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
+      r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
+      r3.start({ y: "-=8", transition: { duration: 0.12, ease: "easeIn" } }),
     ]);
 
     setResult({
@@ -122,21 +175,55 @@ export default function SlotPlay() {
       symbols: data.symbols,
     });
     setSpinning(false);
+    await loadBalance(); // обновить баланс после спина
   };
 
   const goBack = () => nav(-1);
 
+  const displayTickets = (Number(balance.tickets) || 0).toFixed(2);
+  const displayStars = Math.floor(Number(balance.stars) || 0);
+
   return (
     <div className="slotplay-wrapper">
-      <div className="slotplay-top">
-        <button className="back-btn" onClick={goBack}>← Назад</button>
+      {/* Верхняя панель */}
+      <div
+        style={{
+          position: "fixed",
+          top: 12,
+          left: 12,
+          right: 12,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          zIndex: 1000,
+        }}
+      >
+        <button className="back-btn" onClick={goBack}>
+          ←
+        </button>
         <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
-        <div className="price-chip">{price} ⭐</div>
+
+        <div
+          style={{
+            background: "rgba(0,0,0,0.5)",
+            borderRadius: 20,
+            padding: "6px 12px",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <span>💎 {displayTickets} TON</span>
+          <span style={{ opacity: 0.5 }}>•</span>
+          <span>⭐ {displayStars}</span>
+        </div>
       </div>
 
       <div className="machine-wrapper">
         <img src={frameSrc} alt="slot-machine" className="machine-frame" />
-
         <div className="machine-body">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
