@@ -8,14 +8,17 @@ import WheelPage from './pages/WheelPage/WheelPage';
 import Profile from './pages/Profile/Profile';
 import InGame from './pages/InGame/InGame.jsx';
 import Leaderboard from './pages/Leaderboard/Leaderboard';
-import SpinPage from "./components/Spins/SpinPage"
+import SpinPage from "./components/Spins/SpinPage";
 import InventoryPage from "./components/Spins/InventoryPage";
-
 
 import TabBar from './components/TabBar';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
-// Импортируем Buffer полифилл и назначаем в глобальный объект
+// 🆕 Импортируем страницы слотов
+import Slots from './pages/slot/Slots';
+import SlotPlay from './pages/slot/SlotPlay'; // добавим позже
+
+// Buffer polyfill
 import { Buffer } from 'buffer';
 window.Buffer = window.Buffer || Buffer;
 
@@ -36,12 +39,14 @@ function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/spins" element={<SpinPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
+
+          {/* 🆕 режим слотов */}
+          <Route path="/slots" element={<Slots />} />
+          <Route path="/slots/:id" element={<SlotPlay />} />
         </Routes>
       </div>
     </TonConnectUIProvider>
   );
 }
-
-
 
 export default App;
