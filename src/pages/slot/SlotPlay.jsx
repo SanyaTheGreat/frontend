@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, useAnimationControls } from "framer-motion";
+import { supabase } from "../../supabaseClient";
 import "./SlotPlay.css";
 
 const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", "B": "bar", "7": "seven" };
@@ -28,6 +29,7 @@ export default function SlotPlay() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null); // { status, prize, symbols }
   const [reels, setReels] = useState([ICONS, ICONS, ICONS]);
+  const [stars, setStars] = useState(null); // баланс пользователя (целые)
 
   const r1 = useAnimationControls();
   const r2 = useAnimationControls();
@@ -36,7 +38,51 @@ export default function SlotPlay() {
   const itemH = 72; // высота одной иконки (совпадает с CSS)
   const winGlow = result?.status === "win_gift" || result?.status === "win_stars";
 
-  // подгружаем цену спина для UI
+  // ====== определяем telegram_id как в InventoryPage ======
+  function decodeJwtTelegramId() {
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) return null;
+      const [, payloadB64] = jwt.split(".");
+      if (!payloadB64) return null;
+      const json = JSON.parse(
+        decodeURIComponent(
+          escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))
+        )
+      );
+      return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
+    } catch {
+      return null;
+    }
+  }
+  const jwtTelegramId = decodeJwtTelegramId();
+  const tgApiId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
+  const queryId = new URLSearchParams(window.location.search).get("tgid");
+  const storedId = window.localStorage.getItem("tgid") || null;
+  if (queryId && queryId !== storedId) window.localStorage.setItem("tgid", queryId);
+  const effectiveId = jwtTelegramId || tgApiId || queryId || storedId || null;
+
+  // загрузка баланса из users.stars (только целые)
+  const loadStars = useMemo(
+    () => async () => {
+      if (!effectiveId) return;
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("stars")
+          .eq("telegram_id", effectiveId)
+          .single();
+        if (data) setStars(Math.floor(Number(data.stars || 0)));
+      } catch {/* noop */}
+    },
+    [effectiveId]
+  );
+
+  useEffect(() => {
+    loadStars();
+  }, [loadStars]);
+
+  // подгружаем цену спина для UI (только для кнопки)
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -45,9 +91,11 @@ export default function SlotPlay() {
         const data = await res.json();
         const found = (data || []).find((s) => String(s.id) === String(slotId));
         if (!abort) setPrice(found?.price ?? 0);
-      } catch {}
+      } catch {/* noop */}
     })();
-    return () => { abort = true; };
+    return () => {
+      abort = true;
+    };
   }, [slotId]);
 
   // плавный скролл: считает итоговый offset (в пикселях)
@@ -86,7 +134,10 @@ export default function SlotPlay() {
       if (!res.ok) throw new Error(data?.error || "spin error");
     } catch (e) {
       setSpinning(false);
-      return alert(e.message || "Ошибка спина");
+      alert(e.message || "Ошибка спина");
+      // пробуем обновить баланс на всякий случай
+      loadStars();
+      return;
     }
 
     // таргеты для трёх барабанов
@@ -122,6 +173,14 @@ export default function SlotPlay() {
       prize: data.prize,
       symbols: data.symbols,
     });
+
+    // обновляем чип баланса
+    if (typeof data?.balance_after === "number") {
+      setStars(Math.floor(data.balance_after));
+    } else {
+      loadStars();
+    }
+
     setSpinning(false);
   };
 
@@ -132,11 +191,14 @@ export default function SlotPlay() {
       <div className="slotplay-top">
         <button className="back-btn" onClick={goBack}>← Назад</button>
         <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
-        <div className="price-chip">{price} ⭐</div>
+        {/* справа вверху — баланс пользователя */}
+        <div className="top-right">
+          <span className="stars-chip">{stars === null ? "—" : stars} ⭐</span>
+        </div>
       </div>
 
       <div className={`machine ${winGlow ? "machine-win" : ""}`}>
-        {/* рамка-кеис */}
+        {/* рамка-кейс */}
         <div className="machine-head" />
         <div className="machine-body">
           {/* окна */}
