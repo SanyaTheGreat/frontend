@@ -1,30 +1,26 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, useAnimationControls } from "framer-motion";
 import { supabase } from "../../supabaseClient";
 import "./SlotPlay.css";
 
+const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
-const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", "B": "bar", "7": "seven" };
+const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", B: "bar", 7: "seven" };
 const ICONS = ["🍒", "🍋", "B", "7"];
 
 const iconSrc = (s) => asset(`slot-symbols/${SYMBOL_MAP[s]}.png`);
 const frameSrc = asset("slot-assets/machine.png");
 
-// генерим ленту для барабана
+// ===== helpers =====
 function buildReel(target, loops = 8, band = ICONS) {
   const reel = [];
-  const perLoop = band.length;
-  const total = loops * perLoop;
-  for (let i = 0; i < total; i++) {
-    reel.push(band[Math.floor(Math.random() * band.length)]);
-  }
+  const total = loops * band.length;
+  for (let i = 0; i < total; i++) reel.push(band[Math.floor(Math.random() * band.length)]);
   reel.push(target);
   return reel;
 }
-
-// ====== helpers для telegram_id ======
 function decodeJwtTelegramId() {
   try {
     const jwt = localStorage.getItem("jwt");
@@ -37,6 +33,35 @@ function decodeJwtTelegramId() {
     return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
   } catch {
     return null;
+  }
+}
+function resolveTelegramId() {
+  const fromJwt = decodeJwtTelegramId();
+  const fromTg = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
+  const queryId = new URLSearchParams(window.location.search).get("tgid");
+  const storedId = localStorage.getItem("tgid") || null;
+  if (queryId && queryId !== storedId) localStorage.setItem("tgid", queryId);
+  return fromJwt || fromTg || queryId || storedId || null;
+}
+function authHeaders() {
+  const token = localStorage.getItem("jwt");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+function randomUUID() {
+  return (crypto?.randomUUID?.() ||
+    ([1e7]+-1e3+-4e3+-8e3+-1e11)
+      .replace(/[018]/g, (c) =>
+        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+      ));
+}
+async function fetchWithTimeout(url, opts = {}, ms = 18000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    return res;
+  } finally {
+    clearTimeout(t);
   }
 }
 
@@ -54,27 +79,20 @@ export default function SlotPlay() {
   const r2 = useAnimationControls();
   const r3 = useAnimationControls();
 
-  const tgIdRef = useRef(
-    decodeJwtTelegramId() ||
-      window?.Telegram?.WebApp?.initDataUnsafe?.user?.id ||
-      new URLSearchParams(window.location.search).get("tgid") ||
-      localStorage.getItem("tgid") ||
-      null
-  );
-
+  const tgIdRef = useRef(resolveTelegramId());
   const itemH = 72;
 
-  // ====== загрузка цены ======
+  // загрузка цены
   useEffect(() => {
     let abort = false;
     (async () => {
       try {
-        const res = await fetch("https://lottery-server-waif.onrender.com/api/slots/active");
+        const res = await fetch(`${API_BASE}/api/slots/active`);
         const data = await res.json();
         const found = (data || []).find((s) => String(s.id) === String(slotId));
         if (!abort) setPrice(found?.price ?? 0);
       } catch (e) {
-        console.warn("load price error", e);
+        console.warn("[SlotPlay] load price error", e);
       }
     })();
     return () => {
@@ -82,7 +100,7 @@ export default function SlotPlay() {
     };
   }, [slotId]);
 
-  // ====== загрузка баланса ======
+  // загрузка баланса (как в Spin/Inventory)
   const loadBalance = useMemo(
     () => async () => {
       const tgId = tgIdRef.current;
@@ -93,55 +111,59 @@ export default function SlotPlay() {
           .select("stars, tickets")
           .eq("telegram_id", tgId)
           .single();
-        if (data) {
-          setBalance({
-            stars: Number(data.stars || 0),
-            tickets: Number(data.tickets || 0),
-          });
-        }
+        if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
       } catch (e) {
-        console.warn("load balance error", e);
+        console.warn("[SlotPlay] load balance error", e);
       }
     },
     []
   );
-
   useEffect(() => {
     loadBalance();
   }, [loadBalance]);
 
-  // ====== анимация ======
+  // анимация
   const spinAnim = async (ctrl, itemsCount, extra = 0) => {
     await ctrl.start({ y: 0, transition: { duration: 0 } });
-    const duration = 1.2 + extra;
     await ctrl.start({
       y: -itemH * (itemsCount - 1),
-      transition: { duration, ease: [0.12, 0.45, 0.15, 1] },
+      transition: { duration: 1.2 + extra, ease: [0.12, 0.45, 0.15, 1] },
     });
   };
 
-  // ====== основной спин ======
+  // основной спин с таймаутом и идемпотентностью
   const doSpin = async () => {
     if (spinning) return;
+    if (!tgIdRef.current) {
+      alert("Не найден Telegram ID. Открой Mini App в Telegram или авторизуйся заново.");
+      return;
+    }
+
     setResult(null);
     setSpinning(true);
 
     let data;
+    const idem = randomUUID(); // ключ для безопасного ретрая на бэке
     try {
-      const token = localStorage.getItem("jwt");
-      const res = await fetch("https://lottery-server-waif.onrender.com/api/slots/spin", {
+      const res = await fetchWithTimeout(`${API_BASE}/api/slots/spin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+          ...authHeaders(),
         },
-        body: JSON.stringify({ slot_id: slotId }),
-      });
-      data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "spin error");
+        body: JSON.stringify({ slot_id: slotId, idempotency_key: idem }),
+        credentials: "include",
+      }, 18000);
+
+      // если упали по таймауту — бросим осмысленную ошибку
+      if (!res) throw new Error("No response");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+
+      data = body;
     } catch (e) {
       setSpinning(false);
-      alert(e.message || "Ошибка спина");
+      alert(e.message === "The user aborted a request." ? "Сеть медленная. Попробуйте ещё раз." : (e.message || "Ошибка спина"));
       return;
     }
 
@@ -169,13 +191,9 @@ export default function SlotPlay() {
       r3.start({ y: "-=8", transition: { duration: 0.12, ease: "easeIn" } }),
     ]);
 
-    setResult({
-      status: data.status,
-      prize: data.prize,
-      symbols: data.symbols,
-    });
+    setResult({ status: data.status, prize: data.prize, symbols: data.symbols });
     setSpinning(false);
-    await loadBalance(); // обновить баланс после спина
+    loadBalance(); // обновить баланс после списания/приза
   };
 
   const goBack = () => nav(-1);
@@ -185,7 +203,7 @@ export default function SlotPlay() {
 
   return (
     <div className="slotplay-wrapper">
-      {/* Верхняя панель */}
+      {/* Верхняя панель: назад и баланс справа */}
       <div
         style={{
           position: "fixed",
@@ -198,9 +216,7 @@ export default function SlotPlay() {
           zIndex: 1000,
         }}
       >
-        <button className="back-btn" onClick={goBack}>
-          ←
-        </button>
+        <button className="back-btn" onClick={goBack} aria-label="Назад">←</button>
         <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
 
         <div
@@ -227,11 +243,7 @@ export default function SlotPlay() {
         <div className="machine-body">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
-              <motion.div
-                className="reel"
-                animate={i === 0 ? r1 : i === 1 ? r2 : r3}
-                style={{ y: 0 }}
-              >
+              <motion.div className="reel" animate={i === 0 ? r1 : i === 1 ? r2 : r3} style={{ y: 0 }}>
                 {reels[i].map((sym, idx) => (
                   <div className="reel-item" key={`${i}-${idx}`}>
                     <img src={iconSrc(sym)} alt={sym} draggable="false" />
