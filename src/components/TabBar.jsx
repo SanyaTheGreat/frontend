@@ -62,6 +62,7 @@ const Icon = ({ name }) => {
 const items = [
   { to: "/", label: "Главная", icon: "home" },
   { to: "/history", label: "История", icon: "history" },
+  { to: "/slots", label: "Слоты", icon: "spin" },
   { to: "/spins", label: "Ролл", icon: "spin", emph: true },
   { to: "/ingame", label: "В игре", icon: "games" },
   { to: "/profile", label: "Профиль", icon: "profile" },
