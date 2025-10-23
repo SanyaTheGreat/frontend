@@ -16,7 +16,7 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
 // 🆕 Импортируем страницы слотов
 import Slots from './pages/slot/Slots';
-import SlotPlay from './pages/slot/SlotPlay'; // добавим позже
+////import SlotPlay from './pages/slot/SlotPlay'; // добавим позже
 
 // Buffer polyfill
 import { Buffer } from 'buffer';
@@ -42,7 +42,6 @@ function App() {
 
           {/* 🆕 режим слотов */}
           <Route path="/slots" element={<Slots />} />
-          <Route path="/slots/:id" element={<SlotPlay />} />
         </Routes>
       </div>
     </TonConnectUIProvider>
