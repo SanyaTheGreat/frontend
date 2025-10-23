@@ -3,20 +3,26 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, useAnimationControls } from "framer-motion";
 import "./SlotPlay.css";
 
+// корректные пути под твою структуру public/
+const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
+
 const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", "B": "bar", "7": "seven" };
 const ICONS = ["🍒", "🍋", "B", "7"];
 
-// генерация ленты символов
+const iconSrc = (s) => asset(`slot-symbols/${SYMBOL_MAP[s]}.png`);
+const frameSrc = asset("slot-assets/machine.png");
+
+// генерим ленту для барабана
 function buildReel(target, loops = 8, band = ICONS) {
   const reel = [];
-  for (let i = 0; i < loops * band.length; i++) {
+  const perLoop = band.length;
+  const total = loops * perLoop;
+  for (let i = 0; i < total; i++) {
     reel.push(band[Math.floor(Math.random() * band.length)]);
   }
   reel.push(target);
   return reel;
 }
-
-const iconSrc = (s) => `/animations/slot-symbols/${SYMBOL_MAP[s]}.png`;
 
 export default function SlotPlay() {
   const { id: slotId } = useParams();
@@ -31,10 +37,9 @@ export default function SlotPlay() {
   const r2 = useAnimationControls();
   const r3 = useAnimationControls();
 
-  const itemH = 80; // символ крупнее
-  const winGlow = result?.status === "win_gift" || result?.status === "win_stars";
+  const itemH = 72;
 
-  // подгружаем цену
+  // грузим цену
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -43,8 +48,8 @@ export default function SlotPlay() {
         const data = await res.json();
         const found = (data || []).find((s) => String(s.id) === String(slotId));
         if (!abort) setPrice(found?.price ?? 0);
-      } catch (err) {
-        console.error(err);
+      } catch (e) {
+        console.warn("load price error", e);
       }
     })();
     return () => {
@@ -52,13 +57,15 @@ export default function SlotPlay() {
     };
   }, [slotId]);
 
-  // анимация спина
   const spinAnim = async (ctrl, itemsCount, extra = 0) => {
     await ctrl.start({ y: 0, transition: { duration: 0 } });
-    const duration = 1.3 + extra;
+    const duration = 1.2 + extra;
     await ctrl.start({
       y: -itemH * (itemsCount - 1),
-      transition: { duration, ease: [0.12, 0.45, 0.15, 1] },
+      transition: {
+        duration,
+        ease: [0.12, 0.45, 0.15, 1],
+      },
     });
   };
 
@@ -100,7 +107,6 @@ export default function SlotPlay() {
       spinAnim(r3, reel3.length, 0.35),
     ]);
 
-    // финальное «подпрыгивание»
     await Promise.all([
       r1.start({ y: `+=${12}`, transition: { duration: 0.1, ease: "easeOut" } }),
       r2.start({ y: `+=${10}`, transition: { duration: 0.1, ease: "easeOut" } }),
@@ -123,26 +129,28 @@ export default function SlotPlay() {
   return (
     <div className="slotplay-wrapper">
       <div className="slotplay-top">
-        <button className="back-btn" onClick={goBack}>
-          ← Назад
-        </button>
+        <button className="back-btn" onClick={goBack}>← Назад</button>
         <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
         <div className="price-chip">{price} ⭐</div>
       </div>
 
-      <div className={`machine ${winGlow ? "machine-win" : ""}`}>
-        <img src="/animations/slot-machine-frame.png" alt="slot-machine" className="machine-frame" />
+      <div className="machine-wrapper">
+        <img src={frameSrc} alt="slot-machine" className="machine-frame" />
+
         <div className="machine-body">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
-              <motion.div className="reel" animate={i === 0 ? r1 : i === 1 ? r2 : r3}>
+              <motion.div
+                className="reel"
+                animate={i === 0 ? r1 : i === 1 ? r2 : r3}
+                style={{ y: 0 }}
+              >
                 {reels[i].map((sym, idx) => (
                   <div className="reel-item" key={`${i}-${idx}`}>
                     <img src={iconSrc(sym)} alt={sym} draggable="false" />
                   </div>
                 ))}
               </motion.div>
-              <div className="glass" />
             </div>
           ))}
         </div>
