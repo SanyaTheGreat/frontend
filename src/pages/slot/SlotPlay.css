@@ -1,160 +1,84 @@
-/* ========= SlotPlay.css ========= */
+/* ===== Fixed layout: no responsive scaling ===== */
 
 :root{
-  /* ширина аппарата на экране */
-  --machine-w: 480px;
+  /* ширина PNG-аппарата на экране (фикс) */
+  --machine-w: 440px;
 
-  /* позиция и ширина блока с 3 окнами поверх картинки */
-  --win-top: 36%;      /* от верха картинки до верхнего края окон */
-  --win-width: 78%;    /* ширина блока с тремя окнами */
+  /* позиция и ширина блока с окнами в ПИКСЕЛЯХ */
+  --win-top: 168px;     /* расстояние от верхнего края картинки до верхнего края окон */
+  --win-body-w: 340px;  /* общая ширина блока с тремя окнами */
 
-  /* размеры одного окна */
-  --win-w: 80px;
-  --win-h: 90px;
+  /* размеры одного окна (пиксели) */
+  --win-w: 104px;
+  --win-h: 88px;
 
-  /* высота одного элемента в катушке (должна совпасть с itemH в JSX = 72) */
+  /* высота одного элемента (должна = itemH в JSX) */
   --reel-item-h: 72px;
 }
 
-/* базовая обёртка страницы */
 .slotplay-wrapper{
-  min-height:100vh;
-  background:#0d1b2a;
-  color:#fff;
+  min-height:100vh; background:#0d1b2a; color:#fff;
   padding:16px 12px 100px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:14px;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-/* верхняя панель */
 .slotplay-top{
-  position:relative;
-  width:100%;
-  max-width:520px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  width: var(--machine-w);      /* панель той же ширины, что и аппарат */
+  display:flex; align-items:center; justify-content:space-between;
 }
-.back-btn{
-  background:rgba(255,255,255,0.08);
-  color:#fff;
-  border:none;
-  padding:8px 12px;
-  border-radius:10px;
-  cursor:pointer;
-}
+.back-btn{ background:rgba(255,255,255,.08); color:#fff; border:none; padding:8px 12px; border-radius:10px; cursor:pointer; }
 .slot-title{ font-weight:700; opacity:.9; }
-.price-chip{
-  background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.18);
-  padding:6px 10px;
-  border-radius:999px;
-  font-weight:800;
-}
+.price-chip{ background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); padding:6px 10px; border-radius:999px; font-weight:800; }
 
-/* аппарат */
+/* аппарат — фиксированная ширина; никаких %/vw */
 .machine-wrapper{
   position:relative;
-  width:var(--machine-w);
-  max-width:94vw;
+  width: var(--machine-w);
   margin-top:8px;
-  filter:drop-shadow(0 18px 36px rgba(0,0,0,.55));
+  filter: drop-shadow(0 18px 36px rgba(0,0,0,.55));
 }
 .machine-frame{
   display:block;
-  width:100%;
+  width: var(--machine-w);
   height:auto;
-  user-select:none;
-  -webkit-user-drag:none;
+  user-select:none; -webkit-user-drag:none;
 }
 
-/* блок с тремя окнами — кладём поверх картинки */
+/* блок с тремя окнами — фиксированные координаты/размеры */
 .machine-body{
   position:absolute;
-  top:var(--win-top);
-  left:50%;
-  transform:translateX(-50%);
-  width:var(--win-width);
+  top: var(--win-top);
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--win-body-w);
   display:grid;
-  grid-template-columns:repeat(3, var(--win-w));
-  justify-content:center;
-  gap:12px;
+  grid-template-columns: repeat(3, var(--win-w));
+  justify-content: center;
+  gap: 14px;
 }
 
-/* окно барабана */
+/* окно и катушка */
 .window{
-  position:relative;
-  width:var(--win-w);
-  height:var(--win-h);
-  border-radius:12px;
-  overflow:hidden;
-  background:#05080d;
-  box-shadow:
-    0 0 0 2px rgba(255,255,255,.08),
-    inset 0 10px 20px rgba(0,0,0,.82);
+  position:relative; width:var(--win-w); height:var(--win-h);
+  border-radius:12px; overflow:hidden; background:#05080d;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.08), inset 0 10px 20px rgba(0,0,0,.82);
 }
-
-/* лента с символами */
 .reel{ position:absolute; top:4px; left:0; right:0; }
-.reel-item{
-  height:var(--reel-item-h);
-  display:grid;
-  place-items:center;
-}
-.reel-item img{
-  width:64px;
-  height:64px;
-  object-fit:contain;
-  filter:drop-shadow(0 2px 2px rgba(0,0,0,.5));
-  user-select:none;
-  -webkit-user-drag:none;
-}
+.reel-item{ height:var(--reel-item-h); display:grid; place-items:center; }
+.reel-item img{ width:64px; height:64px; object-fit:contain; filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)); user-select:none; -webkit-user-drag:none; }
 
 /* кнопка */
 .spin-btn{
-  margin-top:14px;
-  background:linear-gradient(180deg,#ffb300,#ff8f00);
-  color:#1a1300;
-  font-weight:800;
-  border:none;
-  border-radius:14px;
-  padding:14px 22px;
-  letter-spacing:.5px;
-  cursor:pointer;
+  margin-top:14px; background:linear-gradient(180deg,#ffb300,#ff8f00);
+  color:#1a1300; font-weight:800; border:none; border-radius:14px;
+  padding:14px 22px; letter-spacing:.5px; cursor:pointer;
   box-shadow:0 6px 16px rgba(255,165,0,.25), inset 0 1px 0 rgba(255,255,255,.5);
 }
 .spin-btn:disabled{ opacity:.6; cursor:default; }
 
 /* результат */
-.result{
-  margin-top:10px;
-  font-weight:800;
-  letter-spacing:.3px;
-  text-shadow:0 2px 8px rgba(0,0,0,.5);
-  padding:6px 10px;
-  border-radius:10px;
-}
+.result{ margin-top:10px; font-weight:800; letter-spacing:.3px; text-shadow:0 2px 8px rgba(0,0,0,.5); padding:6px 10px; border-radius:10px; }
 .result.lose{ background:rgba(255,255,255,.06); }
 .result.win_stars{ background:rgba(76,175,80,.25); }
 .result.win_gift{ background:rgba(33,150,243,.25); }
-
-/* адаптив */
-@media (max-width:380px){
-  :root{
-    --machine-w: 380px;
-    --win-w: 96px;
-    --win-h: 84px;
-    --reel-item-h: 70px;
-  }
-}
-@media (max-width:330px){
-  :root{
-    --machine-w: 340px;
-    --win-w: 88px;
-    --win-h: 78px;
-    --reel-item-h: 66px;
-  }
-}
