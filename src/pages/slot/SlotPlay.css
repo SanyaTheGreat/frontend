@@ -17,14 +17,12 @@
   font-family: Arial, sans-serif;
 }
 
-.slotplay-top { position: relative; }
-.top-right { position: absolute; right: 0; top: 0; }
-.stars-chip {
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.16);
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 800;
+.slotplay-top {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .back-btn {
