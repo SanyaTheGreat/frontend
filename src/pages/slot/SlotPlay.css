@@ -1,8 +1,8 @@
 :root {
-  --machine-w: 320px;
-  --window-w: 86px;
-  --window-h: 78px;
-  --reel-item-h: 72px; /* sync с JS */
+  --machine-w: 340px;      /* ширина корпуса */
+  --win-w: 92px;           /* ширина одного окна */
+  --win-h: 78px;           /* высота окна */
+  --reel-item-h: 72px;     /* ВАЖНО: совпадает с ITEM_H в JS */
 }
 
 .slotplay-wrapper {
@@ -17,75 +17,47 @@
   font-family: Arial, sans-serif;
 }
 
-.slotplay-top {
-  width: 100%;
-  max-width: 420px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+.slotplay-top { position: relative; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: space-between; }
+.back-btn { background: rgba(255,255,255,0.08); color: #fff; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+.slot-title { opacity: 0.9; font-weight: 700; }
+.top-right { position: absolute; right: 0; top: 0; }
+.stars-chip { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16); padding: 6px 10px; border-radius: 999px; font-weight: 800; }
 
-.back-btn {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.price-chip {
-  background: linear-gradient(180deg, #2e7d32, #1b5e20);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-}
-
-.slot-title {
-  opacity: 0.9;
-  font-weight: 700;
-}
-
+/* корпус автомата */
 .machine {
   position: relative;
   width: var(--machine-w);
-  max-width: 92vw;
-  aspect-ratio: 1.25 / 1;
-  background: linear-gradient(180deg, #202a3a, #141b26);
-  border-radius: 18px;
-  box-shadow:
-    0 4px 18px rgba(0,0,0,0.6),
-    inset 0 2px 0 rgba(255,255,255,0.08),
-    inset 0 -2px 0 rgba(0,0,0,0.4);
-  display: grid;
-  grid-template-rows: 16% 1fr 12%;
-  overflow: hidden;
+  max-width: 94vw;
+  aspect-ratio: 3/4;
+  margin: 4px auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  filter: drop-shadow(0 14px 32px rgba(0,0,0,0.55));
 }
 
 .machine-win {
-  box-shadow:
-    0 0 40px rgba(255,215,0,0.35),
-    0 8px 22px rgba(0,0,0,0.65),
-    inset 0 2px 0 rgba(255,255,255,0.12);
+  filter: drop-shadow(0 0 24px rgba(255,215,0,0.35)) drop-shadow(0 14px 32px rgba(0,0,0,0.55));
 }
 
-.machine-head {
-  background: radial-gradient(120% 80% at 50% 10%, rgba(255,255,255,0.08), transparent 60%);
-}
-
-.machine-body {
+/* зона окон внутри корпуса — подгоняем позицию под твою картинку */
+.machine-windows {
+  position: absolute;
+  top: 36%;                /* <— при необходимости подстрой */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 78%;
   display: grid;
-  grid-template-columns: repeat(3, var(--window-w));
-  place-content: center;
+  grid-template-columns: repeat(3, var(--win-w));
   gap: 12px;
-  position: relative;
+  justify-content: center;
 }
 
+/* окно */
 .window {
   position: relative;
-  width: var(--window-w);
-  height: var(--window-h);
+  width: var(--win-w);
+  height: var(--win-h);
   border-radius: 10px;
   overflow: hidden;
   background: #05080d;
@@ -94,50 +66,23 @@
     inset 0 8px 18px rgba(0,0,0,0.8);
 }
 
-.reel {
-  position: absolute;
-  top: 4px;
-  left: 0;
-  right: 0;
-}
+/* лента */
+.reel { position: absolute; top: 4px; left: 0; right: 0; }
+.reel-item { height: var(--reel-item-h); display: grid; place-items: center; }
+.reel-item img { width: 52px; height: 52px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); user-select: none; -webkit-user-drag: none; }
 
-.reel-item {
-  height: var(--reel-item-h);
-  display: grid;
-  place-items: center;
-}
-
-.reel-item img {
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.glass {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
+/* стеклянный блик */
+.glass { pointer-events: none; position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02) 60%, transparent);
   mix-blend-mode: screen;
 }
-
-.shine {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
+.shine { pointer-events: none; position: absolute; inset: 0;
   background: radial-gradient(120% 60% at 50% -10%, rgba(255,255,255,0.12), transparent 60%);
 }
 
-.machine-foot {
-  background: linear-gradient(180deg, #0e141d, #0a0f16);
-  box-shadow: inset 0 2px 0 rgba(255,255,255,0.05);
-}
-
+/* кнопка */
 .spin-btn {
-  margin-top: 4px;
+  margin-top: 6px;
   background: linear-gradient(180deg, #ffb300, #ff8f00);
   color: #1a1300;
   font-weight: 800;
@@ -146,28 +91,12 @@
   padding: 14px 22px;
   letter-spacing: 0.5px;
   cursor: pointer;
-  box-shadow:
-    0 6px 16px rgba(255,165,0,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.5);
+  box-shadow: 0 6px 16px rgba(255,165,0,0.25), inset 0 1px 0 rgba(255,255,255,0.5);
 }
+.spin-btn:disabled { opacity: 0.6; cursor: default; }
 
-.spin-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.result {
-  margin-top: 10px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-  padding: 6px 10px;
-  border-radius: 10px;
-}
-
+/* результат */
+.result { margin-top: 10px; font-weight: 800; letter-spacing: 0.3px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); padding: 6px 10px; border-radius: 10px; }
 .result.lose { background: rgba(255,255,255,0.06); }
 .result.win_stars { background: rgba(76,175,80,0.25); }
 .result.win_gift { background: rgba(33,150,243,0.25); }
-
-
-
