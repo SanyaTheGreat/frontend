@@ -42,7 +42,7 @@ function App() {
 
           {/* 🆕 режим слотов */}
           <Route path="/slots" element={<Slots />} />
-          <Route path="/slots" element={<SlotPlay />} />
+          <Route path="/slots/:id" element={<SlotPlay />} />
         </Routes>
       </div>
     </TonConnectUIProvider>
