@@ -87,7 +87,7 @@ export default function SlotPlay() {
   const r3 = useAnimationControls();
 
   const tgIdRef = useRef(resolveTelegramId());
-  const itemH = 84;
+  const itemH = 110;
 
   // замок от повторных кликов
   const spinLockRef = useRef(false);

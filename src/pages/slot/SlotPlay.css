@@ -10,10 +10,10 @@
 
   /* размеры одного окна (пиксели) */
   --win-w: 90px;
-  --win-h: 150px;
+  --win-h: 130px;
 
   /* высота одного элемента (должна = itemH в JSX) */
-  --reel-item-h: 84px;
+  --reel-item-h: 110px;
 }
 
 .slotplay-wrapper{
