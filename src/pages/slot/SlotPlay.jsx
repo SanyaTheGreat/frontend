@@ -89,7 +89,9 @@ export default function SlotPlay() {
   const tgIdRef = useRef(resolveTelegramId());
   const itemH = 72;
 
+  // замок от повторных кликов
   const spinLockRef = useRef(false);
+  // повторный idem для ретраев
   const lastIdemRef = useRef(null);
 
   // загрузка цены
@@ -143,6 +145,7 @@ export default function SlotPlay() {
     dbg("spinAnim done", { ctrl: ctrl === r1 ? "r1" : ctrl === r2 ? "r2" : "r3" });
   };
 
+  // основной спин
   const doSpin = async () => {
     dbg("click");
     if (spinning || spinLockRef.current) return;
@@ -176,7 +179,7 @@ export default function SlotPlay() {
       const body = await res.json().catch(() => ({}));
       dbg("json parsed", Object.keys(body || {}).length);
 
-      if (res.status === 401) { dbg("401"); alert("Сессия истекла"); return; }
+      if (res.status === 401) { dbg("401"); alert("Сессия истекла"); nav("/auth"); return; }
       if (res.status === 402) { dbg("402"); alert("Не хватает ⭐"); return; }
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       data = body;
@@ -199,6 +202,7 @@ export default function SlotPlay() {
     setReels([reel1, reel2, reel3]);
     dbg("setReels");
 
+    // длинная прокрутка
     try {
       dbg("anim1 start");
       await Promise.all([
@@ -211,15 +215,20 @@ export default function SlotPlay() {
       console.error("❌ anim1 failed:", e);
     }
 
+    // пружинка: ДВА ПОСЛЕДОВАТЕЛЬНЫХ ЭТАПА, чтобы промисы завершались корректно
     try {
       dbg("anim2 start");
+      // вниз
       await Promise.all([
         r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
         r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
-        r3.start({ y: "+=8", transition: { duration: 0.1, ease: "easeOut" } }),
+        r3.start({ y: "+=8",  transition: { duration: 0.1, ease: "easeOut" } }),
+      ]);
+      // вверх
+      await Promise.all([
         r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
         r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
-        r3.start({ y: "-=8", transition: { duration: 0.12, ease: "easeIn" } }),
+        r3.start({ y: "-=8",  transition: { duration: 0.12, ease: "easeIn" } }),
       ]);
       dbg("anim2 done");
     } catch (e) {
@@ -302,6 +311,7 @@ export default function SlotPlay() {
           try {
             await doSpin();
           } finally {
+            // страховка на случай любого неожиданного исключения
             setSpinning(false);
             spinLockRef.current = false;
             dbg("finally from button — force unlock");
