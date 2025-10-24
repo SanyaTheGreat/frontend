@@ -203,7 +203,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
             <div className="inv-grid">
               {items.map((it) => {
-                const png = asset(`prizes/${slugify(it.nft_name)}.png`);
+                const png = asset(`animations/${slugify(it.nft_name)}.png`);
                 return (
                   <button key={it.id} className="inv-card" onClick={() => setSelected(it)}>
                     <div className="inv-thumb">
@@ -212,7 +212,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
                         alt={it.nft_name}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = asset("prizes/fallback.png");
+                          e.currentTarget.src = asset("animations/fallback.png");
                         }}
                       />
                     </div>
@@ -241,11 +241,11 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
                 />
               ) : (
                 <img
-                  src={asset(`prizes/${slugify(selected.nft_name)}.png`)}
+                  src={asset(`animations/${slugify(selected.nft_name)}.png`)}
                   alt={selected.nft_name}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
-                    e.currentTarget.src = asset("prizes/fallback.png");
+                    e.currentTarget.src = asset("animations/fallback.png");
                   }}
                 />
               )}
