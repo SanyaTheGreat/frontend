@@ -32,7 +32,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(`${API_BASE}/api/inventory?ts=${Date.now()}`, {
+        const res = await fetch(`${API_BASE}/api/inventory/slot?ts=${Date.now()}`, {
           method: "GET",
           headers: { "Content-Type": "application/json", ...authHeaders() },
           credentials: "include",
