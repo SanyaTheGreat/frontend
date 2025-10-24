@@ -1,6 +1,6 @@
-// src/components/InventoryModal.jsx
+// src/pages/slot/InventoryModal.jsx
 import { useEffect, useMemo, useState } from "react";
-import "./InventoryModal.css"
+import "./InventoryModal.css";
 
 const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
@@ -28,23 +28,36 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
   const [selected, setSelected] = useState(null);
   const [withdrawing, setWithdrawing] = useState(false);
 
-  const load = useMemo(() => async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API_BASE}/api/inventory`, {
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        credentials: "include",
-      });
-      const body = await res.json().catch(() => []);
-      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      setItems(Array.isArray(body) ? body : []);
-    } catch (e) {
-      setError(e.message || "Не удалось загрузить инвентарь");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useMemo(
+    () => async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(`${API_BASE}/api/inventory?ts=${Date.now()}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          credentials: "include",
+          cache: "no-store", // ⬅️ отключаем кэш браузера
+        });
+
+        // Если сервер вернул 304 Not Modified — оставляем текущий список, ничего не трогаем
+        if (res.status === 304) {
+          setLoading(false);
+          return;
+        }
+
+        const body = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+
+        setItems(Array.isArray(body) ? body : []);
+      } catch (e) {
+        setError(e.message || "Не удалось загрузить инвентарь");
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (open) {
@@ -78,7 +91,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       setItems((prev) => prev.filter((x) => x.id !== item.id));
       setSelected(null);
 
-      // Сообщаем родителю, чтобы он обновил баланс или показал тост
+      // Сообщаем родителю, чтобы он обновил баланс/тост
       onWithdrawSuccess?.(item);
       alert("Заявка на вывод отправлена ✅");
     } catch (e) {
@@ -96,13 +109,19 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       <div className="inv-modal" onClick={(e) => e.stopPropagation()}>
         <div className="inv-modal-header">
           <div className="inv-title">{headerTitle}</div>
-          <button className="inv-close" onClick={onClose} aria-label="Закрыть">✕</button>
+          <button className="inv-close" onClick={onClose} aria-label="Закрыть">
+            ✕
+          </button>
         </div>
 
         {!selected && (
           <>
-            <div className="inv-balance">⭐ Баланс: <b>{Math.floor(balanceStars)}</b></div>
-            <div className="inv-note">Вывод одного приза стоит <b>{withdrawCost} ⭐</b></div>
+            <div className="inv-balance">
+              ⭐ Баланс: <b>{Math.floor(balanceStars)}</b>
+            </div>
+            <div className="inv-note">
+              Вывод одного приза стоит <b>{withdrawCost} ⭐</b>
+            </div>
 
             {loading && <div className="inv-empty">Загрузка…</div>}
             {error && <div className="inv-error">{error}</div>}
@@ -152,7 +171,9 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
             <div className="inv-detail-info">
               <div className="inv-detail-name">{selected.nft_name}</div>
-              <div className="inv-detail-cost">Вывод: <b>{withdrawCost} ⭐</b></div>
+              <div className="inv-detail-cost">
+                Вывод: <b>{withdrawCost} ⭐</b>
+              </div>
             </div>
 
             <div className="inv-actions">
