@@ -113,7 +113,7 @@ export default function SlotPlay() {
   const r3 = useAnimationControls();
 
   const tgIdRef = useRef(resolveTelegramId());
-  const itemH = 72;
+  const itemH = 120;
   const spinLockRef = useRef(false);
   const lastIdemRef = useRef(null);
 
