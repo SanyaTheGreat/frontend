@@ -7,20 +7,47 @@ import "./SlotPlay.css";
 const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
-const SYMBOL_MAP = { "🍒": "cherry", "🍋": "lemon", B: "bar", 7: "seven" };
-const ICONS = ["🍒", "🍋", "B", "7"];
+// ==== эмодзи и соответствия ====
+const SYMBOL_FILES = {
+  "🍒": "cherry.png",
+  "🍋": "lemon.png",
+  "B": "bar.png",
+  "7": "seven.png",
+};
 
-const iconSrc = (s) => asset(`slot-symbols/${SYMBOL_MAP[s]}.png`);
-const frameSrc = asset("slot-assets/machine.png");
+// нормализация: превращаем эмодзи и текстовые формы в стандартный ключ
+function normalizeSymbol(s) {
+  const raw = (s ?? "").toString().trim();
+  const low = raw.toLowerCase();
 
-// ===== helpers =====
-function buildReel(target, loops = 8, band = ICONS) {
+  if (raw === "🍒" || low === "cherry") return "🍒";
+  if (raw === "🍋" || low === "lemon") return "🍋";
+
+  // оба варианта твоего B
+  if (raw === "B" || low === "bar" || raw === "🅱️") return "B";
+
+  // все формы 7
+  if (raw === "7" || low === "seven" || raw === "7️⃣") return "7";
+
+  return raw;
+}
+
+// безопасный выбор src с fallback
+function iconSrcSafe(s) {
+  const key = normalizeSymbol(s);
+  const file = SYMBOL_FILES[key];
+  return file ? asset(`slot-symbols/${file}`) : null;
+}
+
+// ===== утилиты =====
+function buildReel(target, loops = 8, band = Object.keys(SYMBOL_FILES)) {
   const reel = [];
   const total = loops * band.length;
   for (let i = 0; i < total; i++) reel.push(band[Math.floor(Math.random() * band.length)]);
   reel.push(target);
   return reel;
 }
+
 function decodeJwtTelegramId() {
   try {
     const jwt = localStorage.getItem("jwt");
@@ -35,6 +62,7 @@ function decodeJwtTelegramId() {
     return null;
   }
 }
+
 function resolveTelegramId() {
   const fromJwt = decodeJwtTelegramId();
   const fromTg = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
@@ -43,10 +71,12 @@ function resolveTelegramId() {
   if (queryId && queryId !== storedId) localStorage.setItem("tgid", queryId);
   return fromJwt || fromTg || queryId || storedId || null;
 }
+
 function authHeaders() {
   const token = localStorage.getItem("jwt");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
 function randomUUID() {
   return (
     crypto?.randomUUID?.() ||
@@ -56,6 +86,7 @@ function randomUUID() {
       )
   );
 }
+
 async function fetchWithTimeout(url, opts = {}, ms = 18000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
@@ -67,11 +98,6 @@ async function fetchWithTimeout(url, opts = {}, ms = 18000) {
   }
 }
 
-// ===== DEBUG TIMER =====
-const T0 = () => performance.now();
-const t0 = T0();
-const dbg = (...a) => console.log(`[spin ${(T0() - t0).toFixed(0)}ms]`, ...a);
-
 export default function SlotPlay() {
   const { id: slotId } = useParams();
   const nav = useNavigate();
@@ -79,7 +105,7 @@ export default function SlotPlay() {
   const [price, setPrice] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
-  const [reels, setReels] = useState([ICONS, ICONS, ICONS]);
+  const [reels, setReels] = useState([["🍒", "🍋", "B", "7"], ["🍒", "🍋", "B", "7"], ["🍒", "🍋", "B", "7"]]);
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
 
   const r1 = useAnimationControls();
@@ -87,11 +113,8 @@ export default function SlotPlay() {
   const r3 = useAnimationControls();
 
   const tgIdRef = useRef(resolveTelegramId());
-  const itemH = 120;
-
-  // замок от повторных кликов
+  const itemH = 72;
   const spinLockRef = useRef(false);
-  // повторный idem для ретраев
   const lastIdemRef = useRef(null);
 
   // загрузка цены
@@ -130,27 +153,23 @@ export default function SlotPlay() {
     },
     []
   );
+
   useEffect(() => {
     loadBalance();
   }, [loadBalance]);
 
-  // анимация
   const spinAnim = async (ctrl, itemsCount, extra = 0) => {
-    dbg("spinAnim start", { ctrl: ctrl === r1 ? "r1" : ctrl === r2 ? "r2" : "r3", len: itemsCount });
     await ctrl.start({ y: 0, transition: { duration: 0 } });
     await ctrl.start({
       y: -itemH * (itemsCount - 1),
       transition: { duration: 1.2 + extra, ease: [0.12, 0.45, 0.15, 1] },
     });
-    dbg("spinAnim done", { ctrl: ctrl === r1 ? "r1" : ctrl === r2 ? "r2" : "r3" });
   };
 
-  // основной спин
   const doSpin = async () => {
-    dbg("click");
     if (spinning || spinLockRef.current) return;
     if (!tgIdRef.current) {
-      alert("Не найден Telegram ID.");
+      alert("Не найден Telegram ID. Открой Mini App в Telegram или авторизуйся заново.");
       return;
     }
 
@@ -163,87 +182,65 @@ export default function SlotPlay() {
     lastIdemRef.current = idem;
 
     try {
-      dbg("fetch start", idem);
       const res = await fetchWithTimeout(
         `${API_BASE}/api/slots/spin`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders(),
+          },
           body: JSON.stringify({ slot_id: slotId, idempotency_key: idem }),
           credentials: "include",
         },
         18000
       );
 
-      dbg("fetch done", res.status);
+      const status = res?.status ?? 0;
       const body = await res.json().catch(() => ({}));
-      dbg("json parsed", Object.keys(body || {}).length);
 
-      if (res.status === 401) { dbg("401"); alert("Сессия истекла"); nav("/auth"); return; }
-      if (res.status === 402) { dbg("402"); alert("Не хватает ⭐"); return; }
-      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+      if (status === 401) {
+        alert("Сессия истекла. Войдите заново.");
+        nav("/auth");
+        return;
+      }
+      if (status === 402) {
+        alert("Не хватает ⭐. Пополните баланс.");
+        return;
+      }
+      if (!res.ok) throw new Error(body?.error || `HTTP ${status}`);
+
       data = body;
     } catch (e) {
-      dbg("fetch error", e?.message);
-      alert(e?.message || "Ошибка спина");
+      alert(e?.name === "AbortError" ? "Сеть медленная. Попробуйте ещё раз." : e?.message || "Ошибка спина");
       return;
     } finally {
       if (!data) lastIdemRef.current = null;
     }
 
-    dbg("prepare symbols", data.symbols);
-    const tL = data.symbols?.l ?? ICONS[0];
-    const tM = data.symbols?.m ?? ICONS[1];
-    const tR = data.symbols?.r ?? ICONS[2];
+    const tL = normalizeSymbol(data.symbols?.l ?? "🍒");
+    const tM = normalizeSymbol(data.symbols?.m ?? "🍋");
+    const tR = normalizeSymbol(data.symbols?.r ?? "B");
 
     const reel1 = buildReel(tL, 9);
     const reel2 = buildReel(tM, 10);
     const reel3 = buildReel(tR, 11);
     setReels([reel1, reel2, reel3]);
-    dbg("setReels");
 
-    // длинная прокрутка
     try {
-      dbg("anim1 start");
       await Promise.all([
         spinAnim(r1, reel1.length, 0.0),
         spinAnim(r2, reel2.length, 0.2),
         spinAnim(r3, reel3.length, 0.35),
       ]);
-      dbg("anim1 done");
     } catch (e) {
-      console.error("❌ anim1 failed:", e);
-    }
-
-    // пружинка: ДВА ПОСЛЕДОВАТЕЛЬНЫХ ЭТАПА, чтобы промисы завершались корректно
-    try {
-      dbg("anim2 start");
-      // вниз
-      await Promise.all([
-        r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
-        r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
-        r3.start({ y: "+=8",  transition: { duration: 0.1, ease: "easeOut" } }),
-      ]);
-      // вверх
-      await Promise.all([
-        r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
-        r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
-        r3.start({ y: "-=8",  transition: { duration: 0.12, ease: "easeIn" } }),
-      ]);
-      dbg("anim2 done");
-    } catch (e) {
-      console.error("❌ anim2 failed:", e);
+      console.error("❌ spinAnim phase1 failed:", e);
     }
 
     setResult({ status: data.status, prize: data.prize, symbols: data.symbols });
-    dbg("setResult", data.status, data.prize);
     await loadBalance();
-    dbg("balance updated");
 
     lastIdemRef.current = null;
-    setSpinning(false);
-    spinLockRef.current = false;
-    dbg("done, UI unlocked");
   };
 
   const goBack = () => nav(-1);
@@ -253,7 +250,6 @@ export default function SlotPlay() {
 
   return (
     <div className="slotplay-wrapper">
-      {/* Верхняя панель: назад и баланс справа */}
       <div
         style={{
           position: "fixed",
@@ -289,16 +285,31 @@ export default function SlotPlay() {
       </div>
 
       <div className="machine-wrapper">
-        <img src={frameSrc} alt="slot-machine" className="machine-frame" />
+        <img src={asset("slot-assets/machine.png")} alt="slot-machine" className="machine-frame" />
         <div className="machine-body">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
               <motion.div className="reel" animate={i === 0 ? r1 : i === 1 ? r2 : r3} style={{ y: 0 }}>
-                {reels[i].map((sym, idx) => (
-                  <div className="reel-item" key={`${i}-${idx}`}>
-                    <img src={iconSrc(sym)} alt={sym} draggable="false" />
-                  </div>
-                ))}
+                {reels[i].map((sym, idx) => {
+                  const src = iconSrcSafe(sym);
+                  return (
+                    <div className="reel-item" key={`${i}-${idx}`}>
+                      {src ? (
+                        <img
+                          src={src}
+                          alt={String(sym)}
+                          draggable="false"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = asset("slot-symbols/fallback.png");
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: 48, lineHeight: 1 }}>{String(sym)}</span>
+                      )}
+                    </div>
+                  );
+                })}
               </motion.div>
             </div>
           ))}
@@ -311,10 +322,8 @@ export default function SlotPlay() {
           try {
             await doSpin();
           } finally {
-            // страховка на случай любого неожиданного исключения
             setSpinning(false);
             spinLockRef.current = false;
-            dbg("finally from button — force unlock");
           }
         }}
         disabled={spinning || spinLockRef.current}
