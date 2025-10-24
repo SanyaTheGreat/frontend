@@ -1,416 +1,406 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { motion, useAnimationControls } from "framer-motion";
-import { supabase } from "../../supabaseClient";
-import "./SlotPlay.css";
+// src/controllers/slot/slots.js
+import { supabase } from "../../services/supabaseClient.js";
+import { v4 as uuidv4 } from "uuid";
 
-const API_BASE = "https://lottery-server-waif.onrender.com";
-const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
+/* ========================
+   🔹 spinSlot (с логами + support "bonus" и "jackpot")
+======================== */
+export const spinSlot = async (req, res) => {
+  console.log("=== spinSlot start ===");
+  console.time("spinSlot-total");
 
-/* -------------------- символы -------------------- */
-const SYMBOL_FILES = {
-  "🍒": "cherry.png",
-  "🍋": "lemon.png",
-  "B": "bar.png",
-  "7": "seven.png",
+  try {
+    const telegram_id = req.user?.telegram_id;
+    if (!telegram_id) return res.status(401).json({ error: "Unauthorized" });
+
+    const { slot_id, idempotency_key } = req.body || {};
+    if (!slot_id) return res.status(400).json({ error: "slot_id обязателен" });
+
+    // idem check
+    console.time("check-idempotency");
+    if (idempotency_key) {
+      const { data: existing } = await supabase
+        .from("slot_spins")
+        .select(
+          "id, status, value, effect_key, prize_type, prize_amount, inventory_id, symbol_left, symbol_mid, symbol_right"
+        )
+        .eq("idempotency_key", idempotency_key)
+        .maybeSingle();
+      console.timeEnd("check-idempotency");
+
+      if (existing) {
+        console.log("✅ найден idempotency_key — возврат результата");
+        console.timeEnd("spinSlot-total");
+        return res.json({
+          spin_id: existing.id,
+          status: existing.status,
+          value: existing.value,
+          symbols: existing.symbol_left
+            ? { l: existing.symbol_left, m: existing.symbol_mid, r: existing.symbol_right }
+            : undefined, // символы могли не писаться — ок
+          effect_key: existing.effect_key,
+          is_jackpot:
+            existing.prize_type === "jackpot" || existing.effect_key === "jackpot",
+          prize: existing.prize_type
+            ? { type: existing.prize_type, amount: existing.prize_amount ?? undefined }
+            : undefined,
+          inventory_id: existing.inventory_id ?? undefined,
+        });
+      }
+    } else {
+      console.timeEnd("check-idempotency");
+    }
+
+    // slot info
+    console.time("get-slot");
+    const { data: slot, error: slotErr } = await supabase
+      .from("slots")
+      .select(
+        "id, active, price, gift_count, is_infinite, nft_name, stars_prize, ref_earn"
+      )
+      .eq("id", slot_id)
+      .single();
+    console.timeEnd("get-slot");
+
+    if (slotErr || !slot)
+      return res.status(404).json({ error: "Слот не найден" });
+    if (!slot.active)
+      return res.status(404).json({ error: "Слот не активен" });
+    if (!slot.is_infinite && Number(slot.gift_count) <= 0)
+      return res.status(409).json({ error: "Слот недоступен (нет подарков)" });
+
+    // user
+    console.time("get-user");
+    const { data: user, error: userErr } = await supabase
+      .from("users")
+      .select("id, stars, telegram_id, referred_by")
+      .eq("telegram_id", telegram_id)
+      .single();
+    console.timeEnd("get-user");
+
+    if (userErr || !user)
+      return res.status(404).json({ error: "Пользователь не найден" });
+
+    // списание
+    const price = Number(slot.price || 0);
+    if ((user.stars || 0) < price)
+      return res.status(402).json({ error: `Не хватает ⭐ (нужно ${price})` });
+
+    console.time("debit-user-stars");
+    const { error: debitErr } = await supabase
+      .from("users")
+      .update({ stars: Number(user.stars) - price })
+      .eq("id", user.id);
+    console.timeEnd("debit-user-stars");
+
+    if (debitErr)
+      return res.status(500).json({ error: debitErr.message });
+
+    // 💰 --- РЕФЕРАЛЬНЫЕ НАЧИСЛЕНИЯ: запись + инкремент у реферера ---
+    console.time("insert-referral");
+    try {
+      const referrerId = user.referred_by;              // UUID пригласившего
+      const refAmountTon = Number(slot.ref_earn || 0);  // сумма бонуса из слота
+
+      if (referrerId && refAmountTon > 0) {
+        console.log("[ref] try insert & credit", {
+          referrerId,
+          referredId: user.id,
+          refEarn: refAmountTon,
+        });
+
+        const { data: refIns, error: refErr } = await supabase
+          .from("referral_earnings")
+          .insert([
+            {
+              referrer_id: referrerId,
+              referred_id: user.id,
+              wheel_id: null,
+              amount: refAmountTon,
+            },
+          ])
+          .select("id")
+          .single();
+
+        if (refErr) {
+          console.error("❌ referral_earnings insert error:", refErr);
+        } else {
+          console.log("✅ referral_earnings inserted:", refIns?.id);
+
+          console.time("update-referrer-aggregate");
+          const { data: refUser, error: getRefErr } = await supabase
+            .from("users")
+            .select("referral_earnings")
+            .eq("id", referrerId)
+            .single();
+
+          if (getRefErr) {
+            console.error("❌ users select(referral_earnings) error:", getRefErr);
+          } else {
+            const current = Number(refUser?.referral_earnings || 0);
+            const next = current + refAmountTon;
+
+            const { error: updRefErr } = await supabase
+              .from("users")
+              .update({ referral_earnings: next })
+              .eq("id", referrerId);
+
+            if (updRefErr) {
+              console.error("❌ users update(referral_earnings) error:", updRefErr);
+            } else {
+              console.log(`✅ users.referral_earnings updated: ${current} → ${next}`);
+            }
+          }
+          console.timeEnd("update-referrer-aggregate");
+        }
+      }
+    } catch (e) {
+      console.error("⚠️ referral block failed:", e);
+    }
+    console.timeEnd("insert-referral");
+
+    // RNG 1..64
+    const value = 1 + Math.floor(Math.random() * 64);
+
+    console.time("get-outcome");
+    const { data: outcome, error: outErr } = await supabase
+      .from("slot_outcomes")
+      .select(
+        "value, symbol_left, symbol_mid, symbol_right, effect_key, prize_type"
+      )
+      .eq("value", value)
+      .single();
+    console.timeEnd("get-outcome");
+
+    if (outErr || !outcome)
+      return res.status(500).json({ error: "Не настроен slot_outcomes для value" });
+
+    // результат
+    let status = "lose";
+    let prize_type = outcome.prize_type || null;
+
+    // звёздные типы (support "bonus")
+    const isStarsLike = prize_type === "stars" || prize_type === "bonus";
+    const computedPrize = isStarsLike ? Number(slot.stars_prize || 0) : 0;
+
+    let inventory_id = null;
+
+    console.time("handle-prize");
+    if (isStarsLike && computedPrize > 0) {
+      const { error: addErr } = await supabase
+        .from("users")
+        .update({ stars: Number(user.stars) - price + computedPrize })
+        .eq("id", user.id);
+      if (addErr) {
+        console.timeEnd("handle-prize");
+        return res.status(500).json({ error: addErr.message });
+      }
+      status = "win_stars";
+    } else if (prize_type === "gift" || prize_type === "jackpot") {
+      const invId = uuidv4();
+      const { data: inv, error: invErr } = await supabase
+        .from("user_inventory")
+        .insert([
+          {
+            id: invId,
+            user_id: user.id,
+            slot_id: slot.id,
+            nft_name: slot.nft_name,
+            status: prize_type === "jackpot" ? "jackpot" : "gift",
+          },
+        ])
+        .select("id")
+        .single();
+      if (invErr) {
+        console.timeEnd("handle-prize");
+        return res.status(500).json({ error: invErr.message });
+      }
+      inventory_id = inv.id;
+      status = "win_gift"; // фронт уже ожидает win_gift для предметов/джекпота
+    }
+    console.timeEnd("handle-prize");
+
+    // запись спина (без символов; но с effect_key)
+    console.time("insert-spin");
+    const spin_id = uuidv4();
+    const idem = idempotency_key || uuidv4();
+    const { error: spinErr } = await supabase.from("slot_spins").insert([
+      {
+        id: spin_id,
+        slot_id: slot.id,
+        user_id: user.id,
+        status,
+        value,
+        cost: price,
+        pay_currency: "stars",
+        prize_type,
+        prize_amount: computedPrize,
+        idempotency_key: idem,
+        effect_key: outcome.effect_key, // сохраняем только effect_key
+      },
+    ]);
+    console.timeEnd("insert-spin");
+
+    if (spinErr)
+      return res.status(500).json({ error: spinErr.message });
+
+    const isJackpot =
+      prize_type === "jackpot" || outcome.effect_key === "jackpot";
+
+    console.timeEnd("spinSlot-total");
+    console.log("=== spinSlot finished ===");
+
+    return res.json({
+      spin_id,
+      status,
+      value,
+      // отдадим фронту символы прямо из outcome (мы их не денормализуем)
+      symbols: {
+        l: outcome.symbol_left,
+        m: outcome.symbol_mid,
+        r: outcome.symbol_right,
+      },
+      effect_key: outcome.effect_key,
+      is_jackpot: isJackpot,
+      prize:
+        isStarsLike
+          ? { type: prize_type, amount: computedPrize } // "stars" или "bonus"
+          : prize_type === "gift" || prize_type === "jackpot"
+          ? { type: prize_type }
+          : undefined,
+      inventory_id: inventory_id ?? undefined,
+    });
+  } catch (err) {
+    console.error("spinSlot failed:", err);
+    console.timeEnd("spinSlot-total");
+    return res.status(500).json({ error: "spinSlot failed" });
+  }
 };
 
-// нормализация: эмодзи/текст → стандартный ключ
-function normalizeSymbol(s) {
-  const raw = (s ?? "").toString().trim();
-  const low = raw.toLowerCase();
-
-  if (raw === "🍒" || low === "cherry") return "🍒";
-  if (raw === "🍋" || low === "lemon")  return "🍋";
-
-  // B: текст, слово, эмодзи
-  if (raw === "B" || low === "bar" || raw === "🅱️") return "B";
-  // 7: цифра, слово, эмодзи 7️⃣
-  if (raw === "7" || low === "seven" || raw === "7️⃣") return "7";
-
-  return raw;
-}
-
-// безопасный путь к файлу (или null)
-function iconSrcSafe(s) {
-  const key = normalizeSymbol(s);
-  const file = SYMBOL_FILES[key];
-  return file ? asset(`slot-symbols/${file}`) : null;
-}
-
-/* -------------------- helpers -------------------- */
-function buildReel(target, loops = 8, band = Object.keys(SYMBOL_FILES)) {
-  const reel = [];
-  const total = loops * band.length;
-  for (let i = 0; i < total; i++) reel.push(band[Math.floor(Math.random() * band.length)]);
-  reel.push(target);
-  return reel;
-}
-
-function decodeJwtTelegramId() {
+/* ========================
+   🔹 getActiveSlots
+======================== */
+export const getActiveSlots = async (_req, res) => {
   try {
-    const jwt = localStorage.getItem("jwt");
-    if (!jwt) return null;
-    const [, payloadB64] = jwt.split(".");
-    if (!payloadB64) return null;
-    const json = JSON.parse(
-      decodeURIComponent(escape(window.atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))))
-    );
-    return json?.telegram_id || json?.tg_id || json?.user?.telegram_id || null;
-  } catch {
-    return null;
-  }
-}
-
-function resolveTelegramId() {
-  const fromJwt = decodeJwtTelegramId();
-  const fromTg = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
-  const queryId = new URLSearchParams(window.location.search).get("tgid");
-  const storedId = localStorage.getItem("tgid") || null;
-  if (queryId && queryId !== storedId) localStorage.setItem("tgid", queryId);
-  return fromJwt || fromTg || queryId || storedId || null;
-}
-
-function authHeaders() {
-  const token = localStorage.getItem("jwt");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function randomUUID() {
-  return (
-    crypto?.randomUUID?.() ||
-    ([1e7] + -1e3 + -4e3 + -8e3 + -1e11)
-      .replace(/[018]/g, (c) =>
-        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+    const { data, error } = await supabase
+      .from("slots")
+      .select(
+        "id, price, gift_count, is_infinite, active, nft_name, stars_prize, ref_earn"
       )
-  );
-}
+      .eq("active", true)
+      .order("price", { ascending: true });
+    if (error) return res.status(500).json({ error: error.message });
 
-async function fetchWithTimeout(url, opts = {}, ms = 18000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const res = await fetch(url, { ...opts, signal: ctrl.signal });
-    return res;
-  } finally {
-    clearTimeout(t);
+    const list = (data || []).map((s) => ({
+      ...s,
+      available: !!(s.is_infinite || Number(s.gift_count) > 0),
+    }));
+    return res.json(list);
+  } catch {
+    return res.status(500).json({ error: "getActiveSlots failed" });
   }
-}
+};
 
-// ждем 1 кадр
-const waitFrame = () => new Promise(requestAnimationFrame);
+/* ========================
+   🔹 getOutcomes
+======================== */
+export const getOutcomes = async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("slot_outcomes")
+      .select(
+        "value, symbol_left, symbol_mid, symbol_right, effect_key, prize_type"
+      )
+      .order("value", { ascending: true });
+    if (error) return res.status(500).json({ error: error.message });
 
-/* -------------------- DEBUG (можно оставить) -------------------- */
-const T0 = () => performance.now();
-const t0 = T0();
-const dbg = (...a) => console.log(`[spin ${(T0() - t0).toFixed(0)}ms]`, ...a);
+    const map = {};
+    for (const o of data || []) {
+      map[o.value] = {
+        l: o.symbol_left,
+        m: o.symbol_mid,
+        r: o.symbol_right,
+        effect_key: o.effect_key,
+        prize: o.prize_type ? { type: o.prize_type } : { type: "none" },
+      };
+    }
+    return res.json(map);
+  } catch {
+    return res.status(500).json({ error: "getOutcomes failed" });
+  }
+};
 
-/* ===================================================== */
+/* ========================
+   🔹 getSlotsHistory
+======================== */
+export const getSlotsHistory = async (req, res) => {
+  try {
+    const telegram_id = req.user?.telegram_id;
+    if (!telegram_id) return res.status(401).json({ error: "Unauthorized" });
 
-export default function SlotPlay() {
-  const { id: slotId } = useParams();
-  const nav = useNavigate();
+    const limit = Math.min(Number(req.query.limit || 20), 100);
 
-  const [price, setPrice] = useState(0);
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState(null);
-  const [reels, setReels] = useState([
-    ["🍒", "🍋", "B", "7"],
-    ["🍒", "🍋", "B", "7"],
-    ["🍒", "🍋", "B", "7"],
-  ]);
-  const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
+    const { data: user } = await supabase
+      .from("users")
+      .select("id")
+      .eq("telegram_id", telegram_id)
+      .single();
 
-  // счётчик спинов — чтобы форс-ремонтировать reels
-  const [spinSeq, setSpinSeq] = useState(0);
+    const { data, error } = await supabase
+      .from("slot_spins")
+      .select(
+        "id, created_at, slot_id, status, value, symbol_left, symbol_mid, symbol_right, prize_type, prize_amount, effect_key"
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  const r1 = useAnimationControls();
-  const r2 = useAnimationControls();
-  const r3 = useAnimationControls();
+    if (error) return res.status(500).json({ error: error.message });
 
-  const tgIdRef = useRef(resolveTelegramId());
-
-  // шаг берём из CSS-переменной, чтобы не разъезжалось с версткой
-  const itemHRef = useRef(72);
-  useEffect(() => {
-    const v = parseInt(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--reel-item-h")
-        .trim()
-        .replace("px", ""),
-      10
+    return res.json(
+      (data || []).map((r) => ({
+        id: r.id,
+        created_at: r.created_at,
+        slot_id: r.slot_id,
+        status: r.status,
+        value: r.value,
+        symbols: r.symbol_left
+          ? { l: r.symbol_left, m: r.symbol_mid, r: r.symbol_right }
+          : undefined,
+        effect_key: r.effect_key ?? undefined,
+        prize: r.prize_type
+          ? { type: r.prize_type, amount: r.prize_amount ?? undefined }
+          : undefined,
+      }))
     );
-    if (!Number.isNaN(v)) itemHRef.current = v;
-  }, []);
+  } catch {
+    return res.status(500).json({ error: "getSlotsHistory failed" });
+  }
+};
 
-  const spinLockRef = useRef(false);
-  const lastIdemRef = useRef(null);
+/* ========================
+   🔹 getInventory
+======================== */
+export const getInventory = async (req, res) => {
+  try {
+    const telegram_id = req.user?.telegram_id;
+    if (!telegram_id) return res.status(401).json({ error: "Unauthorized" });
 
-  // загрузка цены
-  useEffect(() => {
-    let abort = false;
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/slots/active`);
-        const data = await res.json();
-        const found = (data || []).find((s) => String(s.id) === String(slotId));
-        if (!abort) setPrice(found?.price ?? 0);
-      } catch (e) {
-        console.warn("[SlotPlay] load price error", e);
-      }
-    })();
-    return () => {
-      abort = true;
-    };
-  }, [slotId]);
+    const { data: user } = await supabase
+      .from("users")
+      .select("id")
+      .eq("telegram_id", telegram_id)
+      .single();
 
-  // загрузка баланса
-  const loadBalance = useMemo(
-    () => async () => {
-      const tgId = tgIdRef.current;
-      if (!tgId) return;
-      try {
-        const { data } = await supabase
-          .from("users")
-          .select("stars, tickets")
-          .eq("telegram_id", tgId)
-          .single();
-        if (data) setBalance({ stars: Number(data.stars || 0), tickets: Number(data.tickets || 0) });
-      } catch (e) {
-        console.warn("[SlotPlay] load balance error", e);
-      }
-    },
-    []
-  );
-  useEffect(() => {
-    loadBalance();
-  }, [loadBalance]);
+    const { data, error } = await supabase
+      .from("user_inventory")
+      .select("id, slot_id, nft_name, status, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
-  // анимация длинной прокрутки
-  const spinAnim = async (ctrl, itemsCount, extra = 0) => {
-    await ctrl.start({ y: 0, transition: { duration: 0 } });
-    await ctrl.start({
-      y: -(itemHRef.current) * (itemsCount - 1),
-      transition: { duration: 1.2 + extra, ease: [0.12, 0.45, 0.15, 1] },
-    });
-  };
-
-  const doSpin = async () => {
-    dbg("click");
-    if (spinning || spinLockRef.current) return;
-    if (!tgIdRef.current) {
-      alert("Не найден Telegram ID.");
-      return;
-    }
-
-    setResult(null);
-    setSpinning(true);
-    spinLockRef.current = true;
-
-    // ⛔️ стопаем и обнуляем позицию перед новым запуском
-    r1.stop(); r2.stop(); r3.stop();
-    r1.set({ y: 0 }); r2.set({ y: 0 }); r3.set({ y: 0 });
-
-    let data;
-    const idem = lastIdemRef.current || randomUUID();
-    lastIdemRef.current = idem;
-
-    try {
-      dbg("fetch start", idem);
-      const res = await fetchWithTimeout(
-        `${API_BASE}/api/slots/spin`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
-          body: JSON.stringify({ slot_id: slotId, idempotency_key: idem }),
-          credentials: "include",
-        },
-        18000
-      );
-
-      dbg("fetch done", res.status);
-      const body = await res.json().catch(() => ({}));
-      dbg("json parsed", Object.keys(body || {}).length);
-
-      if (res.status === 401) { dbg("401"); alert("Сессия истекла"); nav("/auth"); return; }
-      if (res.status === 402) { dbg("402"); alert("Не хватает ⭐"); return; }
-      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      data = body;
-    } catch (e) {
-      dbg("fetch error", e?.message);
-      alert(e?.message || "Ошибка спина");
-      return;
-    } finally {
-      if (!data) lastIdemRef.current = null;
-    }
-
-    // нормализуем символы из бэка
-    dbg("prepare symbols (normalize)", data.symbols);
-    const tL = normalizeSymbol(data.symbols?.l ?? "🍒");
-    const tM = normalizeSymbol(data.symbols?.m ?? "🍋");
-    const tR = normalizeSymbol(data.symbols?.r ?? "B");
-
-    const reel1 = buildReel(tL, 9);
-    const reel2 = buildReel(tM, 10);
-    const reel3 = buildReel(tR, 11);
-    setReels([reel1, reel2, reel3]);
-    dbg("setReels");
-
-    // 👉 инкремент счётчика, чтобы ремоунтнуть reel'ы (новые key)
-    setSpinSeq((n) => n + 1);
-
-    // 👉 даём React/DOM обновиться
-    await waitFrame();
-    await waitFrame();
-
-    // длинная прокрутка
-    try {
-      dbg("anim1 start");
-      await Promise.all([
-        spinAnim(r1, reel1.length, 0.0),
-        spinAnim(r2, reel2.length, 0.2),
-        spinAnim(r3, reel3.length, 0.35),
-      ]);
-      dbg("anim1 done");
-    } catch (e) {
-      console.error("❌ anim1 failed:", e);
-    }
-
-    // пружинка — два последовательных этапа
-    try {
-      dbg("anim2 start");
-      // вниз
-      await Promise.all([
-        r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
-        r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
-        r3.start({ y: "+=8",  transition: { duration: 0.1, ease: "easeOut" } }),
-      ]);
-      // вверх
-      await Promise.all([
-        r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
-        r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
-        r3.start({ y: "-=8",  transition: { duration: 0.12, ease: "easeIn" } }),
-      ]);
-      dbg("anim2 done");
-    } catch (e) {
-      console.error("❌ anim2 failed:", e);
-    }
-
-    setResult({ status: data.status, prize: data.prize, symbols: { l: tL, m: tM, r: tR } });
-    dbg("setResult", data.status, data.prize);
-    await loadBalance();
-    dbg("balance updated");
-
-    lastIdemRef.current = null;
-    setSpinning(false);
-    spinLockRef.current = false;
-    dbg("done, UI unlocked");
-  };
-
-  const goBack = () => nav(-1);
-
-  const displayTickets = (Number(balance.tickets) || 0).toFixed(2);
-  const displayStars = Math.floor(Number(balance.stars) || 0);
-
-  return (
-    <div className="slotplay-wrapper">
-      {/* Верхняя панель */}
-      <div
-        style={{
-          position: "fixed",
-          top: 12,
-          left: 12,
-          right: 12,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          zIndex: 1000,
-        }}
-      >
-        <button className="back-btn" onClick={goBack} aria-label="Назад">←</button>
-        <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
-
-        <div
-          style={{
-            background: "rgba(0,0,0,0.5)",
-            borderRadius: 20,
-            padding: "6px 12px",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 14,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <span>💎 {displayTickets} TON</span>
-          <span style={{ opacity: 0.5 }}>•</span>
-          <span>⭐ {displayStars}</span>
-        </div>
-      </div>
-
-      <div className="machine-wrapper">
-        <img src={asset("slot-assets/machine.png")} alt="slot-machine" className="machine-frame" />
-        <div className="machine-body">
-          {[0, 1, 2].map((i) => (
-            <div className="window" key={i}>
-              {/* ключ зависит от номера спина — узел ремонтится каждый раз */}
-              <motion.div
-                key={`reel-${i}-${spinSeq}`}
-                className="reel"
-                animate={i === 0 ? r1 : i === 1 ? r2 : r3}
-                initial={false}
-              >
-                {reels[i].map((sym, idx) => {
-                  const src = iconSrcSafe(sym);
-                  return (
-                    <div className="reel-item" key={`${i}-${idx}`}>
-                      {src ? (
-                        <img
-                          src={src}
-                          alt={String(sym)}
-                          draggable="false"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = asset("slot-symbols/fallback.png");
-                          }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: 48, lineHeight: 1 }}>{String(sym)}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </motion.div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <button
-        className="spin-btn"
-        onClick={async () => {
-          try {
-            await doSpin();
-          } finally {
-            // страховка на случай любого неожиданного исключения
-            setSpinning(false);
-            spinLockRef.current = false;
-            dbg("finally from button — force unlock");
-          }
-        }}
-        disabled={spinning || spinLockRef.current}
-      >
-        {spinning || spinLockRef.current ? "КРУТИМ…" : `КРУТИТЬ ЗА ${price} ⭐`}
-      </button>
-
-      {result && (
-        <div className={`result ${result.status}`}>
-          {result.status === "lose" && "Пусто 😔"}
-          {result.status === "win_stars" && `+${result.prize?.amount ?? ""}⭐`}
-          {result.status === "win_gift" && "Подарок в инвентарь 🎁"}
-        </div>
-      )}
-    </div>
-  );
-}
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json(data || []);
+  } catch {
+    return res.status(500).json({ error: "getInventory failed" });
+  }
+};
