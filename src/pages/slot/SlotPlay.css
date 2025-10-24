@@ -55,13 +55,13 @@
   display:grid;
   grid-template-columns: repeat(3, var(--win-w));
   justify-content: center;
-  gap: 14px;
+  gap: 0px;
 }
 
 /* окно и катушка */
 .window{
   position:relative; width:var(--win-w); height:var(--win-h);
-  border-radius:12px; overflow:hidden; background:#05080d;
+  border-radius:12px; overflow:hidden; background:#c3c4c5;
   box-shadow: 0 0 0 2px rgba(255,255,255,.08), inset 0 10px 20px rgba(0,0,0,.82);
 }
 .reel{ position:absolute; top:4px; left:0; right:0; }
