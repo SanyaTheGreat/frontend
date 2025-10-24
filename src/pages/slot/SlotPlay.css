@@ -12,7 +12,7 @@
   --win-w: 98px;
   --win-h: 145px;
   /* высота кнопки (пиксели) */
-  --spin-overlap: 150px;
+  --spin-overlap: 155px;
 
   /* высота одного элемента (должна = itemH в JSX) */
   --reel-item-h: 120px;
@@ -75,7 +75,7 @@
   margin-top:calc(14px - var(--spin-overlap));
   background:linear-gradient(180deg,#ffb300,#ff8f00);
   color:#1a1300; font-weight:800; border:none; border-radius:14px;
-  padding:18px 50px; letter-spacing:.5px; cursor:pointer;
+  padding:18px 55px; letter-spacing:.5px; cursor:pointer;
   box-shadow:0 6px 16px rgba(255,165,0,.25), inset 0 1px 0 rgba(255,255,255,.5);
   z-index: 5;
 }
