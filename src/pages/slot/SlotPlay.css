@@ -5,15 +5,15 @@
   --machine-w: 450px;
 
   /* позиция и ширина блока с окнами в ПИКСЕЛЯХ */
-  --win-top: 157px;     /* расстояние от верхнего края картинки до верхнего края окон */
+  --win-top: 154px;     /* расстояние от верхнего края картинки до верхнего края окон */
   --win-body-w: 330px;  /* общая ширина блока с тремя окнами */
 
   /* размеры одного окна (пиксели) */
   --win-w: 98px;
-  --win-h: 138px;
+  --win-h: 145px;
 
   /* высота одного элемента (должна = itemH в JSX) */
-  --reel-item-h: 110px;
+  --reel-item-h: 120px;
 }
 
 .slotplay-wrapper{
@@ -61,7 +61,7 @@
 /* окно и катушка */
 .window{
   position:relative; width:var(--win-w); height:var(--win-h);
-  border-radius:12px; overflow:hidden; background:#c3c4c5;
+  border-radius:12px; overflow:hidden; background:#e9ebec;
   box-shadow: 0 0 0 2px rgba(255,255,255,.08), inset 0 10px 20px rgba(0,0,0,.82);
 }
 .reel{ position:absolute; top:4px; left:0; right:0; }
