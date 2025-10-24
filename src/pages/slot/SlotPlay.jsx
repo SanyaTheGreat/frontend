@@ -39,11 +39,14 @@ function iconSrcSafe(s) {
 }
 
 /* -------------------- helpers -------------------- */
-function buildReel(target, loops = 8, band = Object.keys(SYMBOL_FILES)) {
-  const reel = [];
+function buildReelWithLeading(currentTop, target, loops = 8, band = Object.keys(SYMBOL_FILES)) {
+  // первый элемент = текущий видимый символ (чтобы не было «скачка» перед анимацией)
+  const reel = [currentTop];
   const total = loops * band.length;
-  for (let i = 0; i < total; i++) reel.push(band[Math.floor(Math.random() * band.length)]);
-  reel.push(target);
+  for (let i = 1; i < total; i++) {
+    reel.push(band[Math.floor(Math.random() * band.length)]);
+  }
+  reel.push(target); // финишный символ
   return reel;
 }
 
@@ -100,7 +103,7 @@ async function fetchWithTimeout(url, opts = {}, ms = 18000) {
 // ждем 1 кадр
 const waitFrame = () => new Promise(requestAnimationFrame);
 
-/* -------------------- DEBUG (можно оставить) -------------------- */
+/* -------------------- DEBUG (по желанию оставь) -------------------- */
 const T0 = () => performance.now();
 const t0 = T0();
 const dbg = (...a) => console.log(`[spin ${(T0() - t0).toFixed(0)}ms]`, ...a);
@@ -120,6 +123,9 @@ export default function SlotPlay() {
     ["🍒", "🍋", "B", "7"],
   ]);
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
+
+  // текущие видимые символы в окнах (чтобы не было «скачка» перед новым спином)
+  const currentTopRef = useRef(["🍒", "🍋", "B"]);
 
   // счётчик спинов — чтобы форс-ремонтировать reels
   const [spinSeq, setSpinSeq] = useState(0);
@@ -207,7 +213,7 @@ export default function SlotPlay() {
     setSpinning(true);
     spinLockRef.current = true;
 
-    // ⛔️ стопаем и обнуляем позицию перед новым запуском
+    // стопаем и обнуляем позицию перед новым запуском
     r1.stop(); r2.stop(); r3.stop();
     r1.set({ y: 0 }); r2.set({ y: 0 }); r3.set({ y: 0 });
 
@@ -250,16 +256,19 @@ export default function SlotPlay() {
     const tM = normalizeSymbol(data.symbols?.m ?? "🍋");
     const tR = normalizeSymbol(data.symbols?.r ?? "B");
 
-    const reel1 = buildReel(tL, 9);
-    const reel2 = buildReel(tM, 10);
-    const reel3 = buildReel(tR, 11);
-    setReels([reel1, reel2, reel3]);
-    dbg("setReels");
+    // текущие видимые символы — чтобы не было скачка
+    const [cL, cM, cR] = currentTopRef.current;
 
-    // 👉 инкремент счётчика, чтобы ремоунтнуть reel'ы (новые key)
+    const reel1 = buildReelWithLeading(cL, tL, 9);
+    const reel2 = buildReelWithLeading(cM, tM, 10);
+    const reel3 = buildReelWithLeading(cR, tR, 11);
+    setReels([reel1, reel2, reel3]);
+    dbg("setReels with leading currentTop");
+
+    // инкремент счётчика, чтобы ремоунтнуть reel'ы (новые key)
     setSpinSeq((n) => n + 1);
 
-    // 👉 даём React/DOM обновиться
+    // даём React/DOM обновиться
     await waitFrame();
     await waitFrame();
 
@@ -279,13 +288,11 @@ export default function SlotPlay() {
     // пружинка — два последовательных этапа
     try {
       dbg("anim2 start");
-      // вниз
       await Promise.all([
         r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
         r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
         r3.start({ y: "+=8",  transition: { duration: 0.1, ease: "easeOut" } }),
       ]);
-      // вверх
       await Promise.all([
         r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
         r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
@@ -295,6 +302,9 @@ export default function SlotPlay() {
     } catch (e) {
       console.error("❌ anim2 failed:", e);
     }
+
+    // обновим текущие видимые символы для следующего спина
+    currentTopRef.current = [tL, tM, tR];
 
     setResult({ status: data.status, prize: data.prize, symbols: { l: tL, m: tM, r: tR } });
     dbg("setResult", data.status, data.prize);
