@@ -4,6 +4,9 @@ import { motion, useAnimationControls } from "framer-motion";
 import { supabase } from "../../supabaseClient";
 import "./SlotPlay.css";
 
+// 👉 добавь компонент модалки (путь под свой проект; если components лежит в src/components)
+import InventoryModal from "../../components/InventoryModal.jsx";
+
 const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
@@ -120,6 +123,9 @@ export default function SlotPlay() {
     ["🍒", "🍋", "B", "7"],
   ]);
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
+
+  // 👉 состояние модалки инвентаря
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   // текущие видимые символы (для отсутствия подмены перед спином)
   const currentTopRef = useRef(["🍒", "🍋", "B"]);
@@ -423,6 +429,26 @@ export default function SlotPlay() {
           {result.status === "win_gift" && "Подарок в инвентарь 🎁"}
         </div>
       )}
+
+      {/* === КНОПКА ИНВЕНТАРЯ — слева внизу над таббаром === */}
+      <button
+        className="inventory-fab"
+        onClick={() => setInventoryOpen(true)}
+        aria-label="Инвентарь"
+      >
+        🎁 Инвентарь
+      </button>
+
+      {/* === МОДАЛКА ИНВЕНТАРЯ === */}
+      <InventoryModal
+        open={inventoryOpen}
+        onClose={() => setInventoryOpen(false)}
+        balanceStars={Number(balance.stars) || 0}
+        onWithdrawSuccess={() => {
+          // после успешного вывода обновим баланс
+          if (typeof loadBalance === "function") loadBalance();
+        }}
+      />
     </div>
   );
 }
