@@ -100,7 +100,7 @@ async function fetchWithTimeout(url, opts = {}, ms = 18000) {
 // ждем 1 кадр
 const waitFrame = () => new Promise(requestAnimationFrame);
 
-/* -------------------- DEBUG (по желанию оставь) -------------------- */
+/* -------------------- DEBUG (можно оставить) -------------------- */
 const T0 = () => performance.now();
 const t0 = T0();
 const dbg = (...a) => console.log(`[spin ${(T0() - t0).toFixed(0)}ms]`, ...a);
@@ -120,6 +120,9 @@ export default function SlotPlay() {
     ["🍒", "🍋", "B", "7"],
   ]);
   const [balance, setBalance] = useState({ stars: 0, tickets: 0 });
+
+  // счётчик спинов — чтобы форс-ремонтировать reels
+  const [spinSeq, setSpinSeq] = useState(0);
 
   const r1 = useAnimationControls();
   const r2 = useAnimationControls();
@@ -204,8 +207,9 @@ export default function SlotPlay() {
     setSpinning(true);
     spinLockRef.current = true;
 
-    // ⛔️ на всякий случай остановим любые текущие анимации перед новым стартом
+    // ⛔️ стопаем и обнуляем позицию перед новым запуском
     r1.stop(); r2.stop(); r3.stop();
+    r1.set({ y: 0 }); r2.set({ y: 0 }); r3.set({ y: 0 });
 
     let data;
     const idem = lastIdemRef.current || randomUUID();
@@ -252,9 +256,12 @@ export default function SlotPlay() {
     setReels([reel1, reel2, reel3]);
     dbg("setReels");
 
-    // 👉 даём React/DOM обновиться (важно для повторных спинов)
+    // 👉 инкремент счётчика, чтобы ремоунтнуть reel'ы (новые key)
+    setSpinSeq((n) => n + 1);
+
+    // 👉 даём React/DOM обновиться
     await waitFrame();
-    await waitFrame(); // второй кадр для надёжности
+    await waitFrame();
 
     // длинная прокрутка
     try {
@@ -347,8 +354,9 @@ export default function SlotPlay() {
         <div className="machine-body">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
-              {/* ⚠️ убрали style={{ y: 0 }} — он ломал второй спин */}
+              {/* ключ зависит от номера спина — узел ремонтится каждый раз */}
               <motion.div
+                key={`reel-${i}-${spinSeq}`}
                 className="reel"
                 animate={i === 0 ? r1 : i === 1 ? r2 : r3}
                 initial={false}
