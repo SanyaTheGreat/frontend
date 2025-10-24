@@ -67,6 +67,11 @@ async function fetchWithTimeout(url, opts = {}, ms = 18000) {
   }
 }
 
+// ===== DEBUG TIMER =====
+const T0 = () => performance.now();
+const t0 = T0();
+const dbg = (...a) => console.log(`[spin ${(T0() - t0).toFixed(0)}ms]`, ...a);
+
 export default function SlotPlay() {
   const { id: slotId } = useParams();
   const nav = useNavigate();
@@ -84,9 +89,7 @@ export default function SlotPlay() {
   const tgIdRef = useRef(resolveTelegramId());
   const itemH = 72;
 
-  // Жёсткий замок от дабл-кликов и быстрых повторов (не зависит от React state)
   const spinLockRef = useRef(false);
-  // Повторное использование idem-ключа при ретраях в рамках одного спина
   const lastIdemRef = useRef(null);
 
   // загрузка цены
@@ -131,18 +134,20 @@ export default function SlotPlay() {
 
   // анимация
   const spinAnim = async (ctrl, itemsCount, extra = 0) => {
+    dbg("spinAnim start", { ctrl: ctrl === r1 ? "r1" : ctrl === r2 ? "r2" : "r3", len: itemsCount });
     await ctrl.start({ y: 0, transition: { duration: 0 } });
     await ctrl.start({
       y: -itemH * (itemsCount - 1),
       transition: { duration: 1.2 + extra, ease: [0.12, 0.45, 0.15, 1] },
     });
+    dbg("spinAnim done", { ctrl: ctrl === r1 ? "r1" : ctrl === r2 ? "r2" : "r3" });
   };
 
-  // основной спин с таймаутом и идемпотентностью
   const doSpin = async () => {
+    dbg("click");
     if (spinning || spinLockRef.current) return;
     if (!tgIdRef.current) {
-      alert("Не найден Telegram ID. Открой Mini App в Telegram или авторизуйся заново.");
+      alert("Не найден Telegram ID.");
       return;
     }
 
@@ -155,50 +160,35 @@ export default function SlotPlay() {
     lastIdemRef.current = idem;
 
     try {
+      dbg("fetch start", idem);
       const res = await fetchWithTimeout(
         `${API_BASE}/api/slots/spin`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...authHeaders(),
-          },
+          headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ slot_id: slotId, idempotency_key: idem }),
           credentials: "include",
         },
         18000
       );
 
-      const status = res?.status ?? 0;
+      dbg("fetch done", res.status);
       const body = await res.json().catch(() => ({}));
+      dbg("json parsed", Object.keys(body || {}).length);
 
-      if (status === 401) {
-        alert("Сессия истекла. Войдите заново.");
-        nav("/auth");
-        return; // дальше не продолжаем
-      }
-      if (status === 402) {
-        alert("Не хватает ⭐. Пополните баланс.");
-        return;
-      }
-      if (!res.ok) {
-        throw new Error(body?.error || `HTTP ${status}`);
-      }
-
+      if (res.status === 401) { dbg("401"); alert("Сессия истекла"); return; }
+      if (res.status === 402) { dbg("402"); alert("Не хватает ⭐"); return; }
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       data = body;
     } catch (e) {
-      alert(
-        e?.name === "AbortError" || e?.message === "The user aborted a request."
-          ? "Сеть медленная. Попробуйте ещё раз."
-          : e?.message || "Ошибка спина"
-      );
+      dbg("fetch error", e?.message);
+      alert(e?.message || "Ошибка спина");
       return;
     } finally {
-      // Если запрос неуспешен — сбросим idem на следующий заход
       if (!data) lastIdemRef.current = null;
     }
 
-    // подготовить целевые символы
+    dbg("prepare symbols", data.symbols);
     const tL = data.symbols?.l ?? ICONS[0];
     const tM = data.symbols?.m ?? ICONS[1];
     const tR = data.symbols?.r ?? ICONS[2];
@@ -207,19 +197,22 @@ export default function SlotPlay() {
     const reel2 = buildReel(tM, 10);
     const reel3 = buildReel(tR, 11);
     setReels([reel1, reel2, reel3]);
+    dbg("setReels");
 
-    // безопасный запуск анимаций
     try {
+      dbg("anim1 start");
       await Promise.all([
         spinAnim(r1, reel1.length, 0.0),
         spinAnim(r2, reel2.length, 0.2),
         spinAnim(r3, reel3.length, 0.35),
       ]);
+      dbg("anim1 done");
     } catch (e) {
-      console.error("❌ spinAnim phase1 failed:", e);
+      console.error("❌ anim1 failed:", e);
     }
 
     try {
+      dbg("anim2 start");
       await Promise.all([
         r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
         r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
@@ -228,16 +221,20 @@ export default function SlotPlay() {
         r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
         r3.start({ y: "-=8", transition: { duration: 0.12, ease: "easeIn" } }),
       ]);
+      dbg("anim2 done");
     } catch (e) {
-      console.error("❌ spinAnim phase2 failed:", e);
+      console.error("❌ anim2 failed:", e);
     }
 
-    // показать результат и синкнуть баланс
     setResult({ status: data.status, prize: data.prize, symbols: data.symbols });
-    await loadBalance(); // обновить баланс после списания/приза
+    dbg("setResult", data.status, data.prize);
+    await loadBalance();
+    dbg("balance updated");
 
-    // успешный ответ — новый idem в следующий раз
     lastIdemRef.current = null;
+    setSpinning(false);
+    spinLockRef.current = false;
+    dbg("done, UI unlocked");
   };
 
   const goBack = () => nav(-1);
@@ -305,9 +302,9 @@ export default function SlotPlay() {
           try {
             await doSpin();
           } finally {
-            // критично: кнопка НИКОГДА не должна “залипать”
             setSpinning(false);
             spinLockRef.current = false;
+            dbg("finally from button — force unlock");
           }
         }}
         disabled={spinning || spinLockRef.current}
