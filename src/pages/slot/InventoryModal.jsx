@@ -10,7 +10,6 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// простая "очистка" имени приза → в имя png-файла
 function slugify(s) {
   return (s || "")
     .toString()
@@ -37,18 +36,19 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
           method: "GET",
           headers: { "Content-Type": "application/json", ...authHeaders() },
           credentials: "include",
-          cache: "no-store", // ⬅️ отключаем кэш браузера
+          cache: "no-store",
         });
 
-        // Если сервер вернул 304 Not Modified — оставляем текущий список, ничего не трогаем
         if (res.status === 304) {
           setLoading(false);
           return;
         }
 
         const body = await res.json().catch(() => []);
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        // 🔍 добавлен лог для диагностики
+        console.log("[InventoryModal] status:", res.status, "len:", Array.isArray(body) ? body.length : "n/a", body);
 
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         setItems(Array.isArray(body) ? body : []);
       } catch (e) {
         setError(e.message || "Не удалось загрузить инвентарь");
@@ -68,7 +68,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
   if (!open) return null;
 
-  const withdrawCost = 25; // ⭐ стоимость вывода
+  const withdrawCost = 25;
 
   async function withdraw(item) {
     if (!item?.id) return;
@@ -87,15 +87,11 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
 
-      // Оптимистично убираем предмет из списка
       setItems((prev) => prev.filter((x) => x.id !== item.id));
       setSelected(null);
-
-      // Сообщаем родителю, чтобы он обновил баланс/тост
       onWithdrawSuccess?.(item);
       alert("Заявка на вывод отправлена ✅");
     } catch (e) {
-      // типичные ошибки: 401/402/409/500
       alert(e.message || "Ошибка вывода");
     } finally {
       setWithdrawing(false);
@@ -109,26 +105,17 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       <div className="inv-modal" onClick={(e) => e.stopPropagation()}>
         <div className="inv-modal-header">
           <div className="inv-title">{headerTitle}</div>
-          <button className="inv-close" onClick={onClose} aria-label="Закрыть">
-            ✕
-          </button>
+          <button className="inv-close" onClick={onClose} aria-label="Закрыть">✕</button>
         </div>
 
         {!selected && (
           <>
-            <div className="inv-balance">
-              ⭐ Баланс: <b>{Math.floor(balanceStars)}</b>
-            </div>
-            <div className="inv-note">
-              Вывод одного приза стоит <b>{withdrawCost} ⭐</b>
-            </div>
+            <div className="inv-balance">⭐ Баланс: <b>{Math.floor(balanceStars)}</b></div>
+            <div className="inv-note">Вывод одного приза стоит <b>{withdrawCost} ⭐</b></div>
 
             {loading && <div className="inv-empty">Загрузка…</div>}
             {error && <div className="inv-error">{error}</div>}
-
-            {!loading && !error && items.length === 0 && (
-              <div className="inv-empty">Пусто 😔</div>
-            )}
+            {!loading && !error && items.length === 0 && <div className="inv-empty">Пусто 😔</div>}
 
             <div className="inv-grid">
               {items.map((it) => {
@@ -171,20 +158,12 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
             <div className="inv-detail-info">
               <div className="inv-detail-name">{selected.nft_name}</div>
-              <div className="inv-detail-cost">
-                Вывод: <b>{withdrawCost} ⭐</b>
-              </div>
+              <div className="inv-detail-cost">Вывод: <b>{withdrawCost} ⭐</b></div>
             </div>
 
             <div className="inv-actions">
-              <button className="inv-btn-secondary" onClick={() => setSelected(null)}>
-                ← Назад
-              </button>
-              <button
-                className="inv-btn-primary"
-                onClick={() => withdraw(selected)}
-                disabled={withdrawing}
-              >
+              <button className="inv-btn-secondary" onClick={() => setSelected(null)}>← Назад</button>
+              <button className="inv-btn-primary" onClick={() => withdraw(selected)} disabled={withdrawing}>
                 {withdrawing ? "Отправляем…" : `Вывести за ${withdrawCost} ⭐`}
               </button>
             </div>
