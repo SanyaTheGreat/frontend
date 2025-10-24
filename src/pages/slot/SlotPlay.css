@@ -12,7 +12,7 @@
   --win-w: 98px;
   --win-h: 145px;
   /* высота кнопки (пиксели) */
-  --spin-overlap: 80px;
+  --spin-overlap: 110px;
 
   /* высота одного элемента (должна = itemH в JSX) */
   --reel-item-h: 120px;
