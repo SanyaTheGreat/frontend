@@ -53,7 +53,6 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
         }
 
         const raw = await res.json().catch(() => []);
-        // нормализация формата ответа
         const body = Array.isArray(raw)
           ? raw
           : Array.isArray(raw?.items)
@@ -79,6 +78,13 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       load();
     }
   }, [open, load]);
+
+  // 👉 Авто-открытие первой карточки в деталке (чтобы сразу были анимация и кнопка вывода)
+  useEffect(() => {
+    if (open && !loading && !error && items.length > 0 && !selected) {
+      setSelected(items[0]);
+    }
+  }, [open, loading, error, items, selected]);
 
   // Инициализация Lottie при открытом детальном просмотре
   useEffect(() => {
@@ -223,6 +229,9 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
         {selected && (
           <div className="inv-detail">
+            <div className="inv-balance">⭐ Баланс: <b>{Math.floor(balanceStars)}</b></div>
+            <div className="inv-note">Вывод одного приза стоит <b>{withdrawCost} ⭐</b></div>
+
             <div className="inv-detail-thumb">
               {!animFailed ? (
                 <div
@@ -249,7 +258,12 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
             <div className="inv-actions">
               <button className="inv-btn-secondary" onClick={() => setSelected(null)}>← Назад</button>
-              <button className="inv-btn-primary" onClick={() => withdraw(selected)} disabled={withdrawing}>
+              <button
+                className="inv-btn-primary"
+                onClick={() => withdraw(selected)}
+                disabled={withdrawing || balanceStars < withdrawCost}
+                title={balanceStars < withdrawCost ? "Недостаточно звёзд" : ""}
+              >
                 {withdrawing ? "Отправляем…" : `Вывести за ${withdrawCost} ⭐`}
               </button>
             </div>
