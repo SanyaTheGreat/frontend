@@ -48,11 +48,13 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 function randomUUID() {
-  return (crypto?.randomUUID?.() ||
-    ([1e7]+-1e3+-4e3+-8e3+-1e11)
+  return (
+    crypto?.randomUUID?.() ||
+    ([1e7] + -1e3 + -4e3 + -8e3 + -1e11)
       .replace(/[018]/g, (c) =>
         (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
-      ));
+      )
+  );
 }
 async function fetchWithTimeout(url, opts = {}, ms = 18000) {
   const ctrl = new AbortController();
@@ -82,6 +84,11 @@ export default function SlotPlay() {
   const tgIdRef = useRef(resolveTelegramId());
   const itemH = 72;
 
+  // Жёсткий замок от дабл-кликов и быстрых повторов (не зависит от React state)
+  const spinLockRef = useRef(false);
+  // Повторное использование idem-ключа при ретраях в рамках одного спина
+  const lastIdemRef = useRef(null);
+
   // загрузка цены
   useEffect(() => {
     let abort = false;
@@ -100,7 +107,7 @@ export default function SlotPlay() {
     };
   }, [slotId]);
 
-  // загрузка баланса (как в Spin/Inventory)
+  // загрузка баланса
   const loadBalance = useMemo(
     () => async () => {
       const tgId = tgIdRef.current;
@@ -133,7 +140,7 @@ export default function SlotPlay() {
 
   // основной спин с таймаутом и идемпотентностью
   const doSpin = async () => {
-    if (spinning) return;
+    if (spinning || spinLockRef.current) return;
     if (!tgIdRef.current) {
       alert("Не найден Telegram ID. Открой Mini App в Telegram или авторизуйся заново.");
       return;
@@ -141,32 +148,57 @@ export default function SlotPlay() {
 
     setResult(null);
     setSpinning(true);
+    spinLockRef.current = true;
 
     let data;
-    const idem = randomUUID(); // ключ для безопасного ретрая на бэке
-    try {
-      const res = await fetchWithTimeout(`${API_BASE}/api/slots/spin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ slot_id: slotId, idempotency_key: idem }),
-        credentials: "include",
-      }, 18000);
+    const idem = lastIdemRef.current || randomUUID();
+    lastIdemRef.current = idem;
 
-      // если упали по таймауту — бросим осмысленную ошибку
-      if (!res) throw new Error("No response");
+    try {
+      const res = await fetchWithTimeout(
+        `${API_BASE}/api/slots/spin`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders(),
+          },
+          body: JSON.stringify({ slot_id: slotId, idempotency_key: idem }),
+          credentials: "include",
+        },
+        18000
+      );
+
+      const status = res?.status ?? 0;
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+
+      if (status === 401) {
+        alert("Сессия истекла. Войдите заново.");
+        nav("/auth");
+        return; // дальше не продолжаем
+      }
+      if (status === 402) {
+        alert("Не хватает ⭐. Пополните баланс.");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(body?.error || `HTTP ${status}`);
+      }
 
       data = body;
     } catch (e) {
-      setSpinning(false);
-      alert(e.message === "The user aborted a request." ? "Сеть медленная. Попробуйте ещё раз." : (e.message || "Ошибка спина"));
+      alert(
+        e?.name === "AbortError" || e?.message === "The user aborted a request."
+          ? "Сеть медленная. Попробуйте ещё раз."
+          : e?.message || "Ошибка спина"
+      );
       return;
+    } finally {
+      // Если запрос неуспешен — сбросим idem на следующий заход
+      if (!data) lastIdemRef.current = null;
     }
 
+    // подготовить целевые символы
     const tL = data.symbols?.l ?? ICONS[0];
     const tM = data.symbols?.m ?? ICONS[1];
     const tR = data.symbols?.r ?? ICONS[2];
@@ -176,24 +208,36 @@ export default function SlotPlay() {
     const reel3 = buildReel(tR, 11);
     setReels([reel1, reel2, reel3]);
 
-    await Promise.all([
-      spinAnim(r1, reel1.length, 0.0),
-      spinAnim(r2, reel2.length, 0.2),
-      spinAnim(r3, reel3.length, 0.35),
-    ]);
+    // безопасный запуск анимаций
+    try {
+      await Promise.all([
+        spinAnim(r1, reel1.length, 0.0),
+        spinAnim(r2, reel2.length, 0.2),
+        spinAnim(r3, reel3.length, 0.35),
+      ]);
+    } catch (e) {
+      console.error("❌ spinAnim phase1 failed:", e);
+    }
 
-    await Promise.all([
-      r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
-      r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
-      r3.start({ y: "+=8", transition: { duration: 0.1, ease: "easeOut" } }),
-      r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
-      r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
-      r3.start({ y: "-=8", transition: { duration: 0.12, ease: "easeIn" } }),
-    ]);
+    try {
+      await Promise.all([
+        r1.start({ y: "+=12", transition: { duration: 0.1, ease: "easeOut" } }),
+        r2.start({ y: "+=10", transition: { duration: 0.1, ease: "easeOut" } }),
+        r3.start({ y: "+=8", transition: { duration: 0.1, ease: "easeOut" } }),
+        r1.start({ y: "-=12", transition: { duration: 0.12, ease: "easeIn" } }),
+        r2.start({ y: "-=10", transition: { duration: 0.12, ease: "easeIn" } }),
+        r3.start({ y: "-=8", transition: { duration: 0.12, ease: "easeIn" } }),
+      ]);
+    } catch (e) {
+      console.error("❌ spinAnim phase2 failed:", e);
+    }
 
+    // показать результат и синкнуть баланс
     setResult({ status: data.status, prize: data.prize, symbols: data.symbols });
-    setSpinning(false);
-    loadBalance(); // обновить баланс после списания/приза
+    await loadBalance(); // обновить баланс после списания/приза
+
+    // успешный ответ — новый idem в следующий раз
+    lastIdemRef.current = null;
   };
 
   const goBack = () => nav(-1);
@@ -255,8 +299,20 @@ export default function SlotPlay() {
         </div>
       </div>
 
-      <button className="spin-btn" onClick={doSpin} disabled={spinning}>
-        {spinning ? "КРУТИМ…" : `КРУТИТЬ ЗА ${price} ⭐`}
+      <button
+        className="spin-btn"
+        onClick={async () => {
+          try {
+            await doSpin();
+          } finally {
+            // критично: кнопка НИКОГДА не должна “залипать”
+            setSpinning(false);
+            spinLockRef.current = false;
+          }
+        }}
+        disabled={spinning || spinLockRef.current}
+      >
+        {spinning || spinLockRef.current ? "КРУТИМ…" : `КРУТИТЬ ЗА ${price} ⭐`}
       </button>
 
       {result && (
