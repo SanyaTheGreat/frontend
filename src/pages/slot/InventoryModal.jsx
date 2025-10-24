@@ -1,5 +1,6 @@
 // src/pages/slot/InventoryModal.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import lottie from "lottie-web";
 import "./InventoryModal.css";
 
 const API_BASE = "https://lottery-server-waif.onrender.com";
@@ -27,11 +28,18 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
   const [selected, setSelected] = useState(null);
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // Lottie для детального просмотра
+  const animCacheRef = useRef(new Map()); // cache animation JSON
+  const animInstRef = useRef(null);       // текущий инстанс lottie
+  const detailAnimRef = useRef(null);     // контейнер для анимации
+  const [animFailed, setAnimFailed] = useState(false);
+
   const load = useMemo(
     () => async () => {
       setLoading(true);
       setError("");
       try {
+        // 🎰 тянем именно слотовый инвентарь
         const res = await fetch(`${API_BASE}/api/inventory/slot?ts=${Date.now()}`, {
           method: "GET",
           headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -45,7 +53,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
         }
 
         const raw = await res.json().catch(() => []);
-        // 🧰 нормализация формата ответа
+        // нормализация формата ответа
         const body = Array.isArray(raw)
           ? raw
           : Array.isArray(raw?.items)
@@ -53,12 +61,6 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
           : Array.isArray(raw?.data)
           ? raw.data
           : [];
-
-        console.log(
-          "[InventoryModal] status:", res.status,
-          "len:", Array.isArray(body) ? body.length : "n/a",
-          body
-        );
 
         if (!res.ok) throw new Error((raw && raw.error) || `HTTP ${res.status}`);
         setItems(body);
@@ -77,6 +79,70 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       load();
     }
   }, [open, load]);
+
+  // Инициализация Lottie при открытом детальном просмотре
+  useEffect(() => {
+    // уничтожаем предыдущую анимацию
+    try {
+      animInstRef.current?.destroy?.();
+    } catch {}
+    animInstRef.current = null;
+    setAnimFailed(false);
+
+    if (!open || !selected || !detailAnimRef.current) return;
+
+    let cancelled = false;
+    (async () => {
+      const name = selected.nft_name || "";
+      const slug = slugify(name);
+      const tryPaths = [
+        `/animations/${name}.json`, // как в Slots.jsx
+        `/animations/${slug}.json`, // фолбэк по слагу
+      ];
+
+      let json = null;
+      for (const p of tryPaths) {
+        if (cancelled) return;
+        try {
+          if (animCacheRef.current.has(p)) {
+            json = animCacheRef.current.get(p);
+            break;
+          }
+          const res = await fetch(p, { cache: "force-cache" });
+          if (!res.ok) continue;
+          json = await res.json();
+          animCacheRef.current.set(p, json);
+          break;
+        } catch {
+          // пробуем следующий вариант
+        }
+      }
+
+      if (!json) {
+        setAnimFailed(true);
+        return;
+      }
+
+      if (cancelled) return;
+      const inst = lottie.loadAnimation({
+        container: detailAnimRef.current,
+        renderer: "canvas",
+        loop: true,
+        autoplay: true,
+        animationData: json,
+      });
+      inst.setSpeed(0.8);
+      animInstRef.current = inst;
+    })();
+
+    return () => {
+      cancelled = true;
+      try {
+        animInstRef.current?.destroy?.();
+      } catch {}
+      animInstRef.current = null;
+    };
+  }, [open, selected]);
 
   if (!open) return null;
 
@@ -158,14 +224,22 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
         {selected && (
           <div className="inv-detail">
             <div className="inv-detail-thumb">
-              <img
-                src={asset(`prizes/${slugify(selected.nft_name)}.png`)}
-                alt={selected.nft_name}
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = asset("prizes/fallback.png");
-                }}
-              />
+              {!animFailed ? (
+                <div
+                  ref={detailAnimRef}
+                  className="anim-container"
+                  style={{ width: 220, height: 220 }}
+                />
+              ) : (
+                <img
+                  src={asset(`prizes/${slugify(selected.nft_name)}.png`)}
+                  alt={selected.nft_name}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = asset("prizes/fallback.png");
+                  }}
+                />
+              )}
             </div>
 
             <div className="inv-detail-info">
