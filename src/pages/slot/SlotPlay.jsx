@@ -204,6 +204,9 @@ export default function SlotPlay() {
     setSpinning(true);
     spinLockRef.current = true;
 
+    // ⛔️ на всякий случай остановим любые текущие анимации перед новым стартом
+    r1.stop(); r2.stop(); r3.stop();
+
     let data;
     const idem = lastIdemRef.current || randomUUID();
     lastIdemRef.current = idem;
@@ -251,7 +254,7 @@ export default function SlotPlay() {
 
     // 👉 даём React/DOM обновиться (важно для повторных спинов)
     await waitFrame();
-    await waitFrame(); // второй кадр для надёжности (особенно iOS)
+    await waitFrame(); // второй кадр для надёжности
 
     // длинная прокрутка
     try {
@@ -344,7 +347,12 @@ export default function SlotPlay() {
         <div className="machine-body">
           {[0, 1, 2].map((i) => (
             <div className="window" key={i}>
-              <motion.div className="reel" animate={i === 0 ? r1 : i === 1 ? r2 : r3} style={{ y: 0 }}>
+              {/* ⚠️ убрали style={{ y: 0 }} — он ломал второй спин */}
+              <motion.div
+                className="reel"
+                animate={i === 0 ? r1 : i === 1 ? r2 : r3}
+                initial={false}
+              >
                 {reels[i].map((sym, idx) => {
                   const src = iconSrcSafe(sym);
                   return (
