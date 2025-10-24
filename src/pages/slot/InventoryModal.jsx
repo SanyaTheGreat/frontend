@@ -44,12 +44,24 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
           return;
         }
 
-        const body = await res.json().catch(() => []);
-        // 🔍 добавлен лог для диагностики
-        console.log("[InventoryModal] status:", res.status, "len:", Array.isArray(body) ? body.length : "n/a", body);
+        const raw = await res.json().catch(() => []);
+        // 🧰 нормализация формата ответа
+        const body = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.items)
+          ? raw.items
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : [];
 
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        setItems(Array.isArray(body) ? body : []);
+        console.log(
+          "[InventoryModal] status:", res.status,
+          "len:", Array.isArray(body) ? body.length : "n/a",
+          body
+        );
+
+        if (!res.ok) throw new Error((raw && raw.error) || `HTTP ${res.status}`);
+        setItems(body);
       } catch (e) {
         setError(e.message || "Не удалось загрузить инвентарь");
       } finally {
@@ -84,8 +96,8 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
         headers: { "Content-Type": "application/json", ...authHeaders() },
         credentials: "include",
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+      const raw = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(raw?.error || `HTTP ${res.status}`);
 
       setItems((prev) => prev.filter((x) => x.id !== item.id));
       setSelected(null);

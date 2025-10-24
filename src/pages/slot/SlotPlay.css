@@ -82,7 +82,7 @@
 .spin-btn:disabled{ opacity:.6; cursor:default; }
 
 /* результат */
-.result{ margin-top:30px; font-weight:800; letter-spacing:.5px; text-shadow:0 2px 8px rgba(0,0,0,.5); padding:6px 10px; border-radius:10px; }
+.result{ margin-top:40px; font-weight:800; letter-spacing:.5px; text-shadow:0 2px 8px rgba(0,0,0,.5); padding:6px 10px; border-radius:10px; }
 .result.lose{ background:rgba(255,255,255,.06); }
 .result.win_stars{ background:rgba(76,175,80,.25); }
 .result.win_gift{ background:rgba(33,150,243,.25); }
