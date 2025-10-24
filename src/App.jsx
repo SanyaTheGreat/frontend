@@ -18,6 +18,7 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import Slots from './pages/slot/Slots';
 import SlotPlay from './pages/slot/SlotPlay'; // добавим позже
 
+
 // Buffer polyfill
 import { Buffer } from 'buffer';
 window.Buffer = window.Buffer || Buffer;
@@ -43,6 +44,7 @@ function App() {
           {/* 🆕 режим слотов */}
           <Route path="/slots" element={<Slots />} />
           <Route path="/slots/:id" element={<SlotPlay />} />
+          <Route path="/slot/:id" element={<SlotPlay />} />
         </Routes>
       </div>
     </TonConnectUIProvider>

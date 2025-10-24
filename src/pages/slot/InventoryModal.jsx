@@ -1,5 +1,6 @@
 // src/components/InventoryModal.jsx
 import { useEffect, useMemo, useState } from "react";
+import "./InventoryModal.css"
 
 const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;

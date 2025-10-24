@@ -5,7 +5,7 @@ import { supabase } from "../../supabaseClient";
 import "./SlotPlay.css";
 
 // 👉 добавь компонент модалки (путь под свой проект; если components лежит в src/components)
-import InventoryModal from "../../components/InventoryModal.jsx";
+import InventoryModal from "./InventoryModal.jsx";
 
 const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
