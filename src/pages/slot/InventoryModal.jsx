@@ -28,10 +28,10 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
   const [selected, setSelected] = useState(null);
   const [withdrawing, setWithdrawing] = useState(false);
 
-  // Lottie для детального просмотра
-  const animCacheRef = useRef(new Map()); // cache animation JSON
-  const animInstRef = useRef(null);       // текущий инстанс lottie
-  const detailAnimRef = useRef(null);     // контейнер для анимации
+  // Анимация в деталке
+  const animCacheRef = useRef(new Map());
+  const animInstRef = useRef(null);
+  const detailAnimRef = useRef(null);
   const [animFailed, setAnimFailed] = useState(false);
 
   const load = useMemo(
@@ -46,11 +46,6 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
           credentials: "include",
           cache: "no-store",
         });
-
-        if (res.status === 304) {
-          setLoading(false);
-          return;
-        }
 
         const raw = await res.json().catch(() => []);
         const body = Array.isArray(raw)
@@ -79,16 +74,15 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
     }
   }, [open, load]);
 
-  // 👉 Авто-открытие первой карточки в деталке (чтобы сразу были анимация и кнопка вывода)
+  // При открытии показываем первую карточку
   useEffect(() => {
     if (open && !loading && !error && items.length > 0 && !selected) {
       setSelected(items[0]);
     }
   }, [open, loading, error, items, selected]);
 
-  // Инициализация Lottie при открытом детальном просмотре
+  // Lottie-анимация для выбранного приза
   useEffect(() => {
-    // уничтожаем предыдущую анимацию
     try {
       animInstRef.current?.destroy?.();
     } catch {}
@@ -102,8 +96,8 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       const name = selected.nft_name || "";
       const slug = slugify(name);
       const tryPaths = [
-        `/animations/${name}.json`, // как в Slots.jsx
-        `/animations/${slug}.json`, // фолбэк по слагу
+        `/animations/${slug}.json`,
+        `/animations/${name}.json`,
       ];
 
       let json = null;
@@ -119,9 +113,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
           json = await res.json();
           animCacheRef.current.set(p, json);
           break;
-        } catch {
-          // пробуем следующий вариант
-        }
+        } catch {}
       }
 
       if (!json) {
@@ -163,7 +155,8 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
     setWithdrawing(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/inventory/${item.id}/claim`, {
+      // 🆕 новый маршрут вывода для слотов
+      const res = await fetch(`${API_BASE}/api/inventory/slot/${item.id}/withdraw`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         credentials: "include",
