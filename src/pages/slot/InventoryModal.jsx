@@ -81,7 +81,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
     }
   }, [open, loading, error, items, selected]);
 
-  // Lottie-анимация для выбранного приза
+  // Lottie-анимация для выбранного приза (slot_slug → slugify(name) → raw name)
   useEffect(() => {
     try {
       animInstRef.current?.destroy?.();
@@ -94,11 +94,14 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
     let cancelled = false;
     (async () => {
       const name = selected.nft_name || "";
-      const slug = slugify(name);
+      const slotSlug = selected.slot_slug || selected.slug || null;
+      const nameSlug = slugify(name);
+
       const tryPaths = [
-        `/animations/${slug}.json`,
-        `/animations/${name}.json`,
-      ];
+        slotSlug ? asset(`animations/${slotSlug}.json`) : null,
+        asset(`animations/${nameSlug}.json`),
+        asset(`animations/${name}.json`),
+      ].filter(Boolean);
 
       let json = null;
       for (const p of tryPaths) {
@@ -109,7 +112,8 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
             break;
           }
           const res = await fetch(p, { cache: "force-cache" });
-          if (!res.ok) continue;
+          const ct = res.headers.get("content-type") || "";
+          if (!res.ok || !ct.includes("application/json")) continue;
           json = await res.json();
           animCacheRef.current.set(p, json);
           break;
@@ -155,7 +159,6 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
     setWithdrawing(true);
     setError("");
     try {
-      // 🆕 новый маршрут вывода для слотов
       const res = await fetch(`${API_BASE}/api/inventory/slot/${item.id}/withdraw`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -196,7 +199,8 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
 
             <div className="inv-grid">
               {items.map((it) => {
-                const png = asset(`animations/${slugify(it.nft_name)}.png`);
+                const slug = it.slot_slug || it.slug || slugify(it.nft_name);
+                const png = asset(`animations/${slug}.png`);
                 return (
                   <button key={it.id} className="inv-card" onClick={() => setSelected(it)}>
                     <div className="inv-thumb">
@@ -234,7 +238,9 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
                 />
               ) : (
                 <img
-                  src={asset(`animations/${slugify(selected.nft_name)}.png`)}
+                  src={asset(
+                    `animations/${(selected.slot_slug || selected.slug || slugify(selected.nft_name))}.png`
+                  )}
                   alt={selected.nft_name}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
