@@ -1,21 +1,10 @@
+// src/pages/slot/Slots.jsx
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import lottie from "lottie-web";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./Slots.css";
-
-const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
-
-function slugify(s) {
-  return (s || "")
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9\-_.]/g, "")
-    .replace(/\-+/g, "-")
-    .replace(/^\-+|\-+$/g, "");
-}
 
 function Slots() {
   const [slots, setSlots] = useState([]);
@@ -28,7 +17,7 @@ function Slots() {
   const animRefs = useRef({});
   const observerRef = useRef(null);
 
-  // временная защита
+  // --- временная защита паролем ---
   useEffect(() => {
     const localFlag = localStorage.getItem("slots_access");
     if (localFlag === "1") {
@@ -44,10 +33,10 @@ function Slots() {
     }
   }, []);
 
-  // активные слоты
+  // --- загрузка активных слотов ---
   useEffect(() => {
     if (!authorized) return;
-    (async () => {
+    const fetchSlots = async () => {
       try {
         const res = await fetch("https://lottery-server-waif.onrender.com/api/slots/active");
         const data = await res.json();
@@ -58,15 +47,18 @@ function Slots() {
       } finally {
         setLoading(false);
       }
-    })();
+    };
+    fetchSlots();
   }, [authorized]);
 
-  // Lottie по slug
+  // --- анимации Lottie (по SLUG) ---
   useEffect(() => {
     if (!authorized || loading || !slots.length) return;
 
     const destroyAll = () => {
-      Object.values(animRefs.current).forEach((a) => { try { a?.destroy?.(); } catch {} });
+      Object.values(animRefs.current).forEach((a) => {
+        try { a?.destroy?.(); } catch {}
+      });
       animRefs.current = {};
     };
 
@@ -74,8 +66,8 @@ function Slots() {
       for (const entry of entries) {
         const el = entry.target;
         const slotId = el.getAttribute("data-slotid");
-        const nftName = el.getAttribute("data-nftname");
-        const nftSlug = el.getAttribute("data-nftslug");
+        const nftName = el.getAttribute("data-nftname"); // для логов/подписей
+        const nftSlug = el.getAttribute("data-nftslug"); // ИСПОЛЬЗУЕМ ДЛЯ ФАЙЛОВ
         if (!slotId || !nftSlug) continue;
 
         if (!entry.isIntersecting) {
@@ -85,19 +77,14 @@ function Slots() {
 
         if (!animRefs.current[slotId]) {
           try {
-            const key = nftSlug;
             let json;
-            if (animCache.has(key)) {
-              json = animCache.get(key);
+            if (animCache.has(nftSlug)) {
+              json = animCache.get(nftSlug);
             } else {
-              const url = asset(`animations/${nftSlug}.json`);
-              const res = await fetch(url, { cache: "force-cache" });
-              const ct = res.headers.get("content-type") || "";
-              if (!res.ok || !ct.includes("application/json")) {
-                throw new Error("animation json not found");
-              }
+              const res = await fetch(`/animations/${nftSlug}.json`);
+              if (!res.ok) throw new Error("not found");
               json = await res.json();
-              animCache.set(key, json);
+              animCache.set(nftSlug, json);
             }
 
             const inst = lottie.loadAnimation({
@@ -111,17 +98,6 @@ function Slots() {
             animRefs.current[slotId] = inst;
           } catch (e) {
             console.warn("Ошибка анимации", nftName, e);
-            // PNG по slug
-            if (!el.querySelector("img")) {
-              const img = document.createElement("img");
-              img.src = asset(`animations/${nftSlug}.png`);
-              img.alt = nftName || nftSlug;
-              img.onerror = () => { img.src = asset("animations/fallback.png"); };
-              img.style.width = "100%";
-              img.style.height = "100%";
-              img.style.objectFit = "contain";
-              el.appendChild(img);
-            }
           }
         }
       }
@@ -162,33 +138,32 @@ function Slots() {
         <p className="loading-text">Нет доступных слотов</p>
       ) : (
         <div className="slots-grid">
-          {slots.map((slot) => {
-            const slug = slugify(slot.nft_name);
-            return (
-              <div
-                key={slot.id}
-                className={`slot-card ${slot.available ? "" : "slot-disabled"}`}
-                onClick={() => slot.available && handleOpenSlot(slot.id)}
-              >
-                <div className="slot-animation">
-                  <div
-                    ref={(el) => {
-                      if (!el) return;
-                      containerRefs.current[slot.id] = el;
-                      el.setAttribute("data-slotid", String(slot.id));
-                      el.setAttribute("data-nftname", slot.nft_name || "");
-                      el.setAttribute("data-nftslug", slug);
-                      if (observerRef.current) observerRef.current.observe(el);
-                    }}
-                    className="anim-container"
-                  />
-                </div>
-
-                <div className="slot-title">{slot.nft_name}</div>
-                <div className="slot-price">{slot.price} ⭐</div>
+          {slots.map((slot) => (
+            <div
+              key={slot.id}
+              className={`slot-card ${slot.available ? "" : "slot-disabled"}`}
+              onClick={() => slot.available && handleOpenSlot(slot.id)}
+            >
+              <div className="slot-animation">
+                <div
+                  ref={(el) => {
+                    if (!el) return;
+                    containerRefs.current[slot.id] = el;
+                    el.setAttribute("data-slotid", String(slot.id));
+                    el.setAttribute("data-nftname", slot.nft_name);
+                    el.setAttribute("data-nftslug", slot.slug); // <<— добавили SLUG
+                    if (observerRef.current) observerRef.current.observe(el);
+                  }}
+                  className="anim-container"
+                />
               </div>
-            );
-          })}
+
+              <div className="slot-title">{slot.nft_name}</div>
+              <div className="slot-price">
+                {slot.price} ⭐
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
