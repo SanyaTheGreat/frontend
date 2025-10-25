@@ -28,7 +28,7 @@ function Slots() {
   const animRefs = useRef({});
   const observerRef = useRef(null);
 
-  // --- временная защита паролем ---
+  // временная защита
   useEffect(() => {
     const localFlag = localStorage.getItem("slots_access");
     if (localFlag === "1") {
@@ -44,10 +44,10 @@ function Slots() {
     }
   }, []);
 
-  // --- загрузка активных слотов ---
+  // активные слоты
   useEffect(() => {
     if (!authorized) return;
-    const fetchSlots = async () => {
+    (async () => {
       try {
         const res = await fetch("https://lottery-server-waif.onrender.com/api/slots/active");
         const data = await res.json();
@@ -58,18 +58,15 @@ function Slots() {
       } finally {
         setLoading(false);
       }
-    };
-    fetchSlots();
+    })();
   }, [authorized]);
 
-  // --- анимации Lottie ---
+  // Lottie по slug
   useEffect(() => {
     if (!authorized || loading || !slots.length) return;
 
     const destroyAll = () => {
-      Object.values(animRefs.current).forEach((a) => {
-        try { a?.destroy?.(); } catch {}
-      });
+      Object.values(animRefs.current).forEach((a) => { try { a?.destroy?.(); } catch {} });
       animRefs.current = {};
     };
 
@@ -79,7 +76,7 @@ function Slots() {
         const slotId = el.getAttribute("data-slotid");
         const nftName = el.getAttribute("data-nftname");
         const nftSlug = el.getAttribute("data-nftslug");
-        if (!slotId || !nftName || !nftSlug) continue;
+        if (!slotId || !nftSlug) continue;
 
         if (!entry.isIntersecting) {
           animRefs.current[slotId]?.pause?.();
@@ -88,15 +85,13 @@ function Slots() {
 
         if (!animRefs.current[slotId]) {
           try {
-            // грузим JSON по slug через asset(), чтобы учесть base path
-            const key = nftSlug; // ключ кэша по slug
+            const key = nftSlug;
             let json;
             if (animCache.has(key)) {
               json = animCache.get(key);
             } else {
               const url = asset(`animations/${nftSlug}.json`);
               const res = await fetch(url, { cache: "force-cache" });
-              // проверим тип ответа, чтобы не парсить HTML как JSON
               const ct = res.headers.get("content-type") || "";
               if (!res.ok || !ct.includes("application/json")) {
                 throw new Error("animation json not found");
@@ -116,12 +111,11 @@ function Slots() {
             animRefs.current[slotId] = inst;
           } catch (e) {
             console.warn("Ошибка анимации", nftName, e);
-            // фолбэк на PNG из той же папки /animations/
+            // PNG по slug
             if (!el.querySelector("img")) {
               const img = document.createElement("img");
               img.src = asset(`animations/${nftSlug}.png`);
-              img.alt = nftName;
-              img.onload = () => {};
+              img.alt = nftName || nftSlug;
               img.onerror = () => { img.src = asset("animations/fallback.png"); };
               img.style.width = "100%";
               img.style.height = "100%";
@@ -182,7 +176,7 @@ function Slots() {
                       if (!el) return;
                       containerRefs.current[slot.id] = el;
                       el.setAttribute("data-slotid", String(slot.id));
-                      el.setAttribute("data-nftname", slot.nft_name);
+                      el.setAttribute("data-nftname", slot.nft_name || "");
                       el.setAttribute("data-nftslug", slug);
                       if (observerRef.current) observerRef.current.observe(el);
                     }}
