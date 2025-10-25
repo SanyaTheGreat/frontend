@@ -10,7 +10,6 @@ const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}
 
 function Slots() {
   const [slots, setSlots] = useState([]);
-  const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
@@ -21,25 +20,8 @@ function Slots() {
   const animCacheRef = useRef(new Map()); // slug -> json | "missing"
   const playedOnceRef = useRef({});       // slotId -> true
 
-  // --- временная защита паролем ---
-  useEffect(() => {
-    const localFlag = localStorage.getItem("slots_access");
-    if (localFlag === "1") {
-      setAuthorized(true);
-    } else {
-      const pass = prompt("🔒 Страница в разработке. Введите пароль:");
-      if (pass === "devslots123") {
-        localStorage.setItem("slots_access", "1");
-        setAuthorized(true);
-      } else {
-        toast.error("Неверный пароль");
-      }
-    }
-  }, []);
-
   // --- загрузка активных слотов ---
   useEffect(() => {
-    if (!authorized) return;
     const fetchSlots = async () => {
       try {
         const res = await fetch("https://lottery-server-waif.onrender.com/api/slots/active");
@@ -53,7 +35,7 @@ function Slots() {
       }
     };
     fetchSlots();
-  }, [authorized]);
+  }, []);
 
   // helper: показать PNG и остановить наблюдение
   function showPngAndUnobserve(el, slug, name) {
@@ -70,7 +52,7 @@ function Slots() {
 
   // --- анимации Lottie (по SLUG), как на Home: кэш + play-once ---
   useEffect(() => {
-    if (!authorized || loading || !slots.length) return;
+    if (loading || !slots.length) return;
 
     lottie.setQuality("low");
 
@@ -101,7 +83,6 @@ function Slots() {
         const nftSlug = el.getAttribute("data-nftslug");
         if (!slotId || !nftSlug) continue;
 
-        // если уже проиграли один раз — просто пауза вне вьюпорта
         if (!entry.isIntersecting) {
           animRefs.current[slotId]?.pause?.();
           continue;
@@ -152,23 +133,15 @@ function Slots() {
       observerRef.current?.disconnect();
       destroyAll();
     };
-  }, [slots, authorized, loading]);
+  }, [slots, loading]);
 
   const handleOpenSlot = (id) => navigate(`/slots/${id}`);
-
-  if (!authorized) {
-    return (
-      <div className="slots-wrapper locked">
-        <p>🔒 Доступ запрещён</p>
-        <ToastContainer theme="dark" />
-      </div>
-    );
-  }
 
   if (loading) {
     return (
       <div className="slots-wrapper">
         <p className="loading-text">Загрузка...</p>
+        <ToastContainer theme="dark" position="top-right" autoClose={3000} />
       </div>
     );
   }
@@ -196,6 +169,7 @@ function Slots() {
                     if (observerRef.current) observerRef.current.observe(el);
                   }}
                   className="anim-container"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
                 />
               </div>
 
