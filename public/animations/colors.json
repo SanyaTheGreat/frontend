@@ -730,5 +730,89 @@
     "edge_color": "#4b5241",
     "pattern_color": "#0f120b",
     "text_color": "#c3c7bd"
+  },
+  "SnoopDogg-503358": {
+    "center_color": "#b58d38",
+    "edge_color": "#946925",
+    "pattern_color": "#4f3302",
+    "text_color": "#ffdd8c"
+  },
+  "PetSnake-93399": {
+    "center_color": "#b17da5",
+    "edge_color": "#8c577a",
+    "pattern_color": "#652852",
+    "text_color": "#f0c4e2"
+  },
+  "PetSnake-31573": {
+    "center_color": "#d08b6d",
+    "edge_color": "#b05770",
+    "pattern_color": "#9b0526",
+    "text_color": "#fedde0"
+  },
+  "SnoopDogg-315252": {
+    "center_color": "#64695c",
+    "edge_color": "#4b5241",
+    "pattern_color": "#0f120b",
+    "text_color": "#c3c7bd"
+  },
+  "SnoopDogg-300579": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "PetSnake-97549": {
+    "center_color": "#97b07c",
+    "edge_color": "#5c814c",
+    "pattern_color": "#28471b",
+    "text_color": "#d9f2c9"
+  },
+  "PetSnake-74708": {
+    "center_color": "#5db1cb",
+    "edge_color": "#448bab",
+    "pattern_color": "#025074",
+    "text_color": "#b5ecff"
+  },
+  "SnakeBox-38571": {
+    "center_color": "#31b5aa",
+    "edge_color": "#189599",
+    "pattern_color": "#004f4f",
+    "text_color": "#d1fffd"
+  },
+  "SnoopDogg-530919": {
+    "center_color": "#a35e66",
+    "edge_color": "#6d414a",
+    "pattern_color": "#340307",
+    "text_color": "#e7bcc0"
+  },
+  "SnakeBox-52833": {
+    "center_color": "#a35e66",
+    "edge_color": "#6d414a",
+    "pattern_color": "#340307",
+    "text_color": "#e7bcc0"
+  },
+  "LolPop-51666": {
+    "center_color": "#bab6b1",
+    "edge_color": "#a19d97",
+    "pattern_color": "#665f52",
+    "text_color": "#f5f4f2"
+  },
+  "SnoopDogg-231894": {
+    "center_color": "#d08b6d",
+    "edge_color": "#b05770",
+    "pattern_color": "#9b0526",
+    "text_color": "#fedde0"
+  },
+  "LolPop-51649": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "PetSnake-15270": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
   }
 }
