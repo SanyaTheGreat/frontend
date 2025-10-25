@@ -5,6 +5,18 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./Slots.css";
 
+const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
+
+function slugify(s) {
+  return (s || "")
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-_.]/g, "")
+    .replace(/\-+/g, "-")
+    .replace(/^\-+|\-+$/g, "");
+}
+
 function Slots() {
   const [slots, setSlots] = useState([]);
   const [authorized, setAuthorized] = useState(false);
@@ -50,15 +62,13 @@ function Slots() {
     fetchSlots();
   }, [authorized]);
 
-  // --- анимации Lottie (аналог Home.jsx) ---
+  // --- анимации Lottie ---
   useEffect(() => {
     if (!authorized || loading || !slots.length) return;
 
     const destroyAll = () => {
       Object.values(animRefs.current).forEach((a) => {
-        try {
-          a?.destroy?.();
-        } catch {}
+        try { a?.destroy?.(); } catch {}
       });
       animRefs.current = {};
     };
@@ -68,7 +78,8 @@ function Slots() {
         const el = entry.target;
         const slotId = el.getAttribute("data-slotid");
         const nftName = el.getAttribute("data-nftname");
-        if (!slotId || !nftName) continue;
+        const nftSlug = el.getAttribute("data-nftslug");
+        if (!slotId || !nftName || !nftSlug) continue;
 
         if (!entry.isIntersecting) {
           animRefs.current[slotId]?.pause?.();
@@ -77,14 +88,21 @@ function Slots() {
 
         if (!animRefs.current[slotId]) {
           try {
+            // грузим JSON по slug через asset(), чтобы учесть base path
+            const key = nftSlug; // ключ кэша по slug
             let json;
-            if (animCache.has(nftName)) {
-              json = animCache.get(nftName);
+            if (animCache.has(key)) {
+              json = animCache.get(key);
             } else {
-              const res = await fetch(`/animations/${nftName}.json`);
-              if (!res.ok) throw new Error("not found");
+              const url = asset(`animations/${nftSlug}.json`);
+              const res = await fetch(url, { cache: "force-cache" });
+              // проверим тип ответа, чтобы не парсить HTML как JSON
+              const ct = res.headers.get("content-type") || "";
+              if (!res.ok || !ct.includes("application/json")) {
+                throw new Error("animation json not found");
+              }
               json = await res.json();
-              animCache.set(nftName, json);
+              animCache.set(key, json);
             }
 
             const inst = lottie.loadAnimation({
@@ -98,6 +116,18 @@ function Slots() {
             animRefs.current[slotId] = inst;
           } catch (e) {
             console.warn("Ошибка анимации", nftName, e);
+            // фолбэк на PNG из той же папки /animations/
+            if (!el.querySelector("img")) {
+              const img = document.createElement("img");
+              img.src = asset(`animations/${nftSlug}.png`);
+              img.alt = nftName;
+              img.onload = () => {};
+              img.onerror = () => { img.src = asset("animations/fallback.png"); };
+              img.style.width = "100%";
+              img.style.height = "100%";
+              img.style.objectFit = "contain";
+              el.appendChild(img);
+            }
           }
         }
       }
@@ -111,7 +141,7 @@ function Slots() {
       observerRef.current?.disconnect();
       destroyAll();
     };
-  }, [slots, authorized, loading]);
+  }, [slots, authorized, loading, animCache]);
 
   const handleOpenSlot = (id) => navigate(`/slots/${id}`);
 
@@ -138,31 +168,33 @@ function Slots() {
         <p className="loading-text">Нет доступных слотов</p>
       ) : (
         <div className="slots-grid">
-          {slots.map((slot) => (
-            <div
-              key={slot.id}
-              className={`slot-card ${slot.available ? "" : "slot-disabled"}`}
-              onClick={() => slot.available && handleOpenSlot(slot.id)}
-            >
-              <div className="slot-animation">
-                <div
-                  ref={(el) => {
-                    if (!el) return;
-                    containerRefs.current[slot.id] = el;
-                    el.setAttribute("data-slotid", String(slot.id));
-                    el.setAttribute("data-nftname", slot.nft_name);
-                    if (observerRef.current) observerRef.current.observe(el);
-                  }}
-                  className="anim-container"
-                />
-              </div>
+          {slots.map((slot) => {
+            const slug = slugify(slot.nft_name);
+            return (
+              <div
+                key={slot.id}
+                className={`slot-card ${slot.available ? "" : "slot-disabled"}`}
+                onClick={() => slot.available && handleOpenSlot(slot.id)}
+              >
+                <div className="slot-animation">
+                  <div
+                    ref={(el) => {
+                      if (!el) return;
+                      containerRefs.current[slot.id] = el;
+                      el.setAttribute("data-slotid", String(slot.id));
+                      el.setAttribute("data-nftname", slot.nft_name);
+                      el.setAttribute("data-nftslug", slug);
+                      if (observerRef.current) observerRef.current.observe(el);
+                    }}
+                    className="anim-container"
+                  />
+                </div>
 
-              <div className="slot-title">{slot.nft_name}</div>
-              <div className="slot-price">
-                {slot.price} ⭐
+                <div className="slot-title">{slot.nft_name}</div>
+                <div className="slot-price">{slot.price} ⭐</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
