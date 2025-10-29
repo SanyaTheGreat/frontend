@@ -109,12 +109,17 @@ export default function SpinPage() {
     (async () => {
       try {
         const cs = await fetchCases();
-        setCases(cs.filter((c) => c.is_active));
+        // сортируем активные кейсы по цене по возрастанию
+        const activeSorted = cs
+          .filter((c) => c.is_active)
+          .sort((a, b) => Number(a.price) - Number(b.price));
+        setCases(activeSorted);
       } catch (e) {
         setError(e.message);
       }
     })();
   }, []);
+
 
   // загрузка доступности бесплатного спина (1 раз при монтировании)
   useEffect(() => {
