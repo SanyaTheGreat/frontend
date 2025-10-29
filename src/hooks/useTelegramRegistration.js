@@ -5,6 +5,7 @@ export function useTelegramRegistration() {
 
   useEffect(() => {
     let timer;
+
     const boot = () => {
       timer = setInterval(() => {
         const tg = window?.Telegram?.WebApp;
@@ -21,22 +22,56 @@ export function useTelegramRegistration() {
           return;
         }
 
-        // 🔹 берём рефку из URL
+        // 1) Реферал: сначала из start_param, потом из URL ?ref=
+        const startParam = tg.initDataUnsafe?.start_param || '';
+        // ожидаем либо "ref_123456789", либо "123456789"
+        let refFromStart = null;
+        if (startParam) {
+          const m = String(startParam).match(/^(?:ref[_-])?(\d{5,})$/);
+          if (m) refFromStart = m[1];
+        }
         const urlParams = new URLSearchParams(window.location.search);
-        const ref = urlParams.get('ref');
+        let refFromUrl = urlParams.get('ref') || '';
+        if (refFromUrl) refFromUrl = String(refFromUrl).replace(/^@+/, ''); // убираем @ у username, если вдруг есть
+        const ref = refFromStart || refFromUrl || '';
 
-        // 🔹 вызываем /auth/telegram с рефкой
-        fetch(`https://lottery-server-waif.onrender.com/auth/telegram${ref ? `?ref=${ref}` : ''}`, {
+        // 2) Авторизация через /auth/telegram (реф прокидываем как есть)
+        fetch(`https://lottery-server-waif.onrender.com/auth/telegram${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ initData }),
         })
           .then(res => res.json())
-          .then(data => {
+          .then(async (data) => {
             if (data?.ok && data?.token) {
               localStorage.setItem('jwt', data.token);
               setAuthOk(true);
               console.log('✅ Авторизация прошла, токен получен');
+
+              // 3) Одноразовый вызов /users/register для фиксации реферала на сервере
+              const alreadyRegistered = localStorage.getItem('user_registered_once') === '1';
+              if (!alreadyRegistered) {
+                try {
+                  const qs = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+                  const r = await fetch(`https://lottery-server-waif.onrender.com/users/register${qs}`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${data.token}`,
+                    },
+                    body: JSON.stringify({}),
+                  });
+                  if (r.status === 200 || r.status === 201) {
+                    localStorage.setItem('user_registered_once', '1');
+                    console.log('🧾 /users/register выполнен', r.status);
+                  } else {
+                    const err = await r.json().catch(() => ({}));
+                    console.error('❌ /users/register ошибка:', r.status, err);
+                  }
+                } catch (e) {
+                  console.error('❌ Сеть /users/register:', e);
+                }
+              }
             } else {
               console.error('❌ /auth/telegram ошибка:', data);
               setAuthOk(false);
