@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../supabaseClient";
 
 // исключаем эти призы (фильтр по нормализованному виду)
-const EXCLUDED = new Set(["lose", "2stars", "5stars", "10stars", "23stars"]);
+const EXCLUDED = new Set(["lose", "2stars", "5stars", "10stars", "23stars","20stars","35stars",]);
 const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 // PNG-иконка подарка
