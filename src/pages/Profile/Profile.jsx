@@ -216,8 +216,23 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <p className="profile-wrapper">Loading Profile...</p>;
-  if (!profile) return <p className="profile-wrapper">Нет данных профиля</p>;
+  if (loading) {
+    return (
+      <>
+        <div className="starfield" aria-hidden="true" />
+        <p className="profile-wrapper">Loading Profile...</p>
+      </>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <>
+        <div className="starfield" aria-hidden="true" />
+        <p className="profile-wrapper">Нет данных профиля</p>
+      </>
+    );
+  }
 
   const avatarLetter = profile.username ? profile.username[0].toUpperCase() : '?';
   const withdrawDisabledReason =
@@ -226,93 +241,108 @@ export default function Profile() {
     : null;
 
   return (
-    <div className="profile-wrapper">
-      {profile?.avatar_url ? (
-        <img
-          src={profile.avatar_url}
-          alt="Avatar"
-          className="profile-avatar"
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-        />
-      ) : (
-        <div className="avatar-placeholder">{avatarLetter}</div>
-      )}
+    <>
+      {/* фоновое звёздное небо */}
+      <div className="starfield" aria-hidden="true" />
 
-      <div className="username-text">@{profile.username || 'user'}</div>
-
-      <div className="ton-connect-wrapper">
-        <TonConnectButton />
-      </div>
-
-      <div className="balance-actions-row">
-        <div className="balance-label">Баланс</div>
-        <div className="balance-display">
-          <span className="ton-icon">🪙</span>
-          <span>
-            {profile?.tickets !== undefined
-              ? parseFloat(profile.tickets).toFixed(2).replace(/\.?0+$/, '')
-              : '—'}
-          </span>
-        </div>
-        <div className="balance-buttons">
-          <button className="btn btn-stars" onClick={handleTopUpStars}>Пополнить⭐</button>
-          <button className="btn btn-ton" onClick={handleTopUp}>Пополнить💎</button>
-        </div>
-      </div>
-
-      <div className="profile-block">
-        <div className="profile-title">👥 Рефералы</div>
-        <div className="referral-flex-row">
-          <div>
-            <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
-
-            <div className="profile-row">Заработано всего: {fmt2(total)} 💎 TON</div>
-
-            <div className="profile-row" style={{ opacity: 0.95 }}>
-              Доступно для вывода: <b>{fmt2(can)}</b> 💎 TON
-            </div>
-            
-          </div>
-          <div className="referral-button-wrapper">
-            <button
-              onClick={handleReferralWithdraw}
-              className="referral-withdraw-btn"
-              disabled={!!withdrawDisabledReason}
-              title={withdrawDisabledReason || 'Вывести реферальные'}
-            >
-              Вывод
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="profile-block">
-        <div className="profile-title">🔗 Твоя Рефералка</div>
-        <div className="profile-ref-wrapper">
-          <input
-            type="text"
-            readOnly
-            className="profile-ref-link"
-            value={profile?.telegram_id ? `https://t.me/FightForGift_bot?start=${profile.telegram_id}` : ''}
-            onClick={(e) => e.target.select()}
+      <div className="profile-wrapper">
+        {profile?.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt="Avatar"
+            className="profile-avatar"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
-          <button onClick={handleCopyRefLink} className="copy-btn">🔗</button>
+        ) : (
+          <div className="avatar-placeholder">{avatarLetter}</div>
+        )}
+
+        <div className="username-text">@{profile.username || 'user'}</div>
+
+        <div className="ton-connect-wrapper">
+          <TonConnectButton />
         </div>
-      </div>
 
-      <div className="profile-block">
-        <div className="profile-title">🕘 История Пополнений</div>
-        <ul className="profile-history-list">
-          {(!purchases || purchases.length === 0) && <li>Пока пусто…</li>}
-          {purchases.map((item, i) => (
-            <li key={i}>
-              {item.amount} TON — {new Date(item.created_at).toLocaleString()}
-            </li>
-          ))}
-        </ul>
-      </div>
+        <div className="balance-actions-row">
+          <div className="balance-label">Баланс</div>
+          <div className="balance-display">
+            <span className="ton-icon">🪙</span>
+            <span>
+              {profile?.tickets !== undefined
+                ? parseFloat(profile.tickets).toFixed(2).replace(/\.?0+$/, '')
+                : '—'}
+            </span>
+          </div>
+          <div className="balance-buttons">
+            <button className="btn btn-stars" onClick={handleTopUpStars}>Пополнить⭐</button>
+            <button className="btn btn-ton" onClick={handleTopUp}>Пополнить💎</button>
+          </div>
+        </div>
 
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover theme="dark" />
-    </div>
+        <div className="profile-block">
+          <div className="profile-title">👥 Рефералы</div>
+          <div className="referral-flex-row">
+            <div>
+              <div className="profile-row">Количество: {referrals?.referral_count ?? 0}</div>
+
+              <div className="profile-row">Заработано всего: {fmt2(total)} 💎 TON</div>
+
+              <div className="profile-row" style={{ opacity: 0.95 }}>
+                Доступно для вывода: <b>{fmt2(can)}</b> 💎 TON
+              </div>
+              
+            </div>
+            <div className="referral-button-wrapper">
+              <button
+                onClick={handleReferralWithdraw}
+                className="referral-withdraw-btn"
+                disabled={!!withdrawDisabledReason}
+                title={withdrawDisabledReason || 'Вывести реферальные'}
+              >
+                Вывод
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="profile-block">
+          <div className="profile-title">🔗 Твоя Рефералка</div>
+          <div className="profile-ref-wrapper">
+            <input
+              type="text"
+              readOnly
+              className="profile-ref-link"
+              value={profile?.telegram_id ? `https://t.me/FightForGift_bot?start=${profile.telegram_id}` : ''}
+              onClick={(e) => e.target.select()}
+            />
+            <button onClick={handleCopyRefLink} className="copy-btn">🔗</button>
+          </div>
+        </div>
+
+        <div className="profile-block">
+          <div className="profile-title">🕘 История Пополнений</div>
+          <ul className="profile-history-list">
+            {(!purchases || purchases.length === 0) && <li>Пока пусто…</li>}
+            {purchases.map((item, i) => (
+              <li key={i}>
+                {item.amount} TON — {new Date(item.created_at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+      </div>
+    </>
   );
 }
