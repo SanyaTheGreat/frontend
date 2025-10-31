@@ -135,63 +135,68 @@ export default function Leaderboard() {
   const countdown = useCountdown(endAt || '2025-10-15T00:00:00Z');
 
   return (
-    <div className="lb-wrapper">
-      <div className="lb-header">
-        <div className="lb-title">ТАБЛИЦА ЛИДЕРОВ</div>
-        {!!countdown && <div className="lb-badge">{countdown}</div>}
-      </div>
+    <>
+      {/* звёздное небо */}
+      <div className="starfield" aria-hidden="true" />
 
-      <div className="lb-tabs">
-        <button
-          className={`lb-tab ${mode === 'spend' ? 'active' : ''}`}
-          onClick={() => setMode('spend')}
-        >
-          💎 Траты
-        </button>
-        <button
-          className={`lb-tab ${mode === 'referrals' ? 'active' : ''}`}
-          onClick={() => setMode('referrals')}
-        >
-          👥 Рефералы
-        </button>
-      </div>
-
-      <TopThree items={top3} a1Ref={a1Ref} a2Ref={a2Ref} a3Ref={a3Ref} unit={unit} />
-
-      <div className="lb-me-card">
-        <div className="lb-me-left">
-          <div className="lb-me-rank">{me?.rank ?? '—'}</div>
-          <div className="lb-me-label">Вы</div>
+      <div className="lb-wrapper">
+        <div className="lb-header">
+          <div className="lb-title">ТАБЛИЦА ЛИДЕРОВ</div>
+          {!!countdown && <div className="lb-badge">{countdown}</div>}
         </div>
-        <div className="lb-me-center">
-          <Avatar src={me?.avatar_url} username={me?.username} size={40} />
-          <div className="lb-username" title={formatUsername(me?.username)}>
-            {displayUsername(me?.username, 10)}
+
+        <div className="lb-tabs">
+          <button
+            className={`lb-tab ${mode === 'spend' ? 'active' : ''}`}
+            onClick={() => setMode('spend')}
+          >
+            💎 Траты
+          </button>
+          <button
+            className={`lb-tab ${mode === 'referrals' ? 'active' : ''}`}
+            onClick={() => setMode('referrals')}
+          >
+            👥 Рефералы
+          </button>
+        </div>
+
+        <TopThree items={top3} a1Ref={a1Ref} a2Ref={a2Ref} a3Ref={a3Ref} unit={unit} />
+
+        <div className="lb-me-card">
+          <div className="lb-me-left">
+            <div className="lb-me-rank">{me?.rank ?? '—'}</div>
+            <div className="lb-me-label">Вы</div>
+          </div>
+          <div className="lb-me-center">
+            <Avatar src={me?.avatar_url} username={me?.username} size={40} />
+            <div className="lb-username" title={formatUsername(me?.username)}>
+              {displayUsername(me?.username, 10)}
+            </div>
+          </div>
+          <div className="lb-me-right">
+            <div className="lb-amount">{formatAmount(me?.total_spent)}</div>
+            <div className="lb-amount-sub">{unit}</div>
           </div>
         </div>
-        <div className="lb-me-right">
-          <div className="lb-amount">{formatAmount(me?.total_spent)}</div>
-          <div className="lb-amount-sub">{unit}</div>
+
+        <div className="lb-list">
+          {loading ? (
+            <ListSkeleton />
+          ) : err ? (
+            <div className="lb-error">{err}</div>
+          ) : (
+            list.slice(0, 10).map(row => (
+              <Row
+                key={`${row.user_id}-${row.rank}`}
+                row={row}
+                highlight={row.telegram_id === telegramId}
+                unit={unit}
+              />
+            ))
+          )}
         </div>
       </div>
-
-      <div className="lb-list">
-        {loading ? (
-          <ListSkeleton />
-        ) : err ? (
-          <div className="lb-error">{err}</div>
-        ) : (
-          list.slice(0, 10).map(row => (
-            <Row
-              key={`${row.user_id}-${row.rank}`}
-              row={row}
-              highlight={row.telegram_id === telegramId}
-              unit={unit}
-            />
-          ))
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 
