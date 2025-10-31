@@ -814,5 +814,77 @@
     "edge_color": "#7e735b",
     "pattern_color": "#504429",
     "text_color": "#f2e5cd"
+  },
+  "SnoopDogg-264498": {
+    "center_color": "#b77a77",
+    "edge_color": "#814c52",
+    "pattern_color": "#551c22",
+    "text_color": "#edcacd"
+  },
+  "SnoopDogg-553638": {
+    "center_color": "#5f7849",
+    "edge_color": "#3c4f3b",
+    "pattern_color": "#102209",
+    "text_color": "#b7c4b5"
+  },
+  "PetSnake-73136": {
+    "center_color": "#8fae78",
+    "edge_color": "#4b825b",
+    "pattern_color": "#1c491f",
+    "text_color": "#d8f5de"
+  },
+  "SnoopDogg-500640": {
+    "center_color": "#8ab163",
+    "edge_color": "#559345",
+    "pattern_color": "#126b00",
+    "text_color": "#d5fbc8"
+  },
+  "EvilEye-41817": {
+    "center_color": "#be6f54",
+    "edge_color": "#994838",
+    "pattern_color": "#601508",
+    "text_color": "#fec6b9"
+  },
+  "PetSnake-76401": {
+    "center_color": "#b77a77",
+    "edge_color": "#814c52",
+    "pattern_color": "#551c22",
+    "text_color": "#edcacd"
+  },
+  "RecordPlayer-4796": {
+    "center_color": "#45b8ed",
+    "edge_color": "#3886d9",
+    "pattern_color": "#003e85",
+    "text_color": "#c2e7ff"
+  },
+  "SnoopDogg-140742": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "SnoopDogg-109485": {
+    "center_color": "#64695c",
+    "edge_color": "#4b5241",
+    "pattern_color": "#0f120b",
+    "text_color": "#c3c7bd"
+  },
+  "SnoopDogg-107162": {
+    "center_color": "#d08b6d",
+    "edge_color": "#b05770",
+    "pattern_color": "#9b0526",
+    "text_color": "#fedde0"
+  },
+  "WitchHat-68128": {
+    "center_color": "#d19a3a",
+    "edge_color": "#c06f47",
+    "pattern_color": "#9d3907",
+    "text_color": "#ffe1c3"
+  },
+  "HangingStar-5431": {
+    "center_color": "#a3a8b5",
+    "edge_color": "#7c808a",
+    "pattern_color": "#3f4550",
+    "text_color": "#dadfe2"
   }
 }
