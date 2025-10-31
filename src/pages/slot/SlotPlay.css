@@ -18,22 +18,27 @@
   --reel-item-h: 120px;
 }
 
+/* делаем контент «поверх звёзд» */
 .slotplay-wrapper{
-  min-height:100vh; background:#0d1b2a; color:#fff;
+  min-height:100vh;
+  background: transparent !important;
+  color:#fff;
   padding:16px 12px 100px;
   display:flex; flex-direction:column; align-items:center; gap:14px;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  position: relative;
+  z-index: 1;
 }
 
 .slotplay-top{
-  width: var(--machine-w);      /* панель той же ширины, что и аппарат */
+  width: var(--machine-w);
   display:flex; align-items:center; justify-content:space-between;
 }
 .back-btn{ background:rgba(255,255,255,.08); color:#fff; border:none; padding:8px 12px; border-radius:10px; cursor:pointer; }
 .slot-title{ font-weight:700; opacity:.9; }
 .price-chip{ background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); padding:6px 10px; border-radius:999px; font-weight:800; }
 
-/* аппарат — фиксированная ширина; никаких %/vw */
+/* аппарат — фиксированная ширина */
 .machine-wrapper{
   position:relative;
   width: var(--machine-w);
@@ -47,7 +52,6 @@
   user-select:none; -webkit-user-drag:none;
 }
 
-/* блок с тремя окнами — фиксированные координаты/размеры */
 .machine-body{
   position:absolute;
   top: var(--win-top);
@@ -86,3 +90,86 @@
 .result.lose{ background:rgba(255,255,255,.06); }
 .result.win_stars{ background:rgba(76,175,80,.25); }
 .result.win_gift{ background:rgba(33,150,243,.25); }
+
+/* ===== Реалистичное звёздное небо (как на Profile/Home/Leaderboard) ===== */
+.starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  min-height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 120%, #0b1622 0%, #000 65%);
+  overflow: hidden;
+}
+
+/* Слой 1: много мелких звёзд — плотная «случайная» плитка под мобильные */
+.starfield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 14% 9%,  rgba(255,255,255,.9) 60%, transparent 61%),
+    radial-gradient(1px 1px at 37% 22%, rgba(255,255,255,.75) 60%, transparent 61%),
+    radial-gradient(1px 1px at 63% 18%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 82% 27%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 8%  41%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 29% 57%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 47% 46%, rgba(255,255,255,.65) 60%, transparent 61%),
+    radial-gradient(1px 1px at 71% 52%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 90% 44%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 12% 75%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 38% 83%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 61% 72%, rgba(255,255,255,.75) 60%, transparent 61%),
+    radial-gradient(1px 1px at 85% 86%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 23% 14%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 55% 6%,  rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 78% 64%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 6%  92%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 94% 12%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 44% 90%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 67% 35%, rgba(255,255,255,.75) 60%, transparent 61%);
+  background-size: 180px 180px;
+  background-repeat: repeat;
+  animation: starParallax1 120s linear infinite;
+  opacity: .95;
+}
+
+/* Слой 2: крупнее и реже */
+.starfield::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 9%  18%, rgba(255,255,255,1)   60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 31% 33%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 57% 12%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 79% 42%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 12% 58%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 46% 69%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 68% 83%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 88% 21%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 22% 86%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 60% 50%, rgba(255,255,255,1)   60%, transparent 61%);
+  background-size: 240px 240px;
+  background-repeat: repeat;
+  animation: starParallax2 180s linear infinite;
+  opacity: .9;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,.35));
+}
+
+/* Параллакс-движение */
+@keyframes starParallax1 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -900px, 0); }
+}
+@keyframes starParallax2 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -1200px, 0); }
+}
+
+/* уважение к prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .starfield::before,
+  .starfield::after { animation: none; }
+}

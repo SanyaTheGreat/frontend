@@ -40,13 +40,12 @@ function iconSrcSafe(s) {
 
 /* -------------------- helpers -------------------- */
 function buildReelWithLeading(currentTop, target, loops = 8, band = Object.keys(SYMBOL_FILES)) {
-  // первый элемент = текущий видимый, чтобы не было «скачка» перед анимацией
   const reel = [currentTop];
   const total = loops * band.length;
   for (let i = 1; i < total; i++) {
     reel.push(band[Math.floor(Math.random() * band.length)]);
   }
-  reel.push(target); // финишный символ
+  reel.push(target);
   return reel;
 }
 
@@ -287,7 +286,7 @@ export default function SlotPlay() {
       console.error("❌ anim1 failed:", e);
     }
 
-    // пружинка (с относительными шагами к itemH)
+    // пружинка
     try {
       dbg("anim2 start");
       const bump1 = Math.round(itemHRef.current * 0.12);
@@ -309,7 +308,7 @@ export default function SlotPlay() {
       console.error("❌ anim2 failed:", e);
     }
 
-    // зафиксировать финальное состояние лент (убираем «подмену» перед следующим спином)
+    // зафиксировать финальное состояние лент
     setReels([[tL], [tM], [tR]]);
     setSpinSeq((n) => n + 1);
     currentTopRef.current = [tL, tM, tR];
@@ -332,123 +331,126 @@ export default function SlotPlay() {
   const displayStars = Math.floor(Number(balance.stars) || 0);
 
   return (
-    <div className="slotplay-wrapper">
-      {/* Верхняя панель */}
-      <div
-        style={{
-          position: "fixed",
-          top: 12,
-          left: 12,
-          right: 12,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          zIndex: 1000,
-        }}
-      >
-        <button className="back-btn" onClick={goBack} aria-label="Назад">←</button>
-        <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
+    <>
+      {/* звёздное небо */}
+      <div className="starfield" aria-hidden="true" />
 
+      <div className="slotplay-wrapper">
+        {/* Верхняя панель */}
         <div
           style={{
-            background: "rgba(0,0,0,0.5)",
-            borderRadius: 20,
-            padding: "6px 12px",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 14,
+            position: "fixed",
+            top: 12,
+            left: 12,
+            right: 12,
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            justifyContent: "space-between",
+            zIndex: 1000,
           }}
         >
-          <span>💎 {displayTickets} TON</span>
-          <span style={{ opacity: 0.5 }}>•</span>
-          <span>⭐ {displayStars}</span>
+          <button className="back-btn" onClick={goBack} aria-label="Назад">←</button>
+          <div className="slot-title">Слот #{String(slotId).slice(0, 6)}</div>
+
+          <div
+            style={{
+              background: "rgba(0,0,0,0.5)",
+              borderRadius: 20,
+              padding: "6px 12px",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <span>💎 {displayTickets} TON</span>
+            <span style={{ opacity: 0.5 }}>•</span>
+            <span>⭐ {displayStars}</span>
+          </div>
         </div>
+
+        <div className="machine-wrapper">
+          <img src={asset("slot-assets/machine.png")} alt="slot-machine" className="machine-frame" />
+          <div className="machine-body">
+            {[0, 1, 2].map((i) => (
+              <div className="window" key={i}>
+                <motion.div
+                  key={`reel-${i}-${spinSeq}`}
+                  className="reel"
+                  animate={i === 0 ? r1 : i === 1 ? r2 : r3}
+                  initial={false}
+                >
+                  {reels[i].map((sym, idx) => {
+                    const src = iconSrcSafe(sym);
+                    return (
+                      <div className="reel-item" key={`${i}-${idx}`}>
+                        {src ? (
+                          <img
+                            src={src}
+                            alt={String(sym)}
+                            draggable="false"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = asset("slot-symbols/fallback.png");
+                            }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: 48, lineHeight: 1 }}>{String(sym)}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          className="spin-btn"
+          onClick={async () => {
+            try {
+              await doSpin();
+            } finally {
+              setSpinning(false);
+              spinLockRef.current = false;
+              dbg("finally from button — force unlock");
+            }
+          }}
+          disabled={spinning || spinLockRef.current}
+        >
+          {spinning || spinLockRef.current ? "КРУТИМ…" : `КРУТИТЬ ЗА ${price} ⭐`}
+        </button>
+
+        {result && (
+          <div className={`result ${result.status}`}>
+            {result.status === "lose" && "Пусто 😔"}
+            {result.status === "win_stars" && `+${result.prize?.amount ?? ""}⭐`}
+            {result.status === "win_gift" && "Подарок в инвентарь 🎁"}
+          </div>
+        )}
+
+        {/* === КНОПКА ИНВЕНТАРЯ — слева внизу над таббаром === */}
+        <button
+          className="inventory-fab"
+          onClick={() => setInventoryOpen(true)}
+          aria-label="Инвентарь"
+        >
+          🎁 Инвентарь
+        </button>
+
+        {/* === МОДАЛКА ИНВЕНТАРЯ === */}
+        <InventoryModal
+          open={inventoryOpen}
+          onClose={() => setInventoryOpen(false)}
+          balanceStars={Number(balance.stars) || 0}
+          onWithdrawSuccess={() => {
+            if (typeof loadBalance === "function") loadBalance();
+          }}
+        />
       </div>
-
-      <div className="machine-wrapper">
-        <img src={asset("slot-assets/machine.png")} alt="slot-machine" className="machine-frame" />
-        <div className="machine-body">
-          {[0, 1, 2].map((i) => (
-            <div className="window" key={i}>
-              <motion.div
-                key={`reel-${i}-${spinSeq}`}
-                className="reel"
-                animate={i === 0 ? r1 : i === 1 ? r2 : r3}
-                initial={false}
-              >
-                {reels[i].map((sym, idx) => {
-                  const src = iconSrcSafe(sym);
-                  return (
-                    <div className="reel-item" key={`${i}-${idx}`}>
-                      {src ? (
-                        <img
-                          src={src}
-                          alt={String(sym)}
-                          draggable="false"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = asset("slot-symbols/fallback.png");
-                          }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: 48, lineHeight: 1 }}>{String(sym)}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </motion.div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <button
-        className="spin-btn"
-        onClick={async () => {
-          try {
-            await doSpin();
-          } finally {
-            // страховка на случай любого неожиданного исключения
-            setSpinning(false);
-            spinLockRef.current = false;
-            dbg("finally from button — force unlock");
-          }
-        }}
-        disabled={spinning || spinLockRef.current}
-      >
-        {spinning || spinLockRef.current ? "КРУТИМ…" : `КРУТИТЬ ЗА ${price} ⭐`}
-      </button>
-
-      {result && (
-        <div className={`result ${result.status}`}>
-          {result.status === "lose" && "Пусто 😔"}
-          {result.status === "win_stars" && `+${result.prize?.amount ?? ""}⭐`}
-          {result.status === "win_gift" && "Подарок в инвентарь 🎁"}
-        </div>
-      )}
-
-      {/* === КНОПКА ИНВЕНТАРЯ — слева внизу над таббаром === */}
-      <button
-        className="inventory-fab"
-        onClick={() => setInventoryOpen(true)}
-        aria-label="Инвентарь"
-      >
-        🎁 Инвентарь
-      </button>
-
-      {/* === МОДАЛКА ИНВЕНТАРЯ === */}
-      <InventoryModal
-        open={inventoryOpen}
-        onClose={() => setInventoryOpen(false)}
-        balanceStars={Number(balance.stars) || 0}
-        onWithdrawSuccess={() => {
-          // после успешного вывода обновим баланс
-          if (typeof loadBalance === "function") loadBalance();
-        }}
-      />
-    </div>
+    </>
   );
 }
