@@ -312,6 +312,7 @@ button.ton-connect-button,
 }
 
 /* базовый фон — глубокий космос */
+/* ===== Реалистичное звёздное небо (без диагоналей, мобильный-friendly) ===== */
 .starfield {
   position: fixed;
   inset: 0;
@@ -319,72 +320,80 @@ button.ton-connect-button,
   min-height: 100vh;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at 50% 120%, #0b1622 0%, #000 65%);
+  background:
+    radial-gradient(ellipse at 50% 120%, #0b1622 0%, #000 65%); /* мягкая глубина */
   overflow: hidden;
 }
 
-/* общий стиль звёзд */
-.starfield::before,
+/* Слой 1: много мелких звёзд. Плитка 180x180, случайные позиции в процентах */
+.starfield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 14% 9%,  rgba(255,255,255,.9) 60%, transparent 61%),
+    radial-gradient(1px 1px at 37% 22%, rgba(255,255,255,.75) 60%, transparent 61%),
+    radial-gradient(1px 1px at 63% 18%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 82% 27%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 8%  41%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 29% 57%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 47% 46%, rgba(255,255,255,.65) 60%, transparent 61%),
+    radial-gradient(1px 1px at 71% 52%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 90% 44%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 12% 75%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 38% 83%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 61% 72%, rgba(255,255,255,.75) 60%, transparent 61%),
+    radial-gradient(1px 1px at 85% 86%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 23% 14%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 55% 6%,  rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 78% 64%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 6%  92%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 94% 12%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 44% 90%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 67% 35%, rgba(255,255,255,.75) 60%, transparent 61%);
+  background-size: 180px 180px;    /* 🔸 компактная плитка → плотное поле на мобильном */
+  background-repeat: repeat;
+  animation: starParallax1 120s linear infinite;
+  opacity: .95;
+}
+
+/* Слой 2: редкие/чуть крупнее звёзды. Плитка 240x240, другие позиции */
 .starfield::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 2px;
-  height: 2px;
-  background: white;
-  border-radius: 50%;
-  animation: starDrift linear infinite;
-}
-
-/* слой 1 — сотни мелких звёзд */
-.starfield::before {
-  box-shadow:
-    10px 50px white, 40px 80px white, 70px 120px white, 100px 160px white, 130px 200px white,
-    160px 240px white, 190px 280px white, 220px 320px white, 250px 360px white, 280px 400px white,
-    310px 440px white, 340px 480px white, 370px 520px white, 400px 560px white, 430px 600px white,
-    460px 640px white, 490px 680px white, 520px 720px white, 550px 760px white, 580px 800px white,
-    610px 840px white, 640px 880px white, 670px 920px white, 700px 960px white, 730px 1000px white,
-    20px 1040px white, 50px 1080px white, 80px 1120px white, 110px 1160px white, 140px 1200px white,
-    170px 1240px white, 200px 1280px white, 230px 1320px white, 260px 1360px white, 290px 1400px white,
-    320px 1440px white, 350px 1480px white, 380px 1520px white, 410px 1560px white, 440px 1600px white,
-    470px 1640px white, 500px 1680px white, 530px 1720px white, 560px 1760px white, 590px 1800px white,
-    620px 1840px white, 650px 1880px white, 680px 1920px white, 710px 1960px white, 740px 2000px white,
-    770px 2040px white, 800px 2080px white, 830px 2120px white, 860px 2160px white, 890px 2200px white,
-    920px 2240px white, 950px 2280px white, 980px 2320px white, 1010px 2360px white, 1040px 2400px white,
-    1070px 2440px white, 1100px 2480px white, 1130px 2520px white, 1160px 2560px white, 1190px 2600px white,
-    1220px 2640px white, 1250px 2680px white, 1280px 2720px white, 1310px 2760px white, 1340px 2800px white,
-    1370px 2840px white, 1400px 2880px white, 1430px 2920px white, 1460px 2960px white, 1490px 3000px white;
-  opacity: 0.85;
-  animation-duration: 120s;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 9%  18%, rgba(255,255,255,1)   60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 31% 33%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 57% 12%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 79% 42%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 12% 58%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 46% 69%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 68% 83%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 88% 21%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 22% 86%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 60% 50%, rgba(255,255,255,1)   60%, transparent 61%);
+  background-size: 240px 240px;
+  background-repeat: repeat;
+  animation: starParallax2 180s linear infinite;
+  opacity: .9;
   filter: drop-shadow(0 0 2px rgba(255,255,255,.35));
 }
 
-/* слой 2 — крупные звёзды, с мягким свечением */
-.starfield::after {
-  width: 3px;
-  height: 3px;
-  opacity: 0.95;
-  box-shadow:
-    30px 200px white, 90px 500px white, 150px 800px white, 210px 1100px white, 270px 1400px white,
-    330px 1700px white, 390px 2000px white, 450px 2300px white, 510px 2600px white, 570px 2900px white,
-    630px 3200px white, 690px 3500px white, 750px 3800px white, 810px 4100px white, 870px 4400px white,
-    930px 4700px white, 990px 5000px white, 1050px 5300px white, 1110px 5600px white, 1170px 5900px white;
-  animation-duration: 180s;
-  filter: drop-shadow(0 0 3px rgba(255,255,255,.4));
+/* Движение разных слоёв: лёгкий параллакс, без «сеточных» диагоналей */
+@keyframes starParallax1 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -900px, 0); }
+}
+@keyframes starParallax2 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -1200px, 0); }
 }
 
-/* плавное движение вверх */
-@keyframes starDrift {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-1000px); }
-}
-
-/* если пользователь отключил анимации */
+/* Уважение prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .starfield::before,
   .starfield::after {
     animation: none;
   }
 }
-
