@@ -303,26 +303,26 @@ button.ton-connect-button,
 }
 
 
-/* профайл поверх фона */
+/* ===== Улучшенное звёздное небо для мобильных ===== */
 .profile-wrapper {
   background: transparent !important;
   position: relative;
   z-index: 1;
 }
 
-/* полноэкранный слой звёзд */
+/* фон звёзд */
 .starfield {
   position: fixed;
   inset: 0;
-  min-height: 100vh;            /* важно для Android WebView */
   width: 100%;
+  min-height: 100vh;
   z-index: 0;
   pointer-events: none;
   background: radial-gradient(ellipse at 50% 120%, #0b1622 0%, #000 65%);
   overflow: hidden;
 }
 
-/* 🔹 Новый вариант звёздного неба — плотный, стабильный на всех экранах */
+/* звёзды через box-shadow, но теперь с плотным распределением */
 .starfield::before,
 .starfield::after {
   content: '';
@@ -334,53 +334,42 @@ button.ton-connect-button,
   background: white;
   border-radius: 50%;
   animation: starDrift linear infinite;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
-/* слой 1 — мелкие звёзды (много) */
+/* слой 1 — мелкие звёзды, много */
 .starfield::before {
   box-shadow:
-    50px 200px white, 130px 540px white, 260px 800px white,
-    390px 150px white, 520px 720px white, 650px 480px white,
-    780px 900px white, 910px 350px white, 1040px 600px white,
-    1170px 250px white, 1300px 750px white, 1430px 100px white,
-    1560px 900px white, 1690px 450px white, 1820px 800px white,
-    1950px 300px white, 2080px 700px white, 2210px 200px white,
-    2340px 950px white, 2470px 500px white, 2600px 850px white,
-    2730px 400px white, 2860px 950px white, 2990px 150px white,
-    3120px 700px white, 3250px 250px white, 3380px 800px white,
-    3510px 100px white, 3640px 650px white, 3770px 300px white,
-    3900px 950px white, 4030px 450px white, 4160px 850px white,
-    4290px 250px white, 4420px 950px white, 4550px 600px white,
-    4680px 200px white, 4810px 900px white, 4940px 350px white,
-    5070px 800px white;
-  animation-duration: 140s;
+    40px 100px white, 120px 300px white, 200px 500px white,
+    280px 700px white, 360px 900px white, 440px 200px white,
+    520px 400px white, 600px 600px white, 680px 800px white,
+    760px 1000px white, 40px 1200px white, 120px 1400px white,
+    200px 1600px white, 280px 1800px white, 360px 2000px white,
+    440px 2200px white, 520px 2400px white, 600px 2600px white,
+    680px 2800px white, 760px 3000px white;
+  animation-duration: 100s;
 }
 
-/* слой 2 — крупнее и немного медленнее */
+/* слой 2 — чуть крупнее, но реже */
 .starfield::after {
   width: 3px;
   height: 3px;
   opacity: 0.9;
   box-shadow:
-    80px 400px white, 210px 850px white, 340px 300px white,
-    470px 900px white, 600px 500px white, 730px 950px white,
-    860px 150px white, 990px 700px white, 1120px 250px white,
-    1250px 850px white, 1380px 450px white, 1510px 950px white,
-    1640px 100px white, 1770px 650px white, 1900px 300px white,
-    2030px 950px white, 2160px 150px white, 2290px 750px white,
-    2420px 400px white, 2550px 950px white, 2680px 500px white,
-    2810px 900px white, 2940px 250px white, 3070px 850px white;
-  animation-duration: 200s;
+    60px 200px white, 180px 600px white, 300px 1000px white,
+    420px 400px white, 540px 800px white, 660px 1200px white,
+    780px 1600px white, 60px 2000px white, 180px 2400px white,
+    300px 2800px white, 420px 3200px white, 540px 3600px white;
+  animation-duration: 160s;
 }
 
-/* лёгкое движение вверх */
+/* мягкое движение вверх */
 @keyframes starDrift {
   from { transform: translateY(0); }
   to   { transform: translateY(-1000px); }
 }
 
-/* уважение к системной настройке — отключаем анимацию при reduced motion */
+/* при отключённой анимации */
 @media (prefers-reduced-motion: reduce) {
   .starfield::before,
   .starfield::after {
