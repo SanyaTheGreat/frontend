@@ -139,49 +139,57 @@ function Slots() {
 
   if (loading) {
     return (
-      <div className="slots-wrapper">
-        <p className="loading-text">Загрузка...</p>
-        <ToastContainer theme="dark" position="top-right" autoClose={3000} />
-      </div>
+      <>
+        <div className="starfield" aria-hidden="true" />
+        <div className="slots-wrapper">
+          <p className="loading-text">Загрузка...</p>
+          <ToastContainer theme="dark" position="top-right" autoClose={3000} />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="slots-wrapper">
-      {slots.length === 0 ? (
-        <p className="loading-text">Нет доступных слотов</p>
-      ) : (
-        <div className="slots-grid">
-          {slots.map((slot) => (
-            <div
-              key={slot.id}
-              className={`slot-card ${slot.available ? "" : "slot-disabled"}`}
-              onClick={() => slot.available && handleOpenSlot(slot.id)}
-            >
-              <div className="slot-animation">
-                <div
-                  ref={(el) => {
-                    if (!el) return;
-                    containerRefs.current[slot.id] = el;
-                    el.setAttribute("data-slotid", String(slot.id));
-                    el.setAttribute("data-nftname", slot.nft_name);
-                    el.setAttribute("data-nftslug", slot.slug); // файлы ищем по slug
-                    if (observerRef.current) observerRef.current.observe(el);
-                  }}
-                  className="anim-container"
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-                />
+    <>
+      {/* звёздное небо */}
+      <div className="starfield" aria-hidden="true" />
+
+      <div className="slots-wrapper">
+        {slots.length === 0 ? (
+          <p className="loading-text">Нет доступных слотов</p>
+        ) : (
+          <div className="slots-grid">
+            {slots.map((slot) => (
+              <div
+                key={slot.id}
+                className={`slot-card ${slot.available ? "" : "slot-disabled"}`}
+                onClick={() => slot.available && handleOpenSlot(slot.id)}
+              >
+                <div className="slot-animation">
+                  <div
+                    ref={(el) => {
+                      if (!el) return;
+                      containerRefs.current[slot.id] = el;
+                      el.setAttribute("data-slotid", String(slot.id));
+                      el.setAttribute("data-nftname", slot.nft_name);
+                      el.setAttribute("data-nftslug", slot.slug); // файлы ищем по slug
+                      if (observerRef.current) observerRef.current.observe(el);
+                    }}
+                    className="anim-container"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                  />
+                </div>
+
+                <div className="slot-title">{slot.nft_name}</div>
+                <div className="slot-price">{slot.price} ⭐</div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="slot-title">{slot.nft_name}</div>
-              <div className="slot-price">{slot.price} ⭐</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <ToastContainer theme="dark" position="top-right" autoClose={3000} />
-    </div>
+        <ToastContainer theme="dark" position="top-right" autoClose={3000} />
+      </div>
+    </>
   );
 }
 
