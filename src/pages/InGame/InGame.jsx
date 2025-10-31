@@ -22,7 +22,7 @@ function WheelCard({ wheel, grayscale, colorsMap, onGo }) {
         });
       })
       .catch(() => {
-        // Ошибка загрузки анимации — можно логировать
+        // noop
       });
   }, [wheel.nft_name]);
 
@@ -42,7 +42,7 @@ function WheelCard({ wheel, grayscale, colorsMap, onGo }) {
             overflow: 'hidden',
             background: backgroundStyle,
           }}
-        ></div>
+        />
         <button className="go-button" onClick={onGo}>
           Go!
         </button>
@@ -116,9 +116,7 @@ function InGame() {
     fetch('/animations/colors.json')
       .then(res => res.json())
       .then(setColorsMap)
-      .catch(() => {
-        // Ошибка загрузки цветов — можно логировать
-      });
+      .catch(() => {});
   }, []);
 
   const activeWheels = wheels.filter(w => w.status === 'active');
@@ -129,35 +127,40 @@ function InGame() {
   };
 
   return (
-    <div className="inGame-wrapper">
-      {activeWheels.map(wheel => (
-        <WheelCard
-          key={wheel.id}
-          wheel={wheel}
-          grayscale={false}
-          colorsMap={colorsMap}
-          onGo={() => handleGo(wheel.id)}
-        />
-      ))}
+    <>
+      {/* звёздный фон */}
+      <div className="starfield" aria-hidden="true" />
 
-      {completedWheels.length > 0 && (
-        <div className="separator">Завершенные игры</div>
-      )}
+      <div className="inGame-wrapper">
+        {activeWheels.map(wheel => (
+          <WheelCard
+            key={wheel.id}
+            wheel={wheel}
+            grayscale={false}
+            colorsMap={colorsMap}
+            onGo={() => handleGo(wheel.id)}
+          />
+        ))}
 
-      {completedWheels.map(wheel => (
-        <WheelCard
-          key={wheel.id}
-          wheel={wheel}
-          grayscale={true}
-          colorsMap={colorsMap}
-          onGo={() => handleGo(wheel.id)}
-        />
-      ))}
+        {completedWheels.length > 0 && (
+          <div className="separator">Завершенные игры</div>
+        )}
 
-      {wheels.length === 0 && (
-        <p className="no-wheels">Все твои игры будут отображаться на этой странице.</p>
-      )}
-    </div>
+        {completedWheels.map(wheel => (
+          <WheelCard
+            key={wheel.id}
+            wheel={wheel}
+            grayscale={true}
+            colorsMap={colorsMap}
+            onGo={() => handleGo(wheel.id)}
+          />
+        ))}
+
+        {wheels.length === 0 && (
+          <p className="no-wheels">Все твои игры будут отображаться на этой странице.</p>
+        )}
+      </div>
+    </>
   );
 }
 

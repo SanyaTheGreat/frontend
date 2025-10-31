@@ -3,7 +3,7 @@
   flex-direction: column;
   align-items: center;
   gap: 20px; /* Отступы между карточками */
-  background-color: #0d1b2a;
+  background: transparent !important;   /* контент поверх звёзд */
   min-height: 100vh;
   width: 100%;
   padding: 20px;
@@ -11,6 +11,91 @@
   box-sizing: border-box;
   font-family: 'Arial', sans-serif;
   overflow-y: auto;
+  position: relative;
+  z-index: 1;                           /* выше звёзд */
+}
+
+/* ===== Реалистичное звёздное небо (лёгкая CSS-анимация) ===== */
+.starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  min-height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 120%, #0b1622 0%, #000 65%);
+  overflow: hidden;
+}
+
+/* Слой 1: много мелких, плотнее под мобильный */
+.starfield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 14% 9%,  rgba(255,255,255,.9) 60%, transparent 61%),
+    radial-gradient(1px 1px at 37% 22%, rgba(255,255,255,.75) 60%, transparent 61%),
+    radial-gradient(1px 1px at 63% 18%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 82% 27%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 8%  41%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 29% 57%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 47% 46%, rgba(255,255,255,.65) 60%, transparent 61%),
+    radial-gradient(1px 1px at 71% 52%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 90% 44%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 12% 75%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 38% 83%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 61% 72%, rgba(255,255,255,.75) 60%, transparent 61%),
+    radial-gradient(1px 1px at 85% 86%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 23% 14%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 55% 6%,  rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 78% 64%, rgba(255,255,255,.7)  60%, transparent 61%),
+    radial-gradient(1px 1px at 6%  92%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1px 1px at 94% 12%, rgba(255,255,255,.8)  60%, transparent 61%),
+    radial-gradient(1px 1px at 44% 90%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1px 1px at 67% 35%, rgba(255,255,255,.75) 60%, transparent 61%);
+  background-size: 180px 180px;  /* плотнее сетка */
+  background-repeat: repeat;
+  animation: starParallax1 120s linear infinite;
+  opacity: .95;
+}
+
+/* Слой 2: чуть крупнее и реже */
+.starfield::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 9%  18%, rgba(255,255,255,1)   60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 31% 33%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 57% 12%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 79% 42%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 12% 58%, rgba(255,255,255,.85) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 46% 69%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 68% 83%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 88% 21%, rgba(255,255,255,.9)  60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 22% 86%, rgba(255,255,255,.95) 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 60% 50%, rgba(255,255,255,1)   60%, transparent 61%);
+  background-size: 240px 240px;
+  background-repeat: repeat;
+  animation: starParallax2 180s linear infinite;
+  opacity: .9;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,.35));
+}
+
+/* Параллакс */
+@keyframes starParallax1 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -900px, 0); }
+}
+@keyframes starParallax2 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -1200px, 0); }
+}
+
+/* respects reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .starfield::before,
+  .starfield::after { animation: none; }
 }
 
 .wheel-card {
