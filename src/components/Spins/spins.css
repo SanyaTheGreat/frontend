@@ -133,6 +133,15 @@
   100% { transform: translate3d(-400px, -600px, 0); }
 }
 
+/* канвас со звёздами поверх градиента */
+.star-canvas{
+  position: fixed;
+  inset: 0;
+  z-index: 0;            /* под контентом */
+  pointer-events: none;
+  background: transparent;
+}
+
 .case-range {
   width: 100%;
   appearance: none;
@@ -204,13 +213,13 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: max-content;
-  max-width: calc(100% - 32px); /* на всякий */
-  white-space: nowrap;          /* чтобы не разъезжался в высоту */
+  max-width: calc(100% - 32px);
+  white-space: nowrap;
   box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
 
 .spin-toast--on-wheel::before{
-  content: attr(data-empty); /* хак, не влияет; можно удалить */
+  content: attr(data-empty);
 }
 
 /* чтобы сам бокс тоста не был растянут, оборачиваем его */
@@ -244,16 +253,15 @@
 .inventory-badge:hover{ background: rgba(0,0,0,0.6); }
 .inventory-badge:active{ transform: translateY(1px); }
 
-
 /* ===== Лента побед (WinsTicker) ===== */
 .wins-ticker__wrap{
   position: relative;
   overflow: hidden;
-  height: 40px;          /* компактно */
-  padding: 4px 0;        /* минимальные отступы вверх/вниз */
+  height: 40px;
+  padding: 4px 0;
   background: transparent;
-  z-index: 2;            /* над фоном, под колесом норм */
-  margin: 4px 0 6px;     /* чуть воздуха над/под лентой */
+  z-index: 2;
+  margin: 4px 0 6px;
 }
 
 .wins-ticker__track{
@@ -262,18 +270,18 @@
   width: max-content;
   animation: winsTickerScroll linear infinite;
   will-change: transform;
-  pointer-events: none;  /* не перехватывает клики */
+  pointer-events: none;
 }
 
 .wins-ticker__wrap:hover .wins-ticker__track{
-  animation-play-state: paused; /* пауза при hover */
+  animation-play-state: paused;
 }
 
 .wins-ticker__row{
   display: flex;
   align-items: center;
-  gap: 10px;             /* нормальный отступ между подарками */
-  margin-right: 24px;    /* зазор между дублями дорожки */
+  gap: 10px;
+  margin-right: 24px;
 }
 
 .wins-ticker__row img{
@@ -286,7 +294,7 @@
 
 @keyframes winsTickerScroll {
   from { transform: translate3d(0,0,0); }
-  to   { transform: translate3d(-50%,0,0); } /* ширина первой дорожки */
+  to   { transform: translate3d(-50%,0,0); }
 }
 
 /* уважение к reduced-motion */

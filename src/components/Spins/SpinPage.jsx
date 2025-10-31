@@ -120,7 +120,6 @@ export default function SpinPage() {
     })();
   }, []);
 
-
   // загрузка доступности бесплатного спина (1 раз при монтировании)
   useEffect(() => {
     (async () => {
@@ -265,6 +264,73 @@ export default function SpinPage() {
       ) || chances[0];
     return loseSeg?.id ?? null;
   }
+
+  // ===== star-canvas init for SpinPage (реалистичное небо) =====
+  useEffect(() => {
+    const canvas = document.getElementById("spin-stars");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const DPR = Math.min(2, window.devicePixelRatio || 1);
+
+    let raf = 0;
+    const stars = [];
+    const TAU = Math.PI * 2;
+
+    function resize() {
+      const { innerWidth: w, innerHeight: h } = window;
+      canvas.width = Math.floor(w * DPR);
+      canvas.height = Math.floor(h * DPR);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      stars.length = 0;
+      const density = 0.08; // звёзд на 1000px^2
+      const count = Math.floor((w * h) / 1000 * density);
+
+      for (let i = 0; i < count; i++) {
+        const r = (Math.random() < 0.25 ? 1.3 : 1) * (0.5 + Math.random() * 1.2);
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: r * DPR,
+          a: 0.6 + Math.random() * 0.4,
+          twAmp: 0.25 + Math.random() * 0.4,
+          twSpd: 0.4 + Math.random() * 0.9,
+          phi: Math.random() * TAU,
+        });
+      }
+    }
+
+    function draw(t) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (const s of stars) {
+        const tw = Math.sin(t * 0.001 * s.twSpd + s.phi) * s.twAmp;
+        const alpha = Math.max(0, Math.min(1, s.a + tw));
+
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 2.2, 0, TAU);
+        ctx.fillStyle = `rgba(255,255,255,${alpha * 0.08})`;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, TAU);
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.fill();
+      }
+
+      raf = requestAnimationFrame(draw);
+    }
+
+    resize();
+    raf = requestAnimationFrame(draw);
+    window.addEventListener("resize", resize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+  // ===== end star-canvas init =====
 
   // запуск спина (обычный)
   async function handleSpin() {
@@ -456,6 +522,10 @@ export default function SpinPage() {
 
   return (
     <>
+      {/* ===== фоновые слои: градиент + canvas со звёздами ===== */}
+      <div className="space-bg" aria-hidden="true" />
+      <canvas id="spin-stars" className="star-canvas" aria-hidden="true" />
+
       {/* Инвентарь слева сверху (напротив баланса) */}
       <button
         type="button"
