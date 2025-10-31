@@ -42,7 +42,6 @@ function Home() {
   const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
   const fetchWheels = async () => {
-    // ПУБЛИЧНОЕ чтение — оставляем через Supabase
     const { data, error } = await supabase
       .from('wheels')
       .select('*')
@@ -177,7 +176,6 @@ function Home() {
   }, [wheels, sortBy]);
 
   const handleJoin = async (wheel, skipModal = false) => {
-    // 1) базовые проверки (как раньше)
     if ((wheel.participants_count ?? 0) >= wheel.size) {
       toast.warn('Колесо уже заполнено');
       return;
@@ -187,7 +185,6 @@ function Home() {
       return;
     }
 
-    // 2) проверяем наличие JWT
     const token = localStorage.getItem('jwt');
     if (!token) {
       toast.error('Требуется авторизация. Открой Mini App в Telegram.');
@@ -196,7 +193,6 @@ function Home() {
 
     setLoadingId(wheel.id);
 
-    // 3) промокод (как и раньше — по желанию)
     let extra = {};
     if (wheel.mode === 'promo') {
       const code = window.prompt('Введите пароль');
@@ -207,7 +203,6 @@ function Home() {
       extra.promokey = code.trim();
     }
 
-    // 4) отправляем ТОЛЬКО wheel_id (+ promokey), user определяется на сервере из JWT
     const res = await fetch('https://lottery-server-waif.onrender.com/wheel/join', {
       method: 'POST',
       headers: {
@@ -236,154 +231,147 @@ function Home() {
   };
 
   return (
-    <div className="home-wrapper">
-      <div className="sort-bar">
-        <select
-          className="sort-select"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          <option value="players_desc">Заполненность: больше</option>
-          <option value="players_asc">Заполненность: меньше</option>
-          <option value="price_asc">Цена: ниже → выше</option>
-          <option value="price_desc">Цена: выше → ниже</option>
-          <option value="size_desc">Макс. Игроков: больше → меньше</option>
-          <option value="size_asc">Макс. Игроков: меньше → больше</option>
-        </select>
-      </div>
+    <>
+      {/* звёздное небо */}
+      <div className="starfield" aria-hidden="true" />
 
-      {sortedWheels.length === 0 ? (
-        <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
-          Загрузка...
-        </p>
-      ) : (
-        <div className="wheels-grid">
-          {sortedWheels.map((wheel) => {
-            const bg = colorsMap[wheel.nft_name]
-              ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
-              : '#000';
-
-            const modeIcon =
-              wheel.mode === 'subscription'
-                ? '📢'
-                : wheel.mode === 'promo'
-                ? '🔑'
-                : null;
-
-            return (
-              <div key={wheel.id} className="wheel-card">
-                <div className="wheel-title">
-                  {wheel.nft_name}
-                  {modeIcon && (
-                    <span
-                      style={{
-                        marginLeft: 6,
-                        fontSize: 14,
-                      }}
-                    >
-                      {modeIcon}
-                    </span>
-                  )}
-                </div>
-
-                <div
-                  className="wheel-image"
-                  style={{
-                    background: bg,
-                    borderRadius: '10px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    ref={(el) => {
-                      if (!el) return;
-                      containerRefs.current[wheel.id] = el;
-                      el.setAttribute('data-wheelid', String(wheel.id));
-                      el.setAttribute('data-nftname', wheel.nft_name);
-                      if (observerRef.current) observerRef.current.observe(el);
-                    }}
-                    style={{
-                      position: 'absolute',
-                      width: '100%',
-                      height: '100%',
-                      top: 0,
-                      left: 0,
-                    }}
-                  />
-                </div>
-
-                <div className="wheel-buttons">
-                  <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
-                    Лобби
-                  </button>
-                  <button
-                    className="join-button"
-                    onClick={() => handleJoin(wheel)}
-                    disabled={loadingId === wheel.id || (wheel.participants_count ?? 0) >= wheel.size}
-                  >
-                    {loadingId === wheel.id ? 'Грузим...' : 'Вход'}
-                  </button>
-                </div>
-
-                <div className="wheel-info">
-                  <span>Игроков {wheel.participants_count ?? 0}/{wheel.size}</span>
-                  <span>
-                    Цена: {Number(wheel.price) === 0 ? 'Free' : wheel.price} <span className="diamond">💎</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+      <div className="home-wrapper">
+        <div className="sort-bar">
+          <select
+            className="sort-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="players_desc">Заполненность: больше</option>
+            <option value="players_asc">Заполненность: меньше</option>
+            <option value="price_asc">Цена: ниже → выше</option>
+            <option value="price_desc">Цена: выше → ниже</option>
+            <option value="size_desc">Макс. Игроков: больше → меньше</option>
+            <option value="size_asc">Макс. Игроков: меньше → больше</option>
+          </select>
         </div>
-      )}
 
-      {/* Модалка подписки */}
-      {subscriptionModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <p>
-              Для участия нужно быть подписанным на канал{" "}
-              <a
-                href={`https://t.me/${subscriptionModal.channel.replace('@', '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#4da6ff', fontWeight: 'bold' }}
-              >
-                {subscriptionModal.channel}
-              </a>
-            </p>
-            <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button
-                className="lobby-button"
-                onClick={() => setSubscriptionModal(null)}
-              >
-                Отмена
-              </button>
-              <button
-                className="join-button"
-                onClick={() => handleJoin(subscriptionModal, true)}
-              >
-                Я подписан
-              </button>
+        {sortedWheels.length === 0 ? (
+          <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
+            Загрузка...
+          </p>
+        ) : (
+          <div className="wheels-grid">
+            {sortedWheels.map((wheel) => {
+              const bg = colorsMap[wheel.nft_name]
+                ? `linear-gradient(135deg, ${colorsMap[wheel.nft_name].center_color}, ${colorsMap[wheel.nft_name].edge_color})`
+                : '#000';
+
+              const modeIcon =
+                wheel.mode === 'subscription'
+                  ? '📢'
+                  : wheel.mode === 'promo'
+                  ? '🔑'
+                  : null;
+
+              return (
+                <div key={wheel.id} className="wheel-card">
+                  <div className="wheel-title">
+                    {wheel.nft_name}
+                    {modeIcon && (
+                      <span style={{ marginLeft: 6, fontSize: 14 }}>
+                        {modeIcon}
+                      </span>
+                    )}
+                  </div>
+
+                  <div
+                    className="wheel-image"
+                    style={{
+                      background: bg,
+                      borderRadius: '10px',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      ref={(el) => {
+                        if (!el) return;
+                        containerRefs.current[wheel.id] = el;
+                        el.setAttribute('data-wheelid', String(wheel.id));
+                        el.setAttribute('data-nftname', wheel.nft_name);
+                        if (observerRef.current) observerRef.current.observe(el);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        top: 0,
+                        left: 0,
+                      }}
+                    />
+                  </div>
+
+                  <div className="wheel-buttons">
+                    <button className="lobby-button" onClick={() => handleOpenLobby(wheel.id)}>
+                      Лобби
+                    </button>
+                    <button
+                      className="join-button"
+                      onClick={() => handleJoin(wheel)}
+                      disabled={loadingId === wheel.id || (wheel.participants_count ?? 0) >= wheel.size}
+                    >
+                      {loadingId === wheel.id ? 'Грузим...' : 'Вход'}
+                    </button>
+                  </div>
+
+                  <div className="wheel-info">
+                    <span>Игроков {wheel.participants_count ?? 0}/{wheel.size}</span>
+                    <span>
+                      Цена: {Number(wheel.price) === 0 ? 'Free' : wheel.price} <span className="diamond">💎</span>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {subscriptionModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <p>
+                Для участия нужно быть подписанным на канал{' '}
+                <a
+                  href={`https://t.me/${subscriptionModal.channel.replace('@', '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#4da6ff', fontWeight: 'bold' }}
+                >
+                  {subscriptionModal.channel}
+                </a>
+              </p>
+              <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                <button className="lobby-button" onClick={() => setSubscriptionModal(null)}>
+                  Отмена
+                </button>
+                <button className="join-button" onClick={() => handleJoin(subscriptionModal, true)}>
+                  Я подписан
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-      />
-    </div>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+      </div>
+    </>
   );
 }
 
