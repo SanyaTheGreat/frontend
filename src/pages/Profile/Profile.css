@@ -301,3 +301,73 @@ button.ton-connect-button,
     animation: none;
   }
 }
+
+
+/* профайл поверх фона */
+.profile-wrapper {
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* полноэкранный слой звёзд */
+.starfield {
+  position: fixed;
+  inset: 0;
+  min-height: 100vh;            /* важно для Android WebView */
+  width: 100%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 120%, #0b1622 0%, #000 65%); /* мягкая подложка */
+  overflow: hidden;
+}
+
+/* делаем два ярких слоя звёзд — крупнее и заметнее */
+.starfield::before,
+.starfield::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: -800px; bottom: 0;        /* запас сверху для «движения» */
+  animation: starScroll linear infinite;
+  will-change: transform;        /* помогает WebView */
+  opacity: 0.95;
+}
+
+/* слой мелких, но заметных звёзд */
+.starfield::before {
+  background-image:
+    radial-gradient(2px 2px at 8% 18%,  rgba(255,255,255,.95) 50%, transparent 52%),
+    radial-gradient(2px 2px at 28% 72%, rgba(255,255,255,.8)  50%, transparent 52%),
+    radial-gradient(2px 2px at 62% 26%, rgba(255,255,255,.9)  50%, transparent 52%),
+    radial-gradient(2px 2px at 88% 58%, rgba(255,255,255,.75) 50%, transparent 52%),
+    radial-gradient(2px 2px at 46% 50%, rgba(255,255,255,.85) 50%, transparent 52%),
+    radial-gradient(2px 2px at 18% 66%, rgba(255,255,255,.75) 50%, transparent 52%),
+    radial-gradient(2px 2px at 78% 14%, rgba(255,255,255,.95) 50%, transparent 52%),
+    radial-gradient(2px 2px at 58% 88%, rgba(255,255,255,.8)  50%, transparent 52%);
+  animation-duration: 120s;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,.35));
+}
+
+/* слой редких и более крупных звёзд */
+.starfield::after {
+  background-image:
+    radial-gradient(2.5px 2.5px at 14% 34%, rgba(255,255,255,1)   52%, transparent 54%),
+    radial-gradient(2.5px 2.5px at 40% 12%, rgba(255,255,255,.95) 52%, transparent 54%),
+    radial-gradient(2.5px 2.5px at 72% 74%, rgba(255,255,255,.9)  52%, transparent 54%),
+    radial-gradient(2.5px 2.5px at 86% 24%, rgba(255,255,255,1)   52%, transparent 54%),
+    radial-gradient(2.5px 2.5px at 54% 62%, rgba(255,255,255,.95) 52%, transparent 54%);
+  animation-duration: 180s;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,.4));
+}
+
+@keyframes starScroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-800px); } /* длина совпадает с top:-800px */
+}
+
+/* если у пользователя выключены анимации */
+@media (prefers-reduced-motion: reduce) {
+  .starfield::before,
+  .starfield::after { animation: none; }
+}
