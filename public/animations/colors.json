@@ -886,5 +886,47 @@
     "edge_color": "#7c808a",
     "pattern_color": "#3f4550",
     "text_color": "#dadfe2"
+  },
+  "SnoopDogg-311213": {
+    "center_color": "#b2aea7",
+    "edge_color": "#88847e",
+    "pattern_color": "#3d382d",
+    "text_color": "#e9e7e2"
+  },
+  "SnoopDogg-479926": {
+    "center_color": "#b2aea7",
+    "edge_color": "#88847e",
+    "pattern_color": "#3d382d",
+    "text_color": "#e9e7e2"
+  },
+  "IceCream-182043": {
+    "center_color": "#5ec0b8",
+    "edge_color": "#3d928e",
+    "pattern_color": "#11534c",
+    "text_color": "#bdf8f2"
+  },
+  "IceCream-181914": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
+  },
+  "IceCream-192208": {
+    "center_color": "#6ba97c",
+    "edge_color": "#3e7970",
+    "pattern_color": "#0b4833",
+    "text_color": "#d8f5e5"
+  },
+  "HappyBrownie-99681": {
+    "center_color": "#d09932",
+    "edge_color": "#b77431",
+    "pattern_color": "#7d3600",
+    "text_color": "#ffd9b3"
+  },
+  "HappyBrownie-99666": {
+    "center_color": "#a35e66",
+    "edge_color": "#6d414a",
+    "pattern_color": "#340307",
+    "text_color": "#e7bcc0"
   }
 }
