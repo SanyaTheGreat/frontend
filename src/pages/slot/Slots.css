@@ -118,7 +118,7 @@
   transition: transform 0.15s ease, opacity 0.2s;
   cursor: pointer;
   width: 100%; /* пусть каждая занимает всю ширину ячейки */
-  max-width: 180px; /* опционально, ограничение */
+  max-width: 140px; /* опционально, ограничение */
 }
 
 
