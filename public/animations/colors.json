@@ -928,5 +928,83 @@
     "edge_color": "#6d414a",
     "pattern_color": "#340307",
     "text_color": "#e7bcc0"
+  },
+  "IceCream-182229": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
+  },
+  "IceCream-192123": {
+    "center_color": "#c2af64",
+    "edge_color": "#887e45",
+    "pattern_color": "#594c04",
+    "text_color": "#f5ebbc"
+  },
+  "IceCream-182185": {
+    "center_color": "#d66f3c",
+    "edge_color": "#b54b2d",
+    "pattern_color": "#6b0902",
+    "text_color": "#ffccb0"
+  },
+  "IceCream-182291": {
+    "center_color": "#b58d38",
+    "edge_color": "#946925",
+    "pattern_color": "#4f3302",
+    "text_color": "#ffdd8c"
+  },
+  "IceCream-192154": {
+    "center_color": "#be6f54",
+    "edge_color": "#994838",
+    "pattern_color": "#601508",
+    "text_color": "#fec6b9"
+  },
+  "IceCream-99415": {
+    "center_color": "#8ab163",
+    "edge_color": "#559345",
+    "pattern_color": "#126b00",
+    "text_color": "#d5fbc8"
+  },
+  "IceCream-124458": {
+    "center_color": "#558a65",
+    "edge_color": "#3d6657",
+    "pattern_color": "#07261d",
+    "text_color": "#b5e0d4"
+  },
+  "IceCream-155060": {
+    "center_color": "#8ab163",
+    "edge_color": "#559345",
+    "pattern_color": "#126b00",
+    "text_color": "#d5fbc8"
+  },
+  "IceCream-252137": {
+    "center_color": "#58b4c8",
+    "edge_color": "#538bc2",
+    "pattern_color": "#07609b",
+    "text_color": "#cde8fd"
+  },
+  "IceCream-229349": {
+    "center_color": "#516341",
+    "edge_color": "#2b452f",
+    "pattern_color": "#000501",
+    "text_color": "#bfd1a9"
+  },
+  "IceCream-170155": {
+    "center_color": "#b2aea7",
+    "edge_color": "#88847e",
+    "pattern_color": "#3d382d",
+    "text_color": "#e9e7e2"
+  },
+  "IceCream-148689": {
+    "center_color": "#aeb85a",
+    "edge_color": "#559345",
+    "pattern_color": "#466a07",
+    "text_color": "#d8f2c2"
+  },
+  "SnoopCigar-110827": {
+    "center_color": "#78c585",
+    "edge_color": "#42a171",
+    "pattern_color": "#006532",
+    "text_color": "#b9f9d9"
   }
 }
