@@ -1006,5 +1006,47 @@
     "edge_color": "#42a171",
     "pattern_color": "#006532",
     "text_color": "#b9f9d9"
+  },
+  "PetSnake-37568": {
+    "center_color": "#664d45",
+    "edge_color": "#47362e",
+    "pattern_color": "#0a0605",
+    "text_color": "#d4bcb5"
+  },
+  "SnoopDogg-425275": {
+    "center_color": "#95b457",
+    "edge_color": "#3d9755",
+    "pattern_color": "#046b06",
+    "text_color": "#c2efbe"
+  },
+  "SnoopDogg-153998": {
+    "center_color": "#5ec0b8",
+    "edge_color": "#3d928e",
+    "pattern_color": "#11534c",
+    "text_color": "#bdf8f2"
+  },
+  "PetSnake-91321": {
+    "center_color": "#45b8ed",
+    "edge_color": "#3886d9",
+    "pattern_color": "#003e85",
+    "text_color": "#c2e7ff"
+  },
+  "HangingStar-4514": {
+    "center_color": "#e7a75a",
+    "edge_color": "#c5675f",
+    "pattern_color": "#ad0e00",
+    "text_color": "#ffe4d7"
+  },
+  "SkullFlower-254": {
+    "center_color": "#b1907e",
+    "edge_color": "#7c6356",
+    "pattern_color": "#4a3226",
+    "text_color": "#ebd4c8"
+  },
+  "JellyBunny-54058": {
+    "center_color": "#a35e66",
+    "edge_color": "#6d414a",
+    "pattern_color": "#340307",
+    "text_color": "#e7bcc0"
   }
 }
