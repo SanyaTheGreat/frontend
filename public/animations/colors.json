@@ -1048,5 +1048,83 @@
     "edge_color": "#6d414a",
     "pattern_color": "#340307",
     "text_color": "#e7bcc0"
+  },
+  "IceCream-178391": {
+    "center_color": "#60b195",
+    "edge_color": "#46abb4",
+    "pattern_color": "#035f67",
+    "text_color": "#c7fdfe"
+  },
+  "CloverPin-8662": {
+    "center_color": "#45b8ed",
+    "edge_color": "#3886d9",
+    "pattern_color": "#003e85",
+    "text_color": "#c2e7ff"
+  },
+  "PetSnake-116801": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "PetSnake-148191": {
+    "center_color": "#adb070",
+    "edge_color": "#6b7d54",
+    "pattern_color": "#39501b",
+    "text_color": "#d3e6bb"
+  },
+  "SnoopCigar-34319": {
+    "center_color": "#4e689c",
+    "edge_color": "#3b4b7a",
+    "pattern_color": "#010821",
+    "text_color": "#bbcbf2"
+  },
+  "CloverPin-21098": {
+    "center_color": "#be6f54",
+    "edge_color": "#994838",
+    "pattern_color": "#601508",
+    "text_color": "#fec6b9"
+  },
+  "PetSnake-103950": {
+    "center_color": "#dd8e6f",
+    "edge_color": "#b75a60",
+    "pattern_color": "#a90c0c",
+    "text_color": "#ffd3d3"
+  },
+  "SnoopDogg-51203": {
+    "center_color": "#4e689c",
+    "edge_color": "#3b4b7a",
+    "pattern_color": "#010821",
+    "text_color": "#bbcbf2"
+  },
+  "BowTie-30072": {
+    "center_color": "#c2af64",
+    "edge_color": "#887e45",
+    "pattern_color": "#594c04",
+    "text_color": "#f5ebbc"
+  },
+  "SnoopDogg-389055": {
+    "center_color": "#44826b",
+    "edge_color": "#2f6369",
+    "pattern_color": "#002624",
+    "text_color": "#b7e6d3"
+  },
+  "CloverPin-175792": {
+    "center_color": "#b77a77",
+    "edge_color": "#814c52",
+    "pattern_color": "#551c22",
+    "text_color": "#edcacd"
+  },
+  "SnoopDogg-22904": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "BerryBox-44895": {
+    "center_color": "#5c9bc4",
+    "edge_color": "#37739a",
+    "pattern_color": "#073b5c",
+    "text_color": "#c1e3f9"
   }
 }
