@@ -1126,5 +1126,191 @@
     "edge_color": "#37739a",
     "pattern_color": "#073b5c",
     "text_color": "#c1e3f9"
+  },
+  "SnoopDogg-278488": {
+    "center_color": "#6fc793",
+    "edge_color": "#3b9c84",
+    "pattern_color": "#006149",
+    "text_color": "#c6fff0"
+  },
+  "CloverPin-27250": {
+    "center_color": "#8ab163",
+    "edge_color": "#559345",
+    "pattern_color": "#126b00",
+    "text_color": "#d5fbc8"
+  },
+  "BerryBox-33958": {
+    "center_color": "#b1907e",
+    "edge_color": "#7c6356",
+    "pattern_color": "#4a3226",
+    "text_color": "#ebd4c8"
+  },
+  "CloverPin-201551": {
+    "center_color": "#da896b",
+    "edge_color": "#c4654f",
+    "pattern_color": "#891200",
+    "text_color": "#ffd9d2"
+  },
+  "PetSnake-117731": {
+    "center_color": "#6c9edd",
+    "edge_color": "#5c6ec9",
+    "pattern_color": "#1239a2",
+    "text_color": "#d3e1ff"
+  },
+  "SnoopDogg-59465": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "BerryBox-4081": {
+    "center_color": "#5abea6",
+    "edge_color": "#3d95ba",
+    "pattern_color": "#02648d",
+    "text_color": "#b6efff"
+  },
+  "PetSnake-117193": {
+    "center_color": "#b77a77",
+    "edge_color": "#814c52",
+    "pattern_color": "#551c22",
+    "text_color": "#edcacd"
+  },
+  "PetSnake-117607": {
+    "center_color": "#78c585",
+    "edge_color": "#42a171",
+    "pattern_color": "#006532",
+    "text_color": "#b9f9d9"
+  },
+  "BerryBox-47003": {
+    "center_color": "#58a3c8",
+    "edge_color": "#5379c2",
+    "pattern_color": "#0d45b6",
+    "text_color": "#c1deff"
+  },
+  "BerryBox-28771": {
+    "center_color": "#58b4c8",
+    "edge_color": "#538bc2",
+    "pattern_color": "#07609b",
+    "text_color": "#cde8fd"
+  },
+  "SnoopDogg-444526": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "PetSnake-63082": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "MadPumpkin-19040": {
+    "center_color": "#55c49c",
+    "edge_color": "#3b9977",
+    "pattern_color": "#044931",
+    "text_color": "#befee7"
+  },
+  "CloverPin-206678": {
+    "center_color": "#55c49c",
+    "edge_color": "#3b9977",
+    "pattern_color": "#044931",
+    "text_color": "#befee7"
+  },
+  "CloverPin-205085": {
+    "center_color": "#5ec0b8",
+    "edge_color": "#3d928e",
+    "pattern_color": "#11534c",
+    "text_color": "#bdf8f2"
+  },
+  "BowTie-10763": {
+    "center_color": "#b186bb",
+    "edge_color": "#875a91",
+    "pattern_color": "#54225f",
+    "text_color": "#e6c7ed"
+  },
+  "BowTie-29412": {
+    "center_color": "#b39f82",
+    "edge_color": "#7e735b",
+    "pattern_color": "#504429",
+    "text_color": "#f2e5cd"
+  },
+  "BowTie-36223": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "InstantRamen-125020": {
+    "center_color": "#6088cf",
+    "edge_color": "#5162b8",
+    "pattern_color": "#13247c",
+    "text_color": "#c2d3f5"
+  },
+  "PetSnake-45334": {
+    "center_color": "#aeb85a",
+    "edge_color": "#559345",
+    "pattern_color": "#466a07",
+    "text_color": "#d8f2c2"
+  },
+  "IceCream-199160": {
+    "center_color": "#537991",
+    "edge_color": "#416479",
+    "pattern_color": "#031b29",
+    "text_color": "#c2dcee"
+  },
+  "PetSnake-136269": {
+    "center_color": "#537991",
+    "edge_color": "#416479",
+    "pattern_color": "#031b29",
+    "text_color": "#c2dcee"
+  },
+  "SwagBag-188326": {
+    "center_color": "#899288",
+    "edge_color": "#5e6b63",
+    "pattern_color": "#1c261f",
+    "text_color": "#dee9e1"
+  },
+  "IceCream-308281": {
+    "center_color": "#44826b",
+    "edge_color": "#2f6369",
+    "pattern_color": "#002624",
+    "text_color": "#b7e6d3"
+  },
+  "HappyBrownie-37453": {
+    "center_color": "#45b8ed",
+    "edge_color": "#3886d9",
+    "pattern_color": "#003e85",
+    "text_color": "#c2e7ff"
+  },
+  "InstantRamen-147134": {
+    "center_color": "#e7a75a",
+    "edge_color": "#c5675f",
+    "pattern_color": "#ad0e00",
+    "text_color": "#ffe4d7"
+  },
+  "InstantRamen-62606": {
+    "center_color": "#55c49c",
+    "edge_color": "#3b9977",
+    "pattern_color": "#044931",
+    "text_color": "#befee7"
+  },
+  "SwagBag-188320": {
+    "center_color": "#7ecb82",
+    "edge_color": "#459e5a",
+    "pattern_color": "#026b22",
+    "text_color": "#bdffcc"
+  },
+  "IceCream-308327": {
+    "center_color": "#5abea6",
+    "edge_color": "#3d95ba",
+    "pattern_color": "#02648d",
+    "text_color": "#b6efff"
+  },
+  "HappyBrownie-177383": {
+    "center_color": "#e6793e",
+    "edge_color": "#d44e3f",
+    "pattern_color": "#800b00",
+    "text_color": "#ffccbd"
   }
 }
