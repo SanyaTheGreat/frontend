@@ -1480,5 +1480,149 @@
     "edge_color": "#42a171",
     "pattern_color": "#006532",
     "text_color": "#b9f9d9"
+  },
+  "MoneyPot-9520": {
+    "center_color": "#bab6b1",
+    "edge_color": "#a19d97",
+    "pattern_color": "#665f52",
+    "text_color": "#f5f4f2"
+  },
+  "IceCream-190460": {
+    "center_color": "#5ec0b8",
+    "edge_color": "#3d928e",
+    "pattern_color": "#11534c",
+    "text_color": "#bdf8f2"
+  },
+  "IceCream-190387": {
+    "center_color": "#537991",
+    "edge_color": "#416479",
+    "pattern_color": "#031b29",
+    "text_color": "#c2dcee"
+  },
+  "MoneyPot-9506": {
+    "center_color": "#e0574a",
+    "edge_color": "#a8383b",
+    "pattern_color": "#4f0100",
+    "text_color": "#ffb7ad"
+  },
+  "IceCream-205746": {
+    "center_color": "#7596f9",
+    "edge_color": "#6862e4",
+    "pattern_color": "#2828bc",
+    "text_color": "#cfddff"
+  },
+  "IceCream-38639": {
+    "center_color": "#be6f54",
+    "edge_color": "#994838",
+    "pattern_color": "#601508",
+    "text_color": "#fec6b9"
+  },
+  "HappyBrownie-88038": {
+    "center_color": "#5db1cb",
+    "edge_color": "#448bab",
+    "pattern_color": "#025074",
+    "text_color": "#b5ecff"
+  },
+  "HappyBrownie-164138": {
+    "center_color": "#5abea6",
+    "edge_color": "#3d95ba",
+    "pattern_color": "#02648d",
+    "text_color": "#b6efff"
+  },
+  "JellyBunny-28110": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "InstantRamen-57501": {
+    "center_color": "#b58d38",
+    "edge_color": "#946925",
+    "pattern_color": "#4f3302",
+    "text_color": "#ffdd8c"
+  },
+  "MousseCake-77678": {
+    "center_color": "#8ab163",
+    "edge_color": "#559345",
+    "pattern_color": "#126b00",
+    "text_color": "#d5fbc8"
+  },
+  "InstantRamen-192644": {
+    "center_color": "#ccab41",
+    "edge_color": "#987b32",
+    "pattern_color": "#703c00",
+    "text_color": "#ffe5ab"
+  },
+  "MousseCake-118990": {
+    "center_color": "#664d45",
+    "edge_color": "#47362e",
+    "pattern_color": "#0a0605",
+    "text_color": "#d4bcb5"
+  },
+  "InstantRamen-69672": {
+    "center_color": "#e7a75a",
+    "edge_color": "#c5675f",
+    "pattern_color": "#ad0e00",
+    "text_color": "#ffe4d7"
+  },
+  "InputKey-26324": {
+    "center_color": "#80a4b8",
+    "edge_color": "#607c91",
+    "pattern_color": "#15374b",
+    "text_color": "#c9e4f4"
+  },
+  "MadPumpkin-9638": {
+    "center_color": "#da896b",
+    "edge_color": "#c4654f",
+    "pattern_color": "#891200",
+    "text_color": "#ffd9d2"
+  },
+  "TamaGadget-82441": {
+    "center_color": "#bf9b47",
+    "edge_color": "#8d7739",
+    "pattern_color": "#5d3b00",
+    "text_color": "#fee4a9"
+  },
+  "SnoopDogg-285723": {
+    "center_color": "#8fae78",
+    "edge_color": "#4b825b",
+    "pattern_color": "#1c491f",
+    "text_color": "#d8f5de"
+  },
+  "InputKey-118191": {
+    "center_color": "#5db1cb",
+    "edge_color": "#448bab",
+    "pattern_color": "#025074",
+    "text_color": "#b5ecff"
+  },
+  "SpringBasket-30382": {
+    "center_color": "#e36692",
+    "edge_color": "#c9497c",
+    "pattern_color": "#750230",
+    "text_color": "#ffd6e6"
+  },
+  "TamaGadget-34538": {
+    "center_color": "#be6f54",
+    "edge_color": "#994838",
+    "pattern_color": "#601508",
+    "text_color": "#fec6b9"
+  },
+  "SpringBasket-27016": {
+    "center_color": "#58a3c8",
+    "edge_color": "#5379c2",
+    "pattern_color": "#0d45b6",
+    "text_color": "#c1deff"
+  },
+  "SpringBasket-140520": {
+    "center_color": "#9d74c1",
+    "edge_color": "#794da0",
+    "pattern_color": "#3e0a6b",
+    "text_color": "#e0bdfe"
+  },
+  "SnoopDogg-481353": {
+    "center_color": "#31b5aa",
+    "edge_color": "#189599",
+    "pattern_color": "#004f4f",
+    "text_color": "#d1fffd"
   }
 }
