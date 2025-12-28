@@ -268,3 +268,97 @@ html, body {
     animation: none;
   }
 }
+
+.mode-select{
+  width: 100%;
+  max-width: 520px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mode-title{
+  color: #e0e1dd;
+  font-weight: 800;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: .2px;
+  margin-bottom: 6px;
+  text-shadow: 0 6px 18px rgba(0,0,0,.55);
+}
+
+.mode-card{
+  position: relative;
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+  padding: 14px 14px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+
+  background: radial-gradient(120% 140% at 20% 20%, rgba(110,200,255,.22), transparent 55%),
+              radial-gradient(140% 160% at 90% 30%, rgba(170,110,255,.18), transparent 60%),
+              rgba(12,18,28,.75);
+
+  box-shadow:
+    0 10px 28px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -8px 18px rgba(0,0,0,.35);
+
+  transform: translateZ(0);
+  transition: transform .12s ease, box-shadow .12s ease;
+  overflow: hidden;
+}
+
+.mode-card:active{
+  transform: scale(.99);
+  box-shadow:
+    0 8px 22px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,255,255,.08),
+    inset 0 -10px 20px rgba(0,0,0,.45);
+}
+
+.mode-art{
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 26px;
+
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 8px 18px rgba(0,0,0,.35);
+}
+
+.mode-text{
+  display:flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.mode-name{
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.mode-sub{
+  font-size: 12px;
+  opacity: .8;
+}
+
+.mode-glow{
+  position:absolute;
+  inset: -40px;
+  background: radial-gradient(circle at 30% 30%, rgba(120,220,255,.18), transparent 45%),
+              radial-gradient(circle at 80% 60%, rgba(190,120,255,.14), transparent 55%);
+  filter: blur(10px);
+  pointer-events:none;
+}
