@@ -419,7 +419,7 @@ function Home() {
               <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 900, fontSize: 14, lineHeight: 1.1 }}>Джекпот</div>
                 <div style={{ opacity: 0.85, fontSize: 12, whiteSpace: 'normal', lineHeight: 1.2 }}>
-                  Выбирай подарок Сам! Крути Слоты 🎰!  Поймай 777 и Сорви Джекпот !
+                  Выбирай Подарок Сам! Крути Слоты! Лови 777 и забирай Джекпот!
                 </div>
               </div>
             </button>
