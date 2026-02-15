@@ -1,4 +1,3 @@
-import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegramRegistration } from './hooks/useTelegramRegistration';
 import Home from './pages/Home/Home';
@@ -23,7 +22,9 @@ const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === "true";
 function App() {
   useTelegramRegistration();
 
-  const fallbackRoute = "/profile";
+  // Когда лудо выключено — все лудо-роуты уводим на главную,
+  // а Home сам покажет "игровой режим / скоро 2048"
+  const fallbackRoute = "/";
 
   const Gate = ({ children }) => {
     if (LUDO_ENABLED) return children;
@@ -34,11 +35,8 @@ function App() {
     <TonConnectUIProvider manifestUrl="https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json">
       <div>
         <Routes>
-          {/* Главная */}
-          <Route
-            path="/"
-            element={LUDO_ENABLED ? <Home /> : <Navigate to={fallbackRoute} replace />}
-          />
+          {/* Главная всегда доступна */}
+          <Route path="/" element={<Home />} />
 
           {/* Лудо-роуты — закрыты, если флаг выключен */}
           <Route path="/lobby/:id" element={<Gate><LobbyPage /></Gate>} />

@@ -6,6 +6,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './Home.css';
 
+const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === "true";
+
 /**
  * Лёгкий лотти-икон-компонент:
  * - грузит JSON по url
@@ -22,19 +24,16 @@ function ModeIconLottie({ url }) {
 
     (async () => {
       try {
-        // ВАЖНО: json лежит в public, значит доступен по /stickers/...
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Sticker JSON not found: ${url}`);
         const animationData = await res.json();
         if (cancelled) return;
 
-        // чистим старую инстанцию если была
         try {
           instRef.current?.destroy?.();
         } catch {}
         instRef.current = null;
 
-        // грузим
         instRef.current = lottie.loadAnimation({
           container: elRef.current,
           renderer: 'svg',
@@ -46,7 +45,6 @@ function ModeIconLottie({ url }) {
           },
         });
 
-        // чуть медленнее, чтобы меньше грузило
         instRef.current.setSpeed(0.9);
       } catch (e) {
         console.error(e);
@@ -81,10 +79,29 @@ function Home() {
 
   const [subscriptionModal, setSubscriptionModal] = useState(null);
 
-  // меню выбора режима
-  const [showModePicker, setShowModePicker] = useState(true);
+  // меню выбора режима (показываем только если лудо включено)
+  const [showModePicker, setShowModePicker] = useState(LUDO_ENABLED);
 
   const navigate = useNavigate();
+
+  // Если лудо выключено — главная становится "хабом" под новый режим
+  // и мы не грузим колёса/режимы вообще.
+  if (!LUDO_ENABLED) {
+    return (
+      <>
+        <div className="starfield" aria-hidden="true" />
+        <div style={{ padding: 16, color: 'white' }}>
+          <div style={{ fontWeight: 900, fontSize: 18 }}>Игровой режим</div>
+          <div style={{ opacity: 0.85, marginTop: 8 }}>
+            Скоро здесь будет 2048 в стиле Telegram Gifts.
+          </div>
+          <div style={{ marginTop: 16, opacity: 0.7, fontSize: 12 }}>
+            Розыгрыши временно скрыты.
+          </div>
+        </div>
+      </>
+    );
+  }
 
   useEffect(() => {
     const wa = window?.Telegram?.WebApp;
@@ -112,6 +129,8 @@ function Home() {
   const handleOpenLobby = (wheelId) => navigate(`/lobby/${wheelId}`);
 
   const fetchWheels = async () => {
+    if (!LUDO_ENABLED) return;
+
     const { data, error } = await supabase
       .from('wheels')
       .select('*')
@@ -126,10 +145,13 @@ function Home() {
   };
 
   useEffect(() => {
+    if (!LUDO_ENABLED) return;
     fetchWheels();
   }, []);
 
   useEffect(() => {
+    if (!LUDO_ENABLED) return;
+
     fetch('/animations/colors.json')
       .then((res) => res.json())
       .then((data) => setColorsMap(data))
@@ -148,8 +170,6 @@ function Home() {
     return json;
   }
 
-  // ВАЖНО: чтобы меню выбора режима не грузило/не крутило колёса на фоне —
-  // просто выходим из эффекта, пока showModePicker === true
   useEffect(() => {
     if (showModePicker) return;
 
@@ -311,22 +331,18 @@ function Home() {
     setSubscriptionModal(null);
   };
 
-  // выбор режимов
   const openPvpRoulette = () => setShowModePicker(false);
   const openJackpot = () => navigate('/slots');
   const openRoll = () => navigate('/spins');
 
-  // пути к твоим стикерам (public/stickers/*.json)
   const STICKER_PVP = '/stickers/pvp.json';
   const STICKER_JACKPOT = '/stickers/jackpot.json';
   const STICKER_ROLL = '/stickers/roll.json';
 
   return (
     <>
-      {/* звёздное небо */}
       <div className="starfield" aria-hidden="true" />
 
-      {/* меню выбора режима */}
       {showModePicker && (
         <div
           style={{
