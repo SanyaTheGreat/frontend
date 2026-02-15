@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegramRegistration } from './hooks/useTelegramRegistration';
 import Home from './pages/Home/Home';
 import History from './pages/History/History';
@@ -10,41 +10,53 @@ import InGame from './pages/InGame/InGame.jsx';
 import Leaderboard from './pages/Leaderboard/Leaderboard';
 import SpinPage from "./components/Spins/SpinPage";
 import InventoryPage from "./components/Spins/InventoryPage";
-
-import TabBar from './components/TabBar';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
-// 🆕 Импортируем страницы слотов
 import Slots from './pages/slot/Slots';
-import SlotPlay from './pages/slot/SlotPlay'; // добавим позже
+import SlotPlay from './pages/slot/SlotPlay';
 
-
-// Buffer polyfill
 import { Buffer } from 'buffer';
 window.Buffer = window.Buffer || Buffer;
+
+const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === "true";
 
 function App() {
   useTelegramRegistration();
 
+  const fallbackRoute = "/profile";
+
+  const Gate = ({ children }) => {
+    if (LUDO_ENABLED) return children;
+    return <Navigate to={fallbackRoute} replace />;
+  };
+
   return (
     <TonConnectUIProvider manifestUrl="https://frontend-nine-sigma-49.vercel.app/tonconnect-manifest.json">
       <div>
-        <TabBar />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/lobby/:id" element={<LobbyPage />} />
-          <Route path="/wheel/:id" element={<WheelPage />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/ingame" element={<InGame />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/spins" element={<SpinPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
+          {/* Главная */}
+          <Route
+            path="/"
+            element={LUDO_ENABLED ? <Home /> : <Navigate to={fallbackRoute} replace />}
+          />
 
-          {/* 🆕 режим слотов */}
-          <Route path="/slots" element={<Slots />} />
-          <Route path="/slots/:id" element={<SlotPlay />} />
-          <Route path="/slot/:id" element={<SlotPlay />} />
+          {/* Лудо-роуты — закрыты, если флаг выключен */}
+          <Route path="/lobby/:id" element={<Gate><LobbyPage /></Gate>} />
+          <Route path="/wheel/:id" element={<Gate><WheelPage /></Gate>} />
+          <Route path="/history" element={<Gate><History /></Gate>} />
+          <Route path="/ingame" element={<Gate><InGame /></Gate>} />
+          <Route path="/leaderboard" element={<Gate><Leaderboard /></Gate>} />
+          <Route path="/spins" element={<Gate><SpinPage /></Gate>} />
+          <Route path="/inventory" element={<Gate><InventoryPage /></Gate>} />
+          <Route path="/slots" element={<Gate><Slots /></Gate>} />
+          <Route path="/slots/:id" element={<Gate><SlotPlay /></Gate>} />
+          <Route path="/slot/:id" element={<Gate><SlotPlay /></Gate>} />
+
+          {/* Профиль — всегда доступен */}
+          <Route path="/profile" element={<Profile />} />
+
+          {/* Всё остальное */}
+          <Route path="*" element={<Navigate to={fallbackRoute} replace />} />
         </Routes>
       </div>
     </TonConnectUIProvider>
