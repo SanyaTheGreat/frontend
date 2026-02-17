@@ -6,15 +6,10 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './Home.css';
 
-const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === "true";
+const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === 'true';
 
-/**
- * Лёгкий лотти-икон-компонент:
- * - грузит JSON по url
- * - loop включён
- * - renderer: 'svg' (обычно легче для мелких иконок)
- * - destroy при размонтировании
- */
+const API_BASE = 'https://lottery-server-waif.onrender.com';
+
 function ModeIconLottie({ url }) {
   const elRef = useRef(null);
   const instRef = useRef(null);
@@ -79,26 +74,108 @@ function Home() {
 
   const [subscriptionModal, setSubscriptionModal] = useState(null);
 
-  // меню выбора режима (показываем только если лудо включено)
   const [showModePicker, setShowModePicker] = useState(LUDO_ENABLED);
 
   const navigate = useNavigate();
 
-  // Если лудо выключено — главная становится "хабом" под новый режим
-  // и мы не грузим колёса/режимы вообще.
+  // =========================
+  // 2048 HOME (when LUDO off)
+  // =========================
+  const [loading2048, setLoading2048] = useState(false);
+  const [hasActive2048, setHasActive2048] = useState(false);
+
+  useEffect(() => {
+    if (LUDO_ENABLED) return;
+    const existingRunId = localStorage.getItem('ffg_2048_run_id');
+    setHasActive2048(Boolean(existingRunId));
+  }, []);
+
+  const startOrResume2048 = async () => {
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      toast.error('Требуется авторизация. Открой Mini App в Telegram.');
+      return;
+    }
+
+    setLoading2048(true);
+    try {
+      const res = await fetch(`${API_BASE}/game/run/start`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data?.ok) {
+        toast.error(data?.error || 'Не удалось запустить 2048');
+        if (res.status === 401 || res.status === 403) localStorage.removeItem('jwt');
+        return;
+      }
+
+      localStorage.setItem('ffg_2048_run_id', data.run.id);
+      localStorage.setItem('ffg_2048_period_id', data.period.id);
+      setHasActive2048(true);
+
+      toast.success(data.mode === 'resume' ? 'Продолжаем игру' : 'Новая игра запущена');
+      navigate('/2048');
+    } catch (e) {
+      console.error(e);
+      toast.error('Ошибка сети при запуске 2048');
+    } finally {
+      setLoading2048(false);
+    }
+  };
+
   if (!LUDO_ENABLED) {
     return (
       <>
         <div className="starfield" aria-hidden="true" />
         <div style={{ padding: 16, color: 'white' }}>
-          <div style={{ fontWeight: 900, fontSize: 18 }}>Игровой режим</div>
+          <div style={{ fontWeight: 900, fontSize: 20 }}>2048</div>
           <div style={{ opacity: 0.85, marginTop: 8 }}>
-            Скоро здесь будет 2048 в стиле Telegram Gifts.
+            {hasActive2048 ? 'У тебя есть активная игра.' : 'Начни новую игру.'}
           </div>
-          <div style={{ marginTop: 16, opacity: 0.7, fontSize: 12 }}>
-            Розыгрыши временно скрыты.
+
+          <button
+            type="button"
+            onClick={startOrResume2048}
+            disabled={loading2048}
+            style={{
+              marginTop: 16,
+              width: '100%',
+              padding: 14,
+              borderRadius: 16,
+              border: '1px solid rgba(255,255,255,0.15)',
+              background: 'linear-gradient(180deg, rgba(255,152,0,0.9), rgba(27,38,59,0.9))',
+              color: 'white',
+              fontWeight: 900,
+              cursor: loading2048 ? 'not-allowed' : 'pointer',
+              opacity: loading2048 ? 0.85 : 1,
+            }}
+          >
+            {loading2048 ? 'Запускаем...' : hasActive2048 ? 'Продолжить игру' : 'Новая игра'}
+          </button>
+
+          <div style={{ marginTop: 16, opacity: 0.65, fontSize: 12 }}>
+            Остальные режимы и таб-бар временно скрыты.
           </div>
         </div>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
       </>
     );
   }
@@ -131,10 +208,7 @@ function Home() {
   const fetchWheels = async () => {
     if (!LUDO_ENABLED) return;
 
-    const { data, error } = await supabase
-      .from('wheels')
-      .select('*')
-      .eq('status', 'active');
+    const { data, error } = await supabase.from('wheels').select('*').eq('status', 'active');
 
     if (error) {
       console.error('Ошибка загрузки колес:', error);
