@@ -14,6 +14,8 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import Slots from './pages/slot/Slots';
 import SlotPlay from './pages/slot/SlotPlay';
 
+import Game2048 from './pages/Game2048/Game2048'; // ✅ ДОБАВИЛИ
+
 import { Buffer } from 'buffer';
 window.Buffer = window.Buffer || Buffer;
 
@@ -22,8 +24,6 @@ const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === "true";
 function App() {
   useTelegramRegistration();
 
-  // Когда лудо выключено — все лудо-роуты уводим на главную,
-  // а Home сам покажет "игровой режим / скоро 2048"
   const fallbackRoute = "/";
 
   const Gate = ({ children }) => {
@@ -37,6 +37,11 @@ function App() {
         <Routes>
           {/* Главная всегда доступна */}
           <Route path="/" element={<Home />} />
+
+          {/* 🔥 2048 доступен когда лудо выключено */}
+          {!LUDO_ENABLED && (
+            <Route path="/2048" element={<Game2048 />} />
+          )}
 
           {/* Лудо-роуты — закрыты, если флаг выключен */}
           <Route path="/lobby/:id" element={<Gate><LobbyPage /></Gate>} />
