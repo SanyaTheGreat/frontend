@@ -7,7 +7,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import './Home.css';
 
 const LUDO_ENABLED = import.meta.env.VITE_LUDO_ENABLED === 'true';
-
 const API_BASE = 'https://lottery-server-waif.onrender.com';
 
 function ModeIconLottie({ url }) {
@@ -35,9 +34,7 @@ function ModeIconLottie({ url }) {
           loop: true,
           autoplay: true,
           animationData,
-          rendererSettings: {
-            progressiveLoad: true,
-          },
+          rendererSettings: { progressiveLoad: true },
         });
 
         instRef.current.setSpeed(0.9);
@@ -55,15 +52,7 @@ function ModeIconLottie({ url }) {
     };
   }, [url]);
 
-  return (
-    <div
-      ref={elRef}
-      style={{
-        width: 44,
-        height: 44,
-      }}
-    />
-  );
+  return <div ref={elRef} style={{ width: 44, height: 44 }} />;
 }
 
 function Home() {
@@ -73,7 +62,6 @@ function Home() {
   const [sortBy, setSortBy] = useState('players_desc');
 
   const [subscriptionModal, setSubscriptionModal] = useState(null);
-
   const [showModePicker, setShowModePicker] = useState(LUDO_ENABLED);
 
   const navigate = useNavigate();
@@ -129,12 +117,16 @@ function Home() {
     }
   };
 
+  // ✅ MAIN: when LUDO is off, show only 2048 start screen
   if (!LUDO_ENABLED) {
     return (
       <>
         <div className="starfield" aria-hidden="true" />
-        <div style={{ padding: 16, color: 'white' }}>
+
+        {/* FIX: гарантируем что контент кликабельный поверх любых слоёв */}
+        <div style={{ position: 'relative', zIndex: 5, padding: 16, color: 'white' }}>
           <div style={{ fontWeight: 900, fontSize: 20 }}>2048</div>
+
           <div style={{ opacity: 0.85, marginTop: 8 }}>
             {hasActive2048 ? 'У тебя есть активная игра.' : 'Начни новую игру.'}
           </div>
@@ -146,14 +138,17 @@ function Home() {
             style={{
               marginTop: 16,
               width: '100%',
-              padding: 14,
-              borderRadius: 16,
-              border: '1px solid rgba(255,255,255,0.15)',
-              background: 'linear-gradient(180deg, rgba(255,152,0,0.9), rgba(27,38,59,0.9))',
-              color: 'white',
+              padding: 16,
+              borderRadius: 14,
+              border: 'none',
+              background: '#ff9800',
+              color: '#000',
               fontWeight: 900,
+              fontSize: 16,
               cursor: loading2048 ? 'not-allowed' : 'pointer',
               opacity: loading2048 ? 0.85 : 1,
+              position: 'relative',
+              zIndex: 10,
             }}
           >
             {loading2048 ? 'Запускаем...' : hasActive2048 ? 'Продолжить игру' : 'Новая игра'}
@@ -180,6 +175,9 @@ function Home() {
     );
   }
 
+  // =========================
+  // LUDO ON (old logic)
+  // =========================
   useEffect(() => {
     const wa = window?.Telegram?.WebApp;
     const p =
@@ -384,10 +382,7 @@ function Home() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        wheel_id: wheel.id,
-        ...extra,
-      }),
+      body: JSON.stringify({ wheel_id: wheel.id, ...extra }),
     });
 
     if (res.status === 201) {
