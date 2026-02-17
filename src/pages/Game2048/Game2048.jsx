@@ -51,6 +51,44 @@ export default function Game2048() {
     }
   };
 
+  const move = async (dir) => {
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      toast.error('Нет jwt. Открой Mini App в Telegram заново.');
+      return;
+    }
+
+    setLoading(true);
+    setResp(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/game/run/move`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dir }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      setResp({ status: res.status, ok: res.ok, data });
+
+      if (!res.ok || !data?.ok) {
+        toast.error(data?.error || 'Move error');
+        if (res.status === 401 || res.status === 403) localStorage.removeItem('jwt');
+        return;
+      }
+
+      toast.success(`Move: ${dir}`);
+    } catch (e) {
+      console.error(e);
+      toast.error('Ошибка сети (move)');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const clearLocal = () => {
     localStorage.removeItem('ffg_2048_run_id');
     localStorage.removeItem('ffg_2048_period_id');
@@ -112,8 +150,65 @@ export default function Game2048() {
         </div>
 
         <div style={{ marginTop: 16, fontSize: 13, opacity: 0.9 }}>
-          <div><b>local run_id:</b> {runId || '—'}</div>
-          <div><b>local period_id:</b> {periodId || '—'}</div>
+          <div>
+            <b>local run_id:</b> {runId || '—'}
+          </div>
+          <div>
+            <b>local period_id:</b> {periodId || '—'}
+          </div>
+        </div>
+
+        {/* MOVE TEST */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>Move test (stub)</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 56px)', gap: 10, alignItems: 'center' }}>
+            <div />
+            <button
+              type="button"
+              onClick={() => move('up')}
+              disabled={loading}
+              style={arrowBtnStyle(loading)}
+              aria-label="Move up"
+            >
+              ⬆️
+            </button>
+            <div />
+
+            <button
+              type="button"
+              onClick={() => move('left')}
+              disabled={loading}
+              style={arrowBtnStyle(loading)}
+              aria-label="Move left"
+            >
+              ⬅️
+            </button>
+
+            <button
+              type="button"
+              onClick={() => move('down')}
+              disabled={loading}
+              style={arrowBtnStyle(loading)}
+              aria-label="Move down"
+            >
+              ⬇️
+            </button>
+
+            <button
+              type="button"
+              onClick={() => move('right')}
+              disabled={loading}
+              style={arrowBtnStyle(loading)}
+              aria-label="Move right"
+            >
+              ➡️
+            </button>
+          </div>
+
+          <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
+            Эти кнопки просто пишут действие в <b>game_runs.actions</b>.
+          </div>
         </div>
 
         <div style={{ marginTop: 16 }}>
@@ -131,7 +226,7 @@ export default function Game2048() {
               minHeight: 140,
             }}
           >
-            {resp ? JSON.stringify(resp, null, 2) : 'Нажми Start / Resume'}
+            {resp ? JSON.stringify(resp, null, 2) : 'Нажми Start / Resume, потом стрелки'}
           </pre>
         </div>
       </div>
@@ -149,4 +244,21 @@ export default function Game2048() {
       />
     </>
   );
+}
+
+function arrowBtnStyle(disabled) {
+  return {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    border: '1px solid rgba(255,255,255,0.18)',
+    background: 'rgba(0,0,0,0.25)',
+    color: 'white',
+    fontSize: 22,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.7 : 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
 }
