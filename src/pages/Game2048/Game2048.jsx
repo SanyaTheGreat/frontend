@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -8,12 +8,24 @@ export default function Game2048() {
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState(null);
 
-  const runId = useMemo(() => localStorage.getItem('ffg_2048_run_id') || '', []);
-  const periodId = useMemo(() => localStorage.getItem('ffg_2048_period_id') || '', []);
+  // FIX: runId/periodId должны обновляться после start/resume
+  const [runId, setRunId] = useState('');
+  const [periodId, setPeriodId] = useState('');
+
+  // локальная визуализация (если бекенд уже отдаёт board/score)
+  const [board, setBoard] = useState(null);
+  const [score, setScore] = useState(null);
+
+  useEffect(() => {
+    setRunId(localStorage.getItem('ffg_2048_run_id') || '');
+    setPeriodId(localStorage.getItem('ffg_2048_period_id') || '');
+  }, []);
+
+  const token = useMemo(() => localStorage.getItem('jwt') || '', []);
 
   const startOrResume = async () => {
-    const token = localStorage.getItem('jwt');
-    if (!token) {
+    const jwt = localStorage.getItem('jwt');
+    if (!jwt) {
       toast.error('Нет jwt. Открой Mini App в Telegram заново.');
       return;
     }
@@ -25,7 +37,7 @@ export default function Game2048() {
       const res = await fetch(`${API_BASE}/game/run/start`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${jwt}`,
           'Content-Type': 'application/json',
         },
       });
@@ -39,8 +51,19 @@ export default function Game2048() {
         return;
       }
 
-      if (data?.run?.id) localStorage.setItem('ffg_2048_run_id', data.run.id);
-      if (data?.period?.id) localStorage.setItem('ffg_2048_period_id', data.period.id);
+      if (data?.run?.id) {
+        localStorage.setItem('ffg_2048_run_id', data.run.id);
+        setRunId(String(data.run.id));
+      }
+      if (data?.period?.id) {
+        localStorage.setItem('ffg_2048_period_id', data.period.id);
+        setPeriodId(String(data.period.id));
+      }
+
+      // если бек уже отдаёт стейт — покажем
+      const st = data?.run?.state || data?.state;
+      if (st?.board) setBoard(st.board);
+      if (Number.isFinite(st?.score)) setScore(st.score);
 
       toast.success(data.mode === 'resume' ? 'Resume OK' : 'New run OK');
     } catch (e) {
@@ -52,8 +75,8 @@ export default function Game2048() {
   };
 
   const move = async (dir) => {
-    const token = localStorage.getItem('jwt');
-    if (!token) {
+    const jwt = localStorage.getItem('jwt');
+    if (!jwt) {
       toast.error('Нет jwt. Открой Mini App в Telegram заново.');
       return;
     }
@@ -65,7 +88,7 @@ export default function Game2048() {
       const res = await fetch(`${API_BASE}/game/run/move`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${jwt}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ dir }),
@@ -80,6 +103,11 @@ export default function Game2048() {
         return;
       }
 
+      // если бек уже отдаёт стейт — обновим локально
+      const st = data?.run?.state || data?.state;
+      if (st?.board) setBoard(st.board);
+      if (Number.isFinite(st?.score)) setScore(st.score);
+
       toast.success(`Move: ${dir}`);
     } catch (e) {
       console.error(e);
@@ -92,6 +120,10 @@ export default function Game2048() {
   const clearLocal = () => {
     localStorage.removeItem('ffg_2048_run_id');
     localStorage.removeItem('ffg_2048_period_id');
+    setRunId('');
+    setPeriodId('');
+    setBoard(null);
+    setScore(null);
     toast.info('Локалка очищена');
   };
 
@@ -110,9 +142,7 @@ export default function Game2048() {
         }}
       >
         <div style={{ fontWeight: 900, fontSize: 20 }}>2048 • Debug</div>
-        <div style={{ opacity: 0.8, marginTop: 6, fontSize: 12 }}>
-          API: {API_BASE}
-        </div>
+        <div style={{ opacity: 0.8, marginTop: 6, fontSize: 12 }}>API: {API_BASE}</div>
 
         <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
@@ -156,58 +186,45 @@ export default function Game2048() {
           <div>
             <b>local period_id:</b> {periodId || '—'}
           </div>
+          <div style={{ marginTop: 6 }}>
+            <b>score:</b> {score ?? '—'}
+          </div>
+        </div>
+
+        {/* BOARD (optional) */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>Board (if backend returns state)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 64px)', gap: 10 }}>
+            {renderBoard(board)}
+          </div>
         </div>
 
         {/* MOVE TEST */}
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>Move test (stub)</div>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>Move test</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 56px)', gap: 10, alignItems: 'center' }}>
             <div />
-            <button
-              type="button"
-              onClick={() => move('up')}
-              disabled={loading}
-              style={arrowBtnStyle(loading)}
-              aria-label="Move up"
-            >
+            <button type="button" onClick={() => move('up')} disabled={loading} style={arrowBtnStyle(loading)}>
               ⬆️
             </button>
             <div />
 
-            <button
-              type="button"
-              onClick={() => move('left')}
-              disabled={loading}
-              style={arrowBtnStyle(loading)}
-              aria-label="Move left"
-            >
+            <button type="button" onClick={() => move('left')} disabled={loading} style={arrowBtnStyle(loading)}>
               ⬅️
             </button>
 
-            <button
-              type="button"
-              onClick={() => move('down')}
-              disabled={loading}
-              style={arrowBtnStyle(loading)}
-              aria-label="Move down"
-            >
+            <button type="button" onClick={() => move('down')} disabled={loading} style={arrowBtnStyle(loading)}>
               ⬇️
             </button>
 
-            <button
-              type="button"
-              onClick={() => move('right')}
-              disabled={loading}
-              style={arrowBtnStyle(loading)}
-              aria-label="Move right"
-            >
+            <button type="button" onClick={() => move('right')} disabled={loading} style={arrowBtnStyle(loading)}>
               ➡️
             </button>
           </div>
 
           <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
-            Эти кнопки просто пишут действие в <b>game_runs.actions</b>.
+            Сейчас это тест ручек. Если бекенд отдаёт <b>state.board/state.score</b> — выше увидишь поле.
           </div>
         </div>
 
@@ -244,6 +261,35 @@ export default function Game2048() {
       />
     </>
   );
+}
+
+function renderBoard(board) {
+  const empty = new Array(16).fill(0);
+
+  const flat =
+    Array.isArray(board) && board.length === 4 && board.every((r) => Array.isArray(r) && r.length === 4)
+      ? board.flat()
+      : empty;
+
+  return flat.map((v, i) => (
+    <div
+      key={i}
+      style={{
+        width: 64,
+        height: 64,
+        borderRadius: 14,
+        border: '1px solid rgba(255,255,255,0.12)',
+        background: 'rgba(0,0,0,0.25)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 900,
+        fontSize: 18,
+      }}
+    >
+      {v ? v : ''}
+    </div>
+  ));
 }
 
 function arrowBtnStyle(disabled) {
