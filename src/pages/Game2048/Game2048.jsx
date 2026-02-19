@@ -7,12 +7,12 @@ const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
 
-// размеры (как у тебя)
+// sizes
 const CELL = 72;
 const GAP = 10;
 const BOARD_PAD = 12;
 
-// анимации
+// animations
 const MOVE_MS = 140;
 const POP_MS = 120;
 
@@ -235,11 +235,10 @@ export default function Game2048() {
     } catch (_) {}
   }, []);
 
-  // block "pull"
+  // block "pull" inside board
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
-
     const prevent = (e) => e.preventDefault();
     el.addEventListener("touchmove", prevent, { passive: false });
     return () => el.removeEventListener("touchmove", prevent);
@@ -272,13 +271,13 @@ export default function Game2048() {
   }
 
   /**
-   * ✅ Главное: вместо rebuild после ответа сервера — пытаемся "доклеить" только spawn (1 клетка).
-   * Если ситуация сложнее (diff > 1 или конфликт) — делаем fallback rebuild.
+   * reconcile server grid:
+   * - if only spawn diff (0 -> 2/4), add one tile with pop
+   * - else fallback rebuild
    */
   function reconcileWithServerGrid(serverGrid) {
     const current = gridValuesRef.current;
 
-    // Если ещё ничего нет — просто билд
     const hasAny = current.some((row) => row.some((v) => v > 0));
     if (!hasAny) {
       const built = buildTilesFromGrid(serverGrid);
@@ -289,10 +288,8 @@ export default function Game2048() {
       return;
     }
 
-    // Если совпадает — ничего
     if (gridsEqualValues(current, serverGrid)) return;
 
-    // Ищем различия
     const diffs = [];
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
@@ -302,19 +299,16 @@ export default function Game2048() {
       }
     }
 
-    // Типичный случай: 1 diff = spawn 0 -> 2/4
     if (diffs.length === 1) {
       const d = diffs[0];
       const isSpawn = d.a === 0 && (d.b === 2 || d.b === 4);
-
       if (isSpawn) {
         const board = boardRefState.current;
         const map = new Map(tilesRef.current);
 
-        // безопасность: клетка должна быть свободна
         if (!board[d.r][d.c]) {
           const id = newTileId();
-          // z выше остальных
+
           let zMax = 1;
           for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
 
@@ -330,7 +324,6 @@ export default function Game2048() {
       }
     }
 
-    // Иначе — редкий рассинхрон: fallback rebuild
     const built = buildTilesFromGrid(serverGrid);
     tilesRef.current = built.tiles;
     boardRefState.current = built.board;
@@ -352,9 +345,7 @@ export default function Game2048() {
     }
 
     const g = safeGridFromRun(run);
-    if (g) {
-      reconcileWithServerGrid(g);
-    }
+    if (g) reconcileWithServerGrid(g);
 
     setScore(Number(run?.current_score ?? 0));
     setMoves(Number(run?.moves ?? 0));
@@ -385,7 +376,6 @@ export default function Game2048() {
         return;
       }
 
-      // старт/резюме: честно строим из серверной сетки
       const run = data?.run;
       const g = safeGridFromRun(run);
       if (g) {
@@ -466,7 +456,7 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // после MOVE_MS — удаляем старые тайлы и включаем pop для новых merged
+    // after MOVE_MS — remove merged old tiles + pop for new merged
     window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
@@ -485,7 +475,7 @@ export default function Game2048() {
       syncTilesArrFromRef();
     }, MOVE_MS + 5);
 
-    // сервер
+    // server
     inFlightRef.current = true;
     setResp(null);
 
@@ -506,7 +496,6 @@ export default function Game2048() {
         return;
       }
 
-      // ✅ теперь НЕ rebuild: добавляем только spawn (если он есть)
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
@@ -666,7 +655,7 @@ export default function Game2048() {
             }}
           >
             <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16 }}>
-              {/* фон-клетки */}
+              {/* background cells */}
               <div
                 style={{
                   position: "absolute",
@@ -690,7 +679,7 @@ export default function Game2048() {
                 ))}
               </div>
 
-              {/* тайлы */}
+              {/* tiles */}
               <div style={{ position: "absolute", inset: 0 }}>
                 {tilesArr.map((t) => (
                   <AnimatedTile key={t.id} tile={t} />
@@ -729,8 +718,11 @@ export default function Game2048() {
   );
 }
 
+// ✅ FIX: split translate (outer) and pop/scale (inner) so transforms don't fight.
+// This removes "jump to top-left" / micro overlay flicker.
 function AnimatedTile({ tile }) {
   const [imgOk, setImgOk] = useState(true);
+
   const { x, y } = posToPx(tile.r, tile.c);
   const src = tile.value ? `/numbers/${tile.value}.png` : "";
 
@@ -740,34 +732,45 @@ function AnimatedTile({ tile }) {
         position: "absolute",
         width: CELL,
         height: CELL,
-        borderRadius: 16,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.06)",
-        overflow: "hidden",
-        transform: `translate(${x}px, ${y}px)`,
+        transform: `translate3d(${x}px, ${y}px, 0)`,
         transition: `transform ${MOVE_MS}ms ease-in-out`,
         zIndex: tile.z ?? 1,
-        animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
+        willChange: "transform",
+        backfaceVisibility: "hidden",
       }}
     >
-      {tile.value ? (
-        imgOk ? (
-          <img
-            src={src}
-            alt={String(tile.value)}
-            style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none", margin: "9%" }}
-            onError={() => setImgOk(false)}
-            draggable={false}
-            loading="eager"
-            decoding="async"
-            fetchPriority={tile.value === 2 || tile.value === 4 ? "high" : "auto"}
-          />
-        ) : (
-          <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", fontWeight: 900 }}>
-            {tile.value}
-          </div>
-        )
-      ) : null}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          overflow: "hidden",
+          animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
+          transformOrigin: "50% 50%",
+          willChange: tile.pop ? "transform, opacity" : "auto",
+        }}
+      >
+        {tile.value ? (
+          imgOk ? (
+            <img
+              src={src}
+              alt={String(tile.value)}
+              style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none", margin: "9%" }}
+              onError={() => setImgOk(false)}
+              draggable={false}
+              loading="eager"
+              decoding="async"
+              fetchPriority={tile.value === 2 || tile.value === 4 ? "high" : "auto"}
+            />
+          ) : (
+            <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", fontWeight: 900 }}>
+              {tile.value}
+            </div>
+          )
+        ) : null}
+      </div>
     </div>
   );
 }
