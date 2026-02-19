@@ -218,8 +218,24 @@ export default function Game2048() {
 
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900, marginBottom: 8 }}>Grid</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 64px)", gap: 10 }}>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 72px)",
+              gap: 10,
+              background: "rgba(0,0,0,0.20)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              borderRadius: 18,
+              padding: 12,
+              width: "fit-content",
+            }}
+          >
             {renderGrid(grid)}
+          </div>
+
+          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 8 }}>
+            Images: <code>/public/numbers/2.png ... 4096.png</code>
           </div>
         </div>
 
@@ -279,25 +295,41 @@ function renderGrid(grid) {
       ? grid.flat()
       : empty;
 
-  return flat.map((v, i) => (
+  return flat.map((v, i) => <Tile key={i} value={v} />);
+}
+
+function Tile({ value }) {
+  const [imgOk, setImgOk] = useState(true);
+  const src = value ? `/numbers/${value}.png` : "";
+
+  return (
     <div
-      key={i}
       style={{
-        width: 64,
-        height: 64,
-        borderRadius: 14,
+        width: 72,
+        height: 72,
+        borderRadius: 16,
         border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(0,0,0,0.25)",
+        background: value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.25)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontWeight: 900,
-        fontSize: 18,
+        overflow: "hidden",
       }}
     >
-      {v ? v : ""}
+      {value ? (
+        imgOk ? (
+          <img
+            src={src}
+            alt={String(value)}
+            style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none" }}
+            onError={() => setImgOk(false)}
+          />
+        ) : (
+          <span style={{ fontWeight: 900, fontSize: 18 }}>{value}</span>
+        )
+      ) : null}
     </div>
-  ));
+  );
 }
 
 function arrowBtnStyle(disabled) {
