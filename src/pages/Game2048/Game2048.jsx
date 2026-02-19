@@ -7,32 +7,6 @@ const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
 
-// ---------- RNG (как на бэке) ----------
-function splitmix64(x) {
-  let z = (x + 0x9e3779b97f4a7c15n) & 0xffffffffffffffffn;
-  z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & 0xffffffffffffffffn;
-  z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & 0xffffffffffffffffn;
-  return (z ^ (z >> 31n)) & 0xffffffffffffffffn;
-}
-function rand01From64(u64) {
-  const v = Number((u64 >> 11n) & ((1n << 53n) - 1n));
-  return v / 9007199254740992;
-}
-function makeRng(seedStr, startIndex = 0) {
-  const seed = BigInt(seedStr || "0");
-  let idx = BigInt(startIndex || 0);
-  return {
-    next01() {
-      const u = splitmix64((seed + idx) & 0xffffffffffffffffn);
-      idx += 1n;
-      return rand01From64(u);
-    },
-    getIndex() {
-      return Number(idx);
-    },
-  };
-}
-
 // ---------- 2048 logic (как на бэке) ----------
 function cloneGrid(g) {
   return g.map((row) => row.slice());
@@ -43,26 +17,6 @@ function gridsEqual(a, b) {
       if (a[r][c] !== b[r][c]) return false;
     }
   }
-  return true;
-}
-function getEmptyCells(grid) {
-  const cells = [];
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      if (!grid[r][c]) cells.push([r, c]);
-    }
-  }
-  return cells;
-}
-function spawnTile(grid, rng) {
-  const empties = getEmptyCells(grid);
-  if (empties.length === 0) return false;
-
-  const pick = Math.floor(rng.next01() * empties.length);
-  const [r, c] = empties[pick];
-
-  const v = rng.next01() < 0.9 ? 2 : 4;
-  grid[r][c] = v;
   return true;
 }
 function slideAndMergeLine(line) {
@@ -179,17 +133,12 @@ export default function Game2048() {
   const [runId, setRunId] = useState("");
   const [periodId, setPeriodId] = useState("");
 
-  const [seed, setSeed] = useState("");
-  const [rngIndex, setRngIndex] = useState(0);
-
   const [grid, setGrid] = useState(null);
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
 
-  // ✅ refs — источник истины для оптимистичного расчёта
+  // refs — авторитетное состояние (что мы приняли от сервера ИЛИ локально применили без спавна)
   const gridRef = useRef(null);
-  const seedRef = useRef("");
-  const rngIndexRef = useRef(0);
   const scoreRef = useRef(0);
   const movesRef = useRef(0);
 
@@ -198,7 +147,7 @@ export default function Game2048() {
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
 
-  // ✅ Preload PNG tiles (чтобы спавн появлялся сразу картинкой)
+  // Preload PNG tiles
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
     values.forEach((v) => {
@@ -224,18 +173,6 @@ export default function Game2048() {
     if (data?.period?.id) {
       localStorage.setItem("ffg_2048_period_id", data.period.id);
       setPeriodId(String(data.period.id));
-    }
-
-    if (run?.seed) {
-      const s = String(run.seed);
-      setSeed(s);
-      seedRef.current = s;
-    }
-
-    if (Number.isFinite(run?.rng_index)) {
-      const ri = Number(run.rng_index);
-      setRngIndex(ri);
-      rngIndexRef.current = ri;
     }
 
     const g = safeGridFromRun(run);
@@ -313,12 +250,12 @@ export default function Game2048() {
     const TH = 28;
     if (ax < TH && ay < TH) return;
 
-    if (ax > ay) moveOptimistic(dx > 0 ? "right" : "left");
-    else moveOptimistic(dy > 0 ? "down" : "up");
+    if (ax > ay) moveNoSpawn(dx > 0 ? "right" : "left");
+    else moveNoSpawn(dy > 0 ? "down" : "up");
   };
 
-  // ---------- Optimistic move (теперь на refs) ----------
-  const moveOptimistic = async (dir) => {
+  // ---------- Move WITHOUT fake spawn ----------
+  const moveNoSpawn = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -327,44 +264,29 @@ export default function Game2048() {
     if (inFlightRef.current) return;
 
     const g = gridRef.current;
-    const s = seedRef.current;
-    const ri = rngIndexRef.current;
-
-    if (!g || !s) {
+    if (!g) {
       toast.info("Нажми Start / Resume");
       return;
     }
 
-    // лочим сразу
-    inFlightRef.current = true;
-
-    // 1) локально считаем ход
+    // 1) локально показываем только сдвиг/слияние (БЕЗ спавна)
     const before = cloneGrid(g);
     const { grid: movedGrid, gained, moved } = applyMove(before, dir);
-    if (!moved) {
-      inFlightRef.current = false;
-      return;
-    }
-
-    const rng = makeRng(s, ri);
-    const afterGrid = cloneGrid(movedGrid);
-    spawnTile(afterGrid, rng);
+    if (!moved) return;
 
     const nextScore = Number(scoreRef.current ?? 0) + Number(gained ?? 0);
     const nextMoves = Number(movesRef.current ?? 0) + 1;
-    const nextRng = rng.getIndex();
 
-    // ✅ синхронно обновляем refs (истина) + state (UI)
-    gridRef.current = afterGrid;
+    gridRef.current = movedGrid;
     scoreRef.current = nextScore;
     movesRef.current = nextMoves;
-    rngIndexRef.current = nextRng;
 
-    setGrid(afterGrid);
+    setGrid(movedGrid);
     setScore(nextScore);
     setMoves(nextMoves);
-    setRngIndex(nextRng);
 
+    // 2) сервер — авторитет. Он пришлёт финальную сетку уже со спавном.
+    inFlightRef.current = true;
     setResp(null);
 
     try {
@@ -384,7 +306,7 @@ export default function Game2048() {
         return;
       }
 
-      // сервер-авторитет: синхронизируем
+      // ✅ применяем ТОЛЬКО серверную сетку (там правильный спавн)
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
@@ -437,12 +359,6 @@ export default function Game2048() {
     localStorage.removeItem("ffg_2048_period_id");
     setRunId("");
     setPeriodId("");
-
-    setSeed("");
-    seedRef.current = "";
-
-    setRngIndex(0);
-    rngIndexRef.current = 0;
 
     setGrid(null);
     gridRef.current = null;
