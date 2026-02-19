@@ -165,6 +165,7 @@ function compactResp(resp) {
             current_score: run.current_score,
             rng_index: run.rng_index,
             period_id: run.period_id,
+            seed: run.seed,
           }
         : null,
     },
@@ -184,6 +185,13 @@ export default function Game2048() {
   const [grid, setGrid] = useState(null);
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
+
+  // ✅ refs — источник истины для оптимистичного расчёта
+  const gridRef = useRef(null);
+  const seedRef = useRef("");
+  const rngIndexRef = useRef(0);
+  const scoreRef = useRef(0);
+  const movesRef = useRef(0);
 
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
@@ -218,14 +226,31 @@ export default function Game2048() {
       setPeriodId(String(data.period.id));
     }
 
-    if (run?.seed) setSeed(String(run.seed));
-    if (Number.isFinite(run?.rng_index)) setRngIndex(Number(run.rng_index));
+    if (run?.seed) {
+      const s = String(run.seed);
+      setSeed(s);
+      seedRef.current = s;
+    }
+
+    if (Number.isFinite(run?.rng_index)) {
+      const ri = Number(run.rng_index);
+      setRngIndex(ri);
+      rngIndexRef.current = ri;
+    }
 
     const g = safeGridFromRun(run);
-    if (g) setGrid(g);
+    if (g) {
+      setGrid(g);
+      gridRef.current = g;
+    }
 
-    setScore(Number(run?.current_score ?? 0));
-    setMoves(Number(run?.moves ?? 0));
+    const sc = Number(run?.current_score ?? 0);
+    setScore(sc);
+    scoreRef.current = sc;
+
+    const mv = Number(run?.moves ?? 0);
+    setMoves(mv);
+    movesRef.current = mv;
   };
 
   const startOrResume = async () => {
@@ -270,7 +295,7 @@ export default function Game2048() {
   };
 
   const onTouchEnd = (e) => {
-    if (inFlightRef.current) return; // ✅ блокируем свайпы пока ход в полёте
+    if (inFlightRef.current) return;
 
     const s = touchStartRef.current;
     touchStartRef.current = null;
@@ -292,7 +317,7 @@ export default function Game2048() {
     else moveOptimistic(dy > 0 ? "down" : "up");
   };
 
-  // ---------- Optimistic move ----------
+  // ---------- Optimistic move (теперь на refs) ----------
   const moveOptimistic = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
@@ -301,13 +326,16 @@ export default function Game2048() {
     }
     if (inFlightRef.current) return;
 
-    const g = Array.isArray(grid) ? grid : null;
-    if (!g || !seed) {
+    const g = gridRef.current;
+    const s = seedRef.current;
+    const ri = rngIndexRef.current;
+
+    if (!g || !s) {
       toast.info("Нажми Start / Resume");
       return;
     }
 
-    // ✅ ВАЖНО: лочим сразу, до оптимистичного setGrid (иначе возможны двойные свайпы)
+    // лочим сразу
     inFlightRef.current = true;
 
     // 1) локально считаем ход
@@ -318,13 +346,19 @@ export default function Game2048() {
       return;
     }
 
-    const rng = makeRng(seed, rngIndex);
+    const rng = makeRng(s, ri);
     const afterGrid = cloneGrid(movedGrid);
     spawnTile(afterGrid, rng);
 
-    const nextScore = Number(score ?? 0) + Number(gained ?? 0);
-    const nextMoves = Number(moves ?? 0) + 1;
+    const nextScore = Number(scoreRef.current ?? 0) + Number(gained ?? 0);
+    const nextMoves = Number(movesRef.current ?? 0) + 1;
     const nextRng = rng.getIndex();
+
+    // ✅ синхронно обновляем refs (истина) + state (UI)
+    gridRef.current = afterGrid;
+    scoreRef.current = nextScore;
+    movesRef.current = nextMoves;
+    rngIndexRef.current = nextRng;
 
     setGrid(afterGrid);
     setScore(nextScore);
@@ -403,11 +437,22 @@ export default function Game2048() {
     localStorage.removeItem("ffg_2048_period_id");
     setRunId("");
     setPeriodId("");
+
     setSeed("");
+    seedRef.current = "";
+
     setRngIndex(0);
+    rngIndexRef.current = 0;
+
     setGrid(null);
+    gridRef.current = null;
+
     setScore(0);
+    scoreRef.current = 0;
+
     setMoves(0);
+    movesRef.current = 0;
+
     toast.info("Локалка очищена");
   };
 
