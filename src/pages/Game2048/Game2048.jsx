@@ -7,88 +7,20 @@ const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
 
-// ---------- 2048 logic (как на бэке) ----------
-function cloneGrid(g) {
-  return g.map((row) => row.slice());
-}
-function gridsEqual(a, b) {
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      if (a[r][c] !== b[r][c]) return false;
-    }
-  }
-  return true;
-}
-function slideAndMergeLine(line) {
-  const filtered = line.filter((x) => x !== 0);
-  const out = [];
-  let score = 0;
+// размеры (как у тебя)
+const CELL = 72;
+const GAP = 10;
+const BOARD_PAD = 12;
 
-  for (let i = 0; i < filtered.length; i++) {
-    if (i + 1 < filtered.length && filtered[i] === filtered[i + 1]) {
-      const merged = filtered[i] * 2;
-      out.push(merged);
-      score += merged;
-      i += 1;
-    } else {
-      out.push(filtered[i]);
-    }
-  }
+// анимации
+const MOVE_MS = 140; // скорость "езда"
+const POP_MS = 120;
 
-  while (out.length < GRID_SIZE) out.push(0);
-  return { line: out, score };
-}
-function applyMove(grid, dir) {
-  const g = cloneGrid(grid);
-  let gained = 0;
-
-  const readLine = (i) => {
-    if (dir === "left") return [g[i][0], g[i][1], g[i][2], g[i][3]];
-    if (dir === "right") return [g[i][3], g[i][2], g[i][1], g[i][0]];
-    if (dir === "up") return [g[0][i], g[1][i], g[2][i], g[3][i]];
-    if (dir === "down") return [g[3][i], g[2][i], g[1][i], g[0][i]];
-    return null;
+function posToPx(r, c) {
+  return {
+    x: c * (CELL + GAP),
+    y: r * (CELL + GAP),
   };
-
-  const writeLine = (i, line) => {
-    if (dir === "left") {
-      g[i][0] = line[0];
-      g[i][1] = line[1];
-      g[i][2] = line[2];
-      g[i][3] = line[3];
-      return;
-    }
-    if (dir === "right") {
-      g[i][3] = line[0];
-      g[i][2] = line[1];
-      g[i][1] = line[2];
-      g[i][0] = line[3];
-      return;
-    }
-    if (dir === "up") {
-      g[0][i] = line[0];
-      g[1][i] = line[1];
-      g[2][i] = line[2];
-      g[3][i] = line[3];
-      return;
-    }
-    if (dir === "down") {
-      g[3][i] = line[0];
-      g[2][i] = line[1];
-      g[1][i] = line[2];
-      g[0][i] = line[3];
-      return;
-    }
-  };
-
-  for (let i = 0; i < GRID_SIZE; i++) {
-    const line = readLine(i);
-    const { line: merged, score } = slideAndMergeLine(line);
-    gained += score;
-    writeLine(i, merged);
-  }
-
-  return { grid: g, gained, moved: !gridsEqual(grid, g) };
 }
 
 function safeGridFromRun(run) {
@@ -126,6 +58,193 @@ function compactResp(resp) {
   };
 }
 
+// ---------- Tile engine (реальные анимации) ----------
+let __tileId = 1;
+function newTileId() {
+  __tileId += 1;
+  return String(__tileId);
+}
+
+/**
+ * tiles: Map(id -> {id,value,r,c, removeAt?, pop?, z?})
+ * board: 2D of tileId|null
+ */
+function buildTilesFromGrid(grid) {
+  const tiles = new Map();
+  const board = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const v = Number(grid?.[r]?.[c] ?? 0);
+      if (!v) continue;
+      const id = newTileId();
+      tiles.set(id, { id, value: v, r, c, pop: true, z: 1 });
+      board[r][c] = id;
+    }
+  }
+  return { tiles, board };
+}
+
+// направление -> список координат чтения линии
+function getLineCoords(i, dir) {
+  const coords = [];
+  if (dir === "left") for (let c = 0; c < GRID_SIZE; c++) coords.push([i, c]);
+  if (dir === "right") for (let c = GRID_SIZE - 1; c >= 0; c--) coords.push([i, c]);
+  if (dir === "up") for (let r = 0; r < GRID_SIZE; r++) coords.push([r, i]);
+  if (dir === "down") for (let r = GRID_SIZE - 1; r >= 0; r--) coords.push([r, i]);
+  return coords;
+}
+
+function coordsIndexToWrite(i, k, dir) {
+  // k = 0..3 позиция в "сжатой" линии
+  if (dir === "left") return [i, k];
+  if (dir === "right") return [i, GRID_SIZE - 1 - k];
+  if (dir === "up") return [k, i];
+  if (dir === "down") return [GRID_SIZE - 1 - k, i];
+  return [i, k];
+}
+
+function canMoveGridValues(grid) {
+  // простой canMove по значениям (для UI-логики)
+  // если есть пустые — можно
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (!grid[r][c]) return true;
+    }
+  }
+  // если есть соседние равные — можно
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const v = grid[r][c];
+      if (r + 1 < GRID_SIZE && grid[r + 1][c] === v) return true;
+      if (c + 1 < GRID_SIZE && grid[r][c + 1] === v) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Локальная анимированная "движуха":
+ * - вычисляет перемещения tileId
+ * - при merge: два tileId едут в одну клетку, оба помечаются removeAt, создаётся новый tile (поп)
+ * Возвращает:
+ *  - nextTiles, nextBoard
+ *  - gainedScore
+ *  - moved:boolean
+ *  - nextGridValues (матрица значений) для быстрого сравнения/логики
+ */
+function applyMoveAnimated(tiles, board, dir) {
+  const nextTiles = new Map();
+  // копируем tiles (чтобы не мутировать вход)
+  for (const [id, t] of tiles.entries()) nextTiles.set(id, { ...t, pop: false, z: 1, removeAt: null });
+
+  const nextBoard = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+  const nextGridValues = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+
+  let gained = 0;
+  let anyMoved = false;
+
+  // чтобы z-index был красивый (движущиеся выше)
+  let zCounter = 10;
+
+  for (let i = 0; i < GRID_SIZE; i++) {
+    const coords = getLineCoords(i, dir);
+
+    // собираем тайлы линии (id и value)
+    const line = [];
+    for (const [r, c] of coords) {
+      const id = board[r][c];
+      if (!id) continue;
+      const t = nextTiles.get(id);
+      if (t) line.push({ id, value: t.value, from: { r, c } });
+    }
+
+    // сжимаем/мержим
+    const out = [];
+    let p = 0;
+    while (p < line.length) {
+      const cur = line[p];
+      const nxt = line[p + 1];
+
+      if (nxt && cur.value === nxt.value) {
+        // merge
+        const mergedValue = cur.value * 2;
+        gained += mergedValue;
+
+        // целевая позиция для обоих
+        const targetIndex = out.length;
+        const [tr, tc] = coordsIndexToWrite(i, targetIndex, dir);
+
+        // оба тайла едут в target
+        const a = nextTiles.get(cur.id);
+        const b = nextTiles.get(nxt.id);
+        if (a) {
+          if (a.r !== tr || a.c !== tc) anyMoved = true;
+          a.r = tr;
+          a.c = tc;
+          a.z = zCounter++;
+          a.removeAt = Date.now() + MOVE_MS; // убрать после анимации
+        }
+        if (b) {
+          if (b.r !== tr || b.c !== tc) anyMoved = true;
+          b.r = tr;
+          b.c = tc;
+          b.z = zCounter++;
+          b.removeAt = Date.now() + MOVE_MS;
+        }
+
+        // создаём новый тайл на target, появится после move
+        const newId = newTileId();
+        nextTiles.set(newId, {
+          id: newId,
+          value: mergedValue,
+          r: tr,
+          c: tc,
+          pop: false, // включим после завершения движения
+          z: zCounter++,
+          appearAt: Date.now() + MOVE_MS, // показать после движения
+        });
+
+        out.push({ id: newId, value: mergedValue, r: tr, c: tc });
+        p += 2;
+      } else {
+        // просто сдвиг
+        const targetIndex = out.length;
+        const [tr, tc] = coordsIndexToWrite(i, targetIndex, dir);
+
+        const t = nextTiles.get(cur.id);
+        if (t) {
+          if (t.r !== tr || t.c !== tc) anyMoved = true;
+          t.r = tr;
+          t.c = tc;
+          t.z = zCounter++;
+        }
+
+        out.push({ id: cur.id, value: cur.value, r: tr, c: tc });
+        p += 1;
+      }
+    }
+
+    // заполняем nextBoard/nextGridValues
+    for (const item of out) {
+      nextBoard[item.r][item.c] = item.id;
+      nextGridValues[item.r][item.c] = item.value;
+    }
+  }
+
+  return { nextTiles, nextBoard, gained, moved: anyMoved, nextGridValues };
+}
+
+function gridsEqualValues(a, b) {
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if ((a?.[r]?.[c] ?? 0) !== (b?.[r]?.[c] ?? 0)) return false;
+    }
+  }
+  return true;
+}
+
+// ---------- UI ----------
 export default function Game2048() {
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState(null);
@@ -133,35 +252,34 @@ export default function Game2048() {
   const [runId, setRunId] = useState("");
   const [periodId, setPeriodId] = useState("");
 
-  const [grid, setGrid] = useState(null);
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
 
-  // refs — авторитетное состояние (что мы приняли от сервера ИЛИ локально применили без спавна)
-  const gridRef = useRef(null);
-  const scoreRef = useRef(0);
-  const movesRef = useRef(0);
+  // tile engine state for rendering
+  const [tilesArr, setTilesArr] = useState([]); // array of tile objects for render
+  const tilesRef = useRef(new Map());
+  const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
+  const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
 
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
 
-  // ✅ ref на игровую область, чтобы блокировать системные жесты Telegram (pull/scroll)
+  // board DOM ref (для блокировки свайпа в Telegram)
   const boardRef = useRef(null);
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
 
-  // ✅ Telegram WebApp: максимально фиксируем поведение (если доступно)
+  // Telegram WebApp: фиксируем вертикальные свайпы (если метод есть)
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     try {
       tg?.ready?.();
       tg?.expand?.();
-      tg?.disableVerticalSwipes?.(); // если метода нет — просто ничего не произойдет
+      tg?.disableVerticalSwipes?.();
     } catch (_) {}
   }, []);
 
-  // ✅ Блокируем "протяжку" (scroll/pull-to-close) внутри игрового поля
-  // iOS/Telegram: критично { passive:false }
+  // блокируем "протяжку" внутри поля
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
@@ -171,13 +289,10 @@ export default function Game2048() {
     };
 
     el.addEventListener("touchmove", prevent, { passive: false });
-
-    return () => {
-      el.removeEventListener("touchmove", prevent);
-    };
+    return () => el.removeEventListener("touchmove", prevent);
   }, []);
 
-  // Preload PNG tiles
+  // preload png
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
     values.forEach((v) => {
@@ -192,7 +307,20 @@ export default function Game2048() {
     setPeriodId(localStorage.getItem("ffg_2048_period_id") || "");
   }, []);
 
-  const applyRunToUi = (data) => {
+  function syncTilesArrFromRef() {
+    const now = Date.now();
+    const list = [];
+    for (const t of tilesRef.current.values()) {
+      // скрываем тайлы, которые ещё "не появились" (после merge)
+      if (t.appearAt && now < t.appearAt) continue;
+      list.push(t);
+    }
+    // стабильный порядок рендера: сначала низкие z
+    list.sort((a, b) => (a.z ?? 1) - (b.z ?? 1));
+    setTilesArr(list);
+  }
+
+  function applyRunToUi(data) {
     const run = data?.run || data;
     if (!run) return;
 
@@ -207,18 +335,26 @@ export default function Game2048() {
 
     const g = safeGridFromRun(run);
     if (g) {
-      setGrid(g);
-      gridRef.current = g;
+      // синхронизируем tile engine по серверной сетке
+      // если уже есть анимации в процессе — делаем мягко:
+      // - если сетка совпадает по значениям, не трогаем
+      // - иначе перестраиваем (редко, но спасает от рассинхрона)
+      const current = gridValuesRef.current;
+      if (!gridsEqualValues(current, g)) {
+        const built = buildTilesFromGrid(g);
+        tilesRef.current = built.tiles;
+        boardRefState.current = built.board;
+        gridValuesRef.current = g.map((row) => row.slice());
+        syncTilesArrFromRef();
+      }
     }
 
     const sc = Number(run?.current_score ?? 0);
     setScore(sc);
-    scoreRef.current = sc;
 
     const mv = Number(run?.moves ?? 0);
     setMoves(mv);
-    movesRef.current = mv;
-  };
+  }
 
   const startOrResume = async () => {
     const jwt = localStorage.getItem("jwt");
@@ -245,6 +381,17 @@ export default function Game2048() {
         return;
       }
 
+      // при старте/резюме всегда перестраиваем board (это нормально)
+      const run = data?.run;
+      const g = safeGridFromRun(run);
+      if (g) {
+        const built = buildTilesFromGrid(g);
+        tilesRef.current = built.tiles;
+        boardRefState.current = built.board;
+        gridValuesRef.current = g.map((row) => row.slice());
+        syncTilesArrFromRef();
+      }
+
       applyRunToUi(data);
     } catch (e) {
       console.error(e);
@@ -256,19 +403,14 @@ export default function Game2048() {
 
   // ---------- SWIPE ----------
   const onTouchStart = (e) => {
-    // ✅ блокируем системные жесты на старте касания
-    // (важно, чтобы touchmove не улетал в Telegram)
     e.preventDefault?.();
-
     const t = e.touches?.[0];
     if (!t) return;
     touchStartRef.current = { x: t.clientX, y: t.clientY, ts: Date.now() };
   };
 
   const onTouchEnd = (e) => {
-    // ✅ попытка убрать "дерганье" при отпускании
     e.preventDefault?.();
-
     if (inFlightRef.current) return;
 
     const s = touchStartRef.current;
@@ -287,12 +429,12 @@ export default function Game2048() {
     const TH = 28;
     if (ax < TH && ay < TH) return;
 
-    if (ax > ay) moveNoSpawn(dx > 0 ? "right" : "left");
-    else moveNoSpawn(dy > 0 ? "down" : "up");
+    if (ax > ay) moveAnimated(dx > 0 ? "right" : "left");
+    else moveAnimated(dy > 0 ? "down" : "up");
   };
 
-  // ---------- Move WITHOUT fake spawn ----------
-  const moveNoSpawn = async (dir) => {
+  // ---------- Move WITH real animation ----------
+  const moveAnimated = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -300,29 +442,52 @@ export default function Game2048() {
     }
     if (inFlightRef.current) return;
 
-    const g = gridRef.current;
-    if (!g) {
+    // если нет run/grid
+    const curValues = gridValuesRef.current;
+    const hasAny = curValues.some((row) => row.some((v) => v > 0));
+    if (!hasAny) {
       toast.info("Нажми Start / Resume");
       return;
     }
 
-    // 1) локально показываем только сдвиг/слияние (БЕЗ спавна)
-    const before = cloneGrid(g);
-    const { grid: movedGrid, gained, moved } = applyMove(before, dir);
+    // 1) локально запускаем анимацию движения/слияния
+    const beforeTiles = tilesRef.current;
+    const beforeBoard = boardRefState.current;
+
+    const { nextTiles, nextBoard, gained, moved, nextGridValues } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
     if (!moved) return;
 
-    const nextScore = Number(scoreRef.current ?? 0) + Number(gained ?? 0);
-    const nextMoves = Number(movesRef.current ?? 0) + 1;
+    // применяем "движение"
+    tilesRef.current = nextTiles;
+    boardRefState.current = nextBoard;
+    gridValuesRef.current = nextGridValues;
+    setScore((prev) => prev + gained);
+    setMoves((prev) => prev + 1);
+    syncTilesArrFromRef();
 
-    gridRef.current = movedGrid;
-    scoreRef.current = nextScore;
-    movesRef.current = nextMoves;
+    // 2) через MOVE_MS — убираем merged-старые тайлы и включаем pop для новых
+    const removeAtTs = Date.now() + MOVE_MS + 5;
+    window.setTimeout(() => {
+      const now = Date.now();
+      const map = new Map(tilesRef.current);
 
-    setGrid(movedGrid);
-    setScore(nextScore);
-    setMoves(nextMoves);
+      // удаляем те, что должны исчезнуть
+      for (const [id, t] of map.entries()) {
+        if (t.removeAt && now >= t.removeAt) map.delete(id);
+      }
+      // включаем pop у новых/слитых (appearAt прошёл)
+      for (const t of map.values()) {
+        if (t.appearAt && now >= t.appearAt) {
+          t.pop = true;
+          delete t.appearAt;
+        }
+      }
 
-    // 2) сервер — авторитет. Он пришлёт финальную сетку уже со спавном.
+      tilesRef.current = map;
+      syncTilesArrFromRef();
+    }, Math.max(0, removeAtTs - Date.now()));
+
+    // 3) параллельно отправляем ход на сервер (авторитет)
     inFlightRef.current = true;
     setResp(null);
 
@@ -343,7 +508,8 @@ export default function Game2048() {
         return;
       }
 
-      // ✅ применяем ТОЛЬКО серверную сетку (там правильный спавн)
+      // ✅ сервер прислал финальную сетку (уже со спавном)
+      // если значения совпадают — отлично. если нет — перестроим.
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
@@ -397,19 +563,21 @@ export default function Game2048() {
     setRunId("");
     setPeriodId("");
 
-    setGrid(null);
-    gridRef.current = null;
+    tilesRef.current = new Map();
+    boardRefState.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+    gridValuesRef.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    setTilesArr([]);
 
     setScore(0);
-    scoreRef.current = 0;
-
     setMoves(0);
-    movesRef.current = 0;
 
     toast.info("Локалка очищена");
   };
 
   const debug = compactResp(resp);
+
+  const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
+  const boardH = boardW;
 
   return (
     <>
@@ -427,7 +595,7 @@ export default function Game2048() {
       >
         <style>{`
           @keyframes ffgPop {
-            0% { transform: scale(0.88); opacity: 0.0; }
+            0% { transform: scale(0.86); opacity: 0.0; }
             100% { transform: scale(1); opacity: 1; }
           }
         `}</style>
@@ -446,7 +614,7 @@ export default function Game2048() {
           />
           <div>
             <div style={{ fontWeight: 900, fontSize: 18, lineHeight: 1 }}>4096</div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Свайпы • без кнопок</div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Свайпы • реальная анимация</div>
           </div>
           <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, opacity: 0.85 }}>
             <div>
@@ -491,7 +659,7 @@ export default function Game2048() {
             style={{
               width: "fit-content",
               borderRadius: 18,
-              padding: 12,
+              padding: BOARD_PAD,
               background: "rgba(0,0,0,0.20)",
               border: "1px solid rgba(255,255,255,0.10)",
               touchAction: "none",
@@ -501,14 +669,45 @@ export default function Game2048() {
               WebkitOverflowScrolling: "auto",
             }}
           >
+            {/* GRID BACKGROUND */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 72px)",
-                gap: 10,
+                position: "relative",
+                width: boardW,
+                height: boardH,
+                borderRadius: 16,
               }}
             >
-              {renderGrid(grid)}
+              {/* клетки-фон */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL}px)`,
+                  gap: GAP,
+                }}
+              >
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: CELL,
+                      height: CELL,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.25)",
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* тайлы (absolute, двигаются transform) */}
+              <div style={{ position: "absolute", inset: 0 }}>
+                {tilesArr.map((t) => (
+                  <AnimatedTile key={t.id} tile={t} />
+                ))}
+              </div>
             </div>
           </div>
 
@@ -542,49 +741,45 @@ export default function Game2048() {
   );
 }
 
-function renderGrid(grid) {
-  const empty = new Array(16).fill(0);
-  const flat =
-    Array.isArray(grid) && grid.length === 4 && grid.every((r) => Array.isArray(r) && r.length === 4)
-      ? grid.flat()
-      : empty;
-
-  return flat.map((v, i) => <Tile key={i} value={v} />);
-}
-
-function Tile({ value }) {
+function AnimatedTile({ tile }) {
   const [imgOk, setImgOk] = useState(true);
-  const src = value ? `/numbers/${value}.png` : "";
+
+  const { x, y } = posToPx(tile.r, tile.c);
+  const src = tile.value ? `/numbers/${tile.value}.png` : "";
 
   return (
     <div
       style={{
-        width: 72,
-        height: 72,
+        position: "absolute",
+        width: CELL,
+        height: CELL,
         borderRadius: 16,
         border: "1px solid rgba(255,255,255,0.12)",
-        background: value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.25)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        background: "rgba(255,255,255,0.06)",
         overflow: "hidden",
-        animation: value ? "ffgPop 120ms ease-out" : "none",
+        transform: `translate(${x}px, ${y}px)`,
+        transition: `transform ${MOVE_MS}ms ease-in-out`,
+        zIndex: tile.z ?? 1,
+        // pop анимация
+        animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
       }}
     >
-      {value ? (
+      {tile.value ? (
         imgOk ? (
           <img
             src={src}
-            alt={String(value)}
-            style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none" }}
+            alt={String(tile.value)}
+            style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none", margin: "9%" }}
             onError={() => setImgOk(false)}
             draggable={false}
             loading="eager"
             decoding="async"
-            fetchPriority={value === 2 || value === 4 ? "high" : "auto"}
+            fetchPriority={tile.value === 2 || tile.value === 4 ? "high" : "auto"}
           />
         ) : (
-          <span style={{ fontWeight: 900, fontSize: 18 }}>{value}</span>
+          <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", fontWeight: 900 }}>
+            {tile.value}
+          </div>
         )
       ) : null}
     </div>
