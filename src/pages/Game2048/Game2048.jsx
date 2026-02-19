@@ -6,7 +6,6 @@ const API_BASE = "https://lottery-server-waif.onrender.com";
 const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
-const ACTIONS_LIMIT = 200;
 
 // ---------- RNG (как на бэке) ----------
 function splitmix64(x) {
@@ -166,7 +165,6 @@ function compactResp(resp) {
             current_score: run.current_score,
             rng_index: run.rng_index,
             period_id: run.period_id,
-            seed: run.seed,
           }
         : null,
     },
@@ -192,7 +190,7 @@ export default function Game2048() {
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
 
-  // ✅ PRELOAD tiles (убирает задержку появления 2/4 и т.п.)
+  // ✅ Preload PNG tiles (чтобы спавн появлялся сразу картинкой)
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
     values.forEach((v) => {
@@ -264,6 +262,7 @@ export default function Game2048() {
     }
   };
 
+  // ---------- SWIPE ----------
   const onTouchStart = (e) => {
     const t = e.touches?.[0];
     if (!t) return;
@@ -271,6 +270,8 @@ export default function Game2048() {
   };
 
   const onTouchEnd = (e) => {
+    if (inFlightRef.current) return; // ✅ блокируем свайпы пока ход в полёте
+
     const s = touchStartRef.current;
     touchStartRef.current = null;
     if (!s) return;
@@ -291,6 +292,7 @@ export default function Game2048() {
     else moveOptimistic(dy > 0 ? "down" : "up");
   };
 
+  // ---------- Optimistic move ----------
   const moveOptimistic = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
@@ -305,9 +307,16 @@ export default function Game2048() {
       return;
     }
 
+    // ✅ ВАЖНО: лочим сразу, до оптимистичного setGrid (иначе возможны двойные свайпы)
+    inFlightRef.current = true;
+
+    // 1) локально считаем ход
     const before = cloneGrid(g);
     const { grid: movedGrid, gained, moved } = applyMove(before, dir);
-    if (!moved) return;
+    if (!moved) {
+      inFlightRef.current = false;
+      return;
+    }
 
     const rng = makeRng(seed, rngIndex);
     const afterGrid = cloneGrid(movedGrid);
@@ -322,7 +331,6 @@ export default function Game2048() {
     setMoves(nextMoves);
     setRngIndex(nextRng);
 
-    inFlightRef.current = true;
     setResp(null);
 
     try {
@@ -342,6 +350,7 @@ export default function Game2048() {
         return;
       }
 
+      // сервер-авторитет: синхронизируем
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
