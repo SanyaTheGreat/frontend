@@ -4,120 +4,195 @@ import "react-toastify/dist/ReactToastify.css";
 
 const API_BASE = "https://lottery-server-waif.onrender.com";
 
-// UI tuning
+// если у тебя логотип лежит в другом месте — поменяй путь
+const LOGO_4096 = "/numbers/4096.png";
+
 const GRID_SIZE = 4;
-const TILE_PX = 72; // размер тайла
-const GAP_PX = 10;  // gap между клетками
-const BOARD_PAD = 12;
+const ACTIONS_LIMIT = 200;
 
-const ANIM_MS = 140;      // скорость слайда
-const SPAWN_MS = 120;     // скорость появления нового тайла
-const SWIPE_THRESHOLD = 26;
+// ---------- RNG (как на бэке) ----------
+function splitmix64(x) {
+  let z = (x + 0x9e3779b97f4a7c15n) & 0xffffffffffffffffn;
+  z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & 0xffffffffffffffffn;
+  z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & 0xffffffffffffffffn;
+  return (z ^ (z >> 31n)) & 0xffffffffffffffffn;
+}
+function rand01From64(u64) {
+  const v = Number((u64 >> 11n) & ((1n << 53n) - 1n));
+  return v / 9007199254740992;
+}
+function makeRng(seedStr, startIndex = 0) {
+  const seed = BigInt(seedStr || "0");
+  let idx = BigInt(startIndex || 0);
+  return {
+    next01() {
+      const u = splitmix64((seed + idx) & 0xffffffffffffffffn);
+      idx += 1n;
+      return rand01From64(u);
+    },
+    getIndex() {
+      return Number(idx);
+    },
+  };
+}
 
-const LOGO_4096_SRC = "/ui/4096.png"; // <-- положи png сюда
+// ---------- 2048 logic (как на бэке) ----------
+function cloneGrid(g) {
+  return g.map((row) => row.slice());
+}
+function gridsEqual(a, b) {
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (a[r][c] !== b[r][c]) return false;
+    }
+  }
+  return true;
+}
+function getEmptyCells(grid) {
+  const cells = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (!grid[r][c]) cells.push([r, c]);
+    }
+  }
+  return cells;
+}
+function spawnTile(grid, rng) {
+  const empties = getEmptyCells(grid);
+  if (empties.length === 0) return false;
+
+  const pick = Math.floor(rng.next01() * empties.length);
+  const [r, c] = empties[pick];
+
+  const v = rng.next01() < 0.9 ? 2 : 4;
+  grid[r][c] = v;
+  return true;
+}
+function slideAndMergeLine(line) {
+  const filtered = line.filter((x) => x !== 0);
+  const out = [];
+  let score = 0;
+
+  for (let i = 0; i < filtered.length; i++) {
+    if (i + 1 < filtered.length && filtered[i] === filtered[i + 1]) {
+      const merged = filtered[i] * 2;
+      out.push(merged);
+      score += merged;
+      i += 1;
+    } else {
+      out.push(filtered[i]);
+    }
+  }
+
+  while (out.length < GRID_SIZE) out.push(0);
+  return { line: out, score };
+}
+function applyMove(grid, dir) {
+  const g = cloneGrid(grid);
+  let gained = 0;
+
+  const readLine = (i) => {
+    if (dir === "left") return [g[i][0], g[i][1], g[i][2], g[i][3]];
+    if (dir === "right") return [g[i][3], g[i][2], g[i][1], g[i][0]];
+    if (dir === "up") return [g[0][i], g[1][i], g[2][i], g[3][i]];
+    if (dir === "down") return [g[3][i], g[2][i], g[1][i], g[0][i]];
+    return null;
+  };
+
+  const writeLine = (i, line) => {
+    if (dir === "left") {
+      g[i][0] = line[0]; g[i][1] = line[1]; g[i][2] = line[2]; g[i][3] = line[3];
+      return;
+    }
+    if (dir === "right") {
+      g[i][3] = line[0]; g[i][2] = line[1]; g[i][1] = line[2]; g[i][0] = line[3];
+      return;
+    }
+    if (dir === "up") {
+      g[0][i] = line[0]; g[1][i] = line[1]; g[2][i] = line[2]; g[3][i] = line[3];
+      return;
+    }
+    if (dir === "down") {
+      g[3][i] = line[0]; g[2][i] = line[1]; g[1][i] = line[2]; g[0][i] = line[3];
+      return;
+    }
+  };
+
+  for (let i = 0; i < GRID_SIZE; i++) {
+    const line = readLine(i);
+    const { line: merged, score } = slideAndMergeLine(line);
+    gained += score;
+    writeLine(i, merged);
+  }
+
+  return { grid: g, gained, moved: !gridsEqual(grid, g) };
+}
+function canMove(grid) {
+  if (getEmptyCells(grid).length > 0) return true;
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const v = grid[r][c];
+      if (r + 1 < GRID_SIZE && grid[r + 1][c] === v) return true;
+      if (c + 1 < GRID_SIZE && grid[r][c + 1] === v) return true;
+    }
+  }
+  return false;
+}
+
+function safeGridFromRun(run) {
+  const st = run?.state;
+  if (!st?.grid || !Array.isArray(st.grid) || st.grid.length !== 4) return null;
+  return st.grid;
+}
 
 export default function Game2048() {
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState(null);
 
+  const [runId, setRunId] = useState("");
+  const [periodId, setPeriodId] = useState("");
+
+  const [seed, setSeed] = useState("");
+  const [rngIndex, setRngIndex] = useState(0);
+
   const [grid, setGrid] = useState(null);
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
 
-  // попытки (покажем как ты просил)
-  const [attempts, setAttempts] = useState({
-    daily_attempts_remaining: null,
-    referral_attempts_balance: null,
-    daily_plays_used: null,
-  });
+  // чтобы не спамили свайпы пока один уже в полёте
+  const inFlightRef = useRef(false);
 
-  // Для анимаций
-  const [tiles, setTiles] = useState([]); // список объектов {id, r, c, v, isNew}
-  const tileIdSeq = useRef(1);
-  const lastGridRef = useRef(null);
-  const animLockRef = useRef(false);
-
-  // swipe
-  const touchStartRef = useRef(null);
-
-  // jwt
   const token = useMemo(() => localStorage.getItem("jwt") || "", []);
 
   useEffect(() => {
-    // при первом заходе — если есть сохранённый run — попробуем его резюмнуть
-    // (но не автозапускаем, чтобы ты контролил)
+    setRunId(localStorage.getItem("ffg_2048_run_id") || "");
+    setPeriodId(localStorage.getItem("ffg_2048_period_id") || "");
   }, []);
 
-  function boardW() {
-    return BOARD_PAD * 2 + GRID_SIZE * TILE_PX + (GRID_SIZE - 1) * GAP_PX;
-  }
-
-  function posForCell(r, c) {
-    const x = BOARD_PAD + c * (TILE_PX + GAP_PX);
-    const y = BOARD_PAD + r * (TILE_PX + GAP_PX);
-    return { x, y };
-  }
-
-  function normalizeGrid(g) {
-    const empty = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
-    if (!Array.isArray(g) || g.length !== GRID_SIZE) return empty;
-    if (!g.every((row) => Array.isArray(row) && row.length === GRID_SIZE)) return empty;
-    return g.map((row) => row.map((v) => Number(v) || 0));
-  }
-
-  // Превращаем grid в tiles (без дублей) — один тайл на клетку (как у тебя на сервере)
-  // Это не “идеальная 2048-анимация с merge-tracking”, но визуально даёт плавный слайд + spawn.
-  function gridToTiles(nextGrid, prevTiles = []) {
-    const g = normalizeGrid(nextGrid);
-
-    // карта старых тайлов по позиции
-    const prevMap = new Map();
-    for (const t of prevTiles) prevMap.set(`${t.r}:${t.c}`, t);
-
-    const out = [];
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
-        const v = g[r][c];
-        if (!v) continue;
-
-        const key = `${r}:${c}`;
-        const old = prevMap.get(key);
-
-        if (old && old.v === v) {
-          out.push({ ...old, r, c, v, isNew: false });
-        } else {
-          // новый (или изменился) — дадим новый id, чтобы spawn анимация работала корректно
-          out.push({ id: String(tileIdSeq.current++), r, c, v, isNew: true });
-        }
-      }
-    }
-    return out;
-  }
-
-  function applyServerDataToUI(data) {
-    const run = data?.run;
+  const applyRunToUi = (data) => {
+    const run = data?.run || data; // иногда мы зовём с {run:...}
     if (!run) return;
 
-    const nextGrid = normalizeGrid(run?.state?.grid);
-    setGrid(nextGrid);
+    if (run?.id) {
+      localStorage.setItem("ffg_2048_run_id", run.id);
+      setRunId(String(run.id));
+    }
+    if (data?.period?.id) {
+      localStorage.setItem("ffg_2048_period_id", data.period.id);
+      setPeriodId(String(data.period.id));
+    }
+
+    if (run?.seed) setSeed(String(run.seed));
+    if (Number.isFinite(run?.rng_index)) setRngIndex(Number(run.rng_index));
+
+    const g = safeGridFromRun(run);
+    if (g) setGrid(g);
 
     setScore(Number(run?.current_score ?? 0));
     setMoves(Number(run?.moves ?? 0));
+  };
 
-    if (data?.attempts) {
-      setAttempts({
-        daily_attempts_remaining: data.attempts.daily_attempts_remaining ?? null,
-        referral_attempts_balance: data.attempts.referral_attempts_balance ?? null,
-        daily_plays_used: data.attempts.daily_plays_used ?? null,
-      });
-    }
-
-    // ВАЖНО: чтобы не было “всё в (0,0)” — tiles должны иметь позицию сразу
-    setTiles((prev) => gridToTiles(nextGrid, prev));
-    lastGridRef.current = nextGrid;
-  }
-
-  async function startOrResume() {
+  const startOrResume = async () => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -142,75 +217,83 @@ export default function Game2048() {
         return;
       }
 
-      localStorage.setItem("ffg_2048_run_id", data.run?.id || "");
-      localStorage.setItem("ffg_2048_period_id", data.period?.id || "");
-
-      applyServerDataToUI(data);
-      toast.success(data.mode === "resume" ? "Продолжаем игру" : "Новая игра");
+      applyRunToUi(data);
     } catch (e) {
       console.error(e);
       toast.error("Ошибка сети");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  // --- Оптимистичный ход: локально сразу анимируем, сервер — параллельно ---
-  function localMoveSimulate(dir) {
-    // Супер-упрощённо: мы НЕ пересчитываем 2048 на клиенте полностью (можно, но долго).
-    // Поэтому делаем так:
-    // 1) блокируем на время
-    // 2) просто отправляем запрос и ждём ответ
-    //
-    // Но чтобы у тебя было “сразу видно движение”, нам нужен клиентский симулятор.
-    // Я даю рабочий вариант: переносим симуляцию из бэка на фронт минимально.
+  // ---------- SWIPE ----------
+  const touchStartRef = useRef(null);
+  const onTouchStart = (e) => {
+    const t = e.touches?.[0];
+    if (!t) return;
+    touchStartRef.current = { x: t.clientX, y: t.clientY, ts: Date.now() };
+  };
+  const onTouchEnd = (e) => {
+    const s = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!s) return;
 
-    const g0 = normalizeGrid(lastGridRef.current);
-    if (!g0) return null;
+    const t = e.changedTouches?.[0];
+    if (!t) return;
 
-    const { nextGrid, moved } = simulate2048Step(g0, dir);
-    if (!moved) return { nextGrid: g0, moved: false };
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
 
-    return { nextGrid, moved: true };
-  }
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
 
-  async function move(dir) {
+    const TH = 28; // порог
+    if (ax < TH && ay < TH) return;
+
+    if (ax > ay) {
+      moveOptimistic(dx > 0 ? "right" : "left");
+    } else {
+      moveOptimistic(dy > 0 ? "down" : "up");
+    }
+  };
+
+  // ---------- Optimistic move ----------
+  const moveOptimistic = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
       return;
     }
-    if (animLockRef.current) return;
+    if (inFlightRef.current) return;
 
-    // 1) локально — сразу
-    const sim = localMoveSimulate(dir);
-    if (sim?.moved) {
-      animLockRef.current = true;
-
-      const nextGrid = sim.nextGrid;
-      setGrid(nextGrid);
-
-      // важно: tiles обновляем сразу -> CSS transition покажет слайд
-      setTiles((prev) => {
-        const nextTiles = gridToTiles(nextGrid, prev);
-
-        // spawn: делаем isNew true только для реально новых клеток
-        // (gridToTiles уже это делает, но после слайда быстро “снимаем” флаг)
-        setTimeout(() => {
-          setTiles((cur) => cur.map((t) => ({ ...t, isNew: false })));
-        }, SPAWN_MS);
-
-        return nextTiles;
-      });
-
-      // отпускаем лок через длительность анимации
-      setTimeout(() => {
-        animLockRef.current = false;
-      }, ANIM_MS);
+    const g = Array.isArray(grid) ? grid : null;
+    if (!g || !seed) {
+      // если UI ещё не готов — просто просим start/resume
+      toast.info("Нажми Start / Resume");
+      return;
     }
 
-    // 2) сервер — подтверждение
-    setLoading(true);
+    // 1) локально считаем ход мгновенно
+    const before = cloneGrid(g);
+    const { grid: movedGrid, gained, moved } = applyMove(before, dir);
+    if (!moved) return;
+
+    const rng = makeRng(seed, rngIndex);
+    const afterGrid = cloneGrid(movedGrid);
+    spawnTile(afterGrid, rng);
+
+    const nextScore = Number(score ?? 0) + Number(gained ?? 0);
+    const nextMoves = Number(moves ?? 0) + 1;
+    const nextRng = rng.getIndex();
+
+    // мгновенно в UI
+    setGrid(afterGrid);
+    setScore(nextScore);
+    setMoves(nextMoves);
+    setRngIndex(nextRng);
+
+    // 2) отправляем на сервер (авторитет)
+    inFlightRef.current = true;
     setResp(null);
 
     try {
@@ -224,44 +307,31 @@ export default function Game2048() {
       setResp({ status: res.status, ok: res.ok, data });
 
       if (!res.ok || !data?.ok) {
-        // если сервер не принял — ресинхронизируемся через start/resume
         toast.error(data?.error || "Move error");
         if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
-        await safeResync();
+        // ресинк, чтобы не остаться в рассинхроне
+        await startOrResume();
         return;
       }
 
-      // серверная истина
-      applyServerDataToUI(data);
+      // синхронизируемся (если вдруг отличия/сервер закрыл ран)
+      applyRunToUi(data);
 
       if (data?.finished) {
         toast.info(`Game Over (${data?.reason || "finished"})`);
       }
-      // ✅ убрали toast на каждый удачный шаг
+      // ✅ success-toast на каждый ход — УБРАЛИ
     } catch (e) {
       console.error(e);
       toast.error("Ошибка сети (move)");
-      await safeResync();
+      // ресинк
+      await startOrResume();
     } finally {
-      setLoading(false);
+      inFlightRef.current = false;
     }
-  }
+  };
 
-  async function safeResync() {
-    // мягко ресинхронизируем состояние
-    try {
-      const jwt = localStorage.getItem("jwt");
-      if (!jwt) return;
-      const res = await fetch(`${API_BASE}/game/run/start`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.ok) applyServerDataToUI(data);
-    } catch {}
-  }
-
-  async function finish() {
+  const finish = async () => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -286,7 +356,7 @@ export default function Game2048() {
         return;
       }
 
-      applyServerDataToUI({ ...data, run: data.run });
+      applyRunToUi({ ...data, run: data.run });
       toast.success("Finished");
     } catch (e) {
       console.error(e);
@@ -294,50 +364,20 @@ export default function Game2048() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  // --- SWIPE ---
-  function onTouchStart(e) {
-    if (loading) return;
-    const t = e.touches?.[0];
-    if (!t) return;
-    touchStartRef.current = { x: t.clientX, y: t.clientY, at: Date.now() };
-  }
-
-  function onTouchEnd(e) {
-    if (loading) return;
-    const start = touchStartRef.current;
-    touchStartRef.current = null;
-    if (!start) return;
-
-    const t = e.changedTouches?.[0];
-    if (!t) return;
-
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-
-    const adx = Math.abs(dx);
-    const ady = Math.abs(dy);
-
-    if (Math.max(adx, ady) < SWIPE_THRESHOLD) return;
-
-    if (adx > ady) {
-      move(dx > 0 ? "right" : "left");
-    } else {
-      move(dy > 0 ? "down" : "up");
-    }
-  }
-
-  // стартовая инициализация tiles, чтобы НЕ было свалки в (0,0)
-  useEffect(() => {
-    const g = normalizeGrid(grid);
-    if (!g) return;
-    setTiles((prev) => gridToTiles(g, prev));
-    lastGridRef.current = g;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grid?.toString?.()]); // лёгкий триггер
-
-  const attemptsText = formatAttempts(attempts);
+  const clearLocal = () => {
+    localStorage.removeItem("ffg_2048_run_id");
+    localStorage.removeItem("ffg_2048_period_id");
+    setRunId("");
+    setPeriodId("");
+    setSeed("");
+    setRngIndex(0);
+    setGrid(null);
+    setScore(0);
+    setMoves(0);
+    toast.info("Локалка очищена");
+  };
 
   return (
     <>
@@ -353,145 +393,94 @@ export default function Game2048() {
           margin: "0 auto",
         }}
       >
-        {/* top bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img
-              src={LOGO_4096_SRC}
-              alt="4096"
-              style={{ width: 44, height: 44, objectFit: "contain", filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.35))" }}
-              onError={(e) => {
-                // fallback если png не найден
-                e.currentTarget.style.display = "none";
-              }}
-            />
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img
+            src={LOGO_4096}
+            alt="4096"
+            style={{ width: 54, height: 54, objectFit: "contain" }}
+            draggable={false}
+            onError={(e) => {
+              // если png не найден — хотя бы текстом
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 18, lineHeight: 1 }}>4096</div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Свайпы • без кнопок</div>
+          </div>
+          <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, opacity: 0.85 }}>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 18, lineHeight: 1.1 }}>4096</div>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>{attemptsText}</div>
+              <b>Score:</b> {score}
+            </div>
+            <div>
+              <b>Moves:</b> {moves}
             </div>
           </div>
+        </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <StatBox title="SCORE" value={score} />
-            <StatBox title="MOVES" value={moves} />
-            {/* Best week позже подключим */}
+        {/* Controls */}
+        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={startOrResume} disabled={loading} style={btnPrimary(loading)}>
+            {loading ? "Запускаем..." : "Start / Resume"}
+          </button>
+
+          <button type="button" onClick={finish} disabled={loading} style={btnGhost(loading)}>
+            Finish (manual)
+          </button>
+
+          <button type="button" onClick={clearLocal} style={btnGhost(false)}>
+            Clear local
+          </button>
+        </div>
+
+        {/* ids */}
+        <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
+          <div>
+            <b>run_id:</b> {runId || "—"}
+          </div>
+          <div>
+            <b>period_id:</b> {periodId || "—"}
           </div>
         </div>
 
-        {/* actions */}
-        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={startOrResume} disabled={loading} style={btnPrimary(loading)}>
-            {loading ? "..." : "Start / Resume"}
-          </button>
-          <button type="button" onClick={finish} disabled={loading} style={btnGhost(loading)}>
-            Finish
-          </button>
-        </div>
-
-        {/* board */}
+        {/* Board */}
         <div style={{ marginTop: 14 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>Поле</div>
+
           <div
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
             style={{
-              width: boardW(),
-              height: boardW(),
-              position: "relative",
+              width: "fit-content",
               borderRadius: 18,
+              padding: 12,
               background: "rgba(0,0,0,0.20)",
               border: "1px solid rgba(255,255,255,0.10)",
-              boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-              overflow: "hidden",
-              touchAction: "none", // важно: чтобы свайп не скроллил страницу
+              touchAction: "none",
               userSelect: "none",
+              WebkitUserSelect: "none",
             }}
           >
-            {/* background cells */}
             <div
               style={{
-                position: "absolute",
-                inset: 0,
-                padding: BOARD_PAD,
                 display: "grid",
-                gridTemplateColumns: `repeat(${GRID_SIZE}, ${TILE_PX}px)`,
-                gridTemplateRows: `repeat(${GRID_SIZE}, ${TILE_PX}px)`,
-                gap: GAP_PX,
+                gridTemplateColumns: "repeat(4, 72px)",
+                gap: 10,
               }}
             >
-              {Array.from({ length: 16 }).map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: TILE_PX,
-                    height: TILE_PX,
-                    borderRadius: 16,
-                    background: "rgba(0,0,0,0.25)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* tiles layer */}
-            <div style={{ position: "absolute", inset: 0 }}>
-              {tiles.map((t) => {
-                const { x, y } = posForCell(t.r, t.c);
-                const src = t.v ? `/numbers/${t.v}.png` : "";
-                return (
-                  <div
-                    key={t.id}
-                    style={{
-                      position: "absolute",
-                      width: TILE_PX,
-                      height: TILE_PX,
-                      borderRadius: 16,
-                      transform: `translate3d(${x}px, ${y}px, 0)`,
-                      transition: `transform ${ANIM_MS}ms cubic-bezier(.2,.9,.2,1)`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      willChange: "transform",
-                    }}
-                  >
-                    <img
-                      src={src}
-                      alt={String(t.v)}
-                      draggable={false}
-                      style={{
-                        width: "88%",
-                        height: "88%",
-                        objectFit: "contain",
-                        pointerEvents: "none",
-                        transform: t.isNew ? "scale(0.82)" : "scale(1)",
-                        opacity: 1,
-                        transition: `transform ${SPAWN_MS}ms ease-out`,
-                        filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.28))",
-                      }}
-                      onLoad={(e) => {
-                        // если новый — даём кадр, чтобы scale плавно дорос
-                        if (t.isNew) {
-                          requestAnimationFrame(() => {
-                            try {
-                              e.currentTarget.style.transform = "scale(1)";
-                            } catch {}
-                          });
-                        }
-                      }}
-                    />
-                  </div>
-                );
-              })}
+              {renderGrid(grid)}
             </div>
           </div>
 
-          <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-            Управление: только свайп. Тайлы: <code>/public/numbers/2.png ... 4096.png</code>
+          <div style={{ opacity: 0.65, fontSize: 12, marginTop: 8 }}>
+            Tiles: <code>/public/numbers/2.png ... 4096.png</code>
           </div>
         </div>
 
-        {/* debug server response */}
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>Debug</div>
+        {/* Debug server resp */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>Ответ сервера (debug)</div>
           <pre
             style={{
               whiteSpace: "pre-wrap",
@@ -505,7 +494,7 @@ export default function Game2048() {
               minHeight: 120,
             }}
           >
-            {resp ? JSON.stringify(resp, null, 2) : "Нажми Start / Resume, потом свайпай"}
+            {resp ? JSON.stringify(resp, null, 2) : "Start / Resume → свайпай по полю"}
           </pre>
         </div>
       </div>
@@ -515,20 +504,57 @@ export default function Game2048() {
   );
 }
 
-function StatBox({ title, value }) {
+function renderGrid(grid) {
+  const empty = new Array(16).fill(0);
+  const flat =
+    Array.isArray(grid) && grid.length === 4 && grid.every((r) => Array.isArray(r) && r.length === 4)
+      ? grid.flat()
+      : empty;
+
+  return flat.map((v, i) => <Tile key={i} value={v} />);
+}
+
+function Tile({ value }) {
+  const [imgOk, setImgOk] = useState(true);
+  const src = value ? `/numbers/${value}.png` : "";
+
   return (
     <div
       style={{
-        minWidth: 84,
-        padding: "10px 12px",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.14)",
-        background: "rgba(0,0,0,0.22)",
-        textAlign: "left",
+        width: 72,
+        height: 72,
+        borderRadius: 16,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.25)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        // ✅ лёгкий pop при появлении (быстро, не 1 сек)
+        animation: value ? "ffgPop 120ms ease-out" : "none",
       }}
     >
-      <div style={{ fontSize: 10, opacity: 0.7, fontWeight: 800, letterSpacing: 0.8 }}>{title}</div>
-      <div style={{ fontSize: 16, fontWeight: 900, marginTop: 4 }}>{Number(value ?? 0).toLocaleString()}</div>
+      {value ? (
+        imgOk ? (
+          <img
+            src={src}
+            alt={String(value)}
+            style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none" }}
+            onError={() => setImgOk(false)}
+            draggable={false}
+          />
+        ) : (
+          <span style={{ fontWeight: 900, fontSize: 18 }}>{value}</span>
+        )
+      ) : null}
+
+      {/* inline keyframes чтобы не трогать css файлы */}
+      <style>{`
+        @keyframes ffgPop {
+          0% { transform: scale(0.88); opacity: 0.0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -556,72 +582,4 @@ function btnGhost(disabled) {
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.7 : 1,
   };
-}
-
-function formatAttempts(a) {
-  const d = a?.daily_attempts_remaining;
-  const r = a?.referral_attempts_balance;
-  const used = a?.daily_plays_used;
-  const parts = [];
-  if (Number.isFinite(d)) parts.push(`Попытки: ${d}`);
-  if (Number.isFinite(r)) parts.push(`Реф: ${r}`);
-  if (Number.isFinite(used)) parts.push(`Сыграно сегодня: ${used}/20`);
-  return parts.length ? parts.join(" • ") : " ";
-}
-
-/**
- * Мини-симулятор 2048 на клиенте (чтобы слайд был сразу, без ожидания сервера)
- * Без RNG (мы не спавним 2/4 здесь идеально как на сервере), но визуально это даёт мгновенную анимацию.
- * Сервер потом пришлёт истинный grid — он заменит локальный.
- */
-function simulate2048Step(grid, dir) {
-  const g = grid.map((row) => row.slice());
-
-  const rotateLeft = (m) => {
-    const n = m.length;
-    const out = Array.from({ length: n }, () => Array(n).fill(0));
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) out[n - 1 - c][r] = m[r][c];
-    return out;
-  };
-
-  const rotateRight = (m) => {
-    const n = m.length;
-    const out = Array.from({ length: n }, () => Array(n).fill(0));
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) out[c][n - 1 - r] = m[r][c];
-    return out;
-  };
-
-  const moveLeft = (row) => {
-    const filtered = row.filter((x) => x !== 0);
-    const out = [];
-    for (let i = 0; i < filtered.length; i++) {
-      if (i + 1 < filtered.length && filtered[i] === filtered[i + 1]) {
-        out.push(filtered[i] * 2);
-        i++;
-      } else {
-        out.push(filtered[i]);
-      }
-    }
-    while (out.length < 4) out.push(0);
-    return out;
-  };
-
-  let work = g;
-  if (dir === "up") work = rotateLeft(work);
-  if (dir === "down") work = rotateRight(work);
-  if (dir === "right") {
-    work = work.map((r) => r.slice().reverse()).map(moveLeft).map((r) => r.reverse());
-  } else {
-    work = work.map(moveLeft);
-  }
-  if (dir === "up") work = rotateRight(work);
-  if (dir === "down") work = rotateLeft(work);
-
-  const moved = !sameGrid(g, work);
-  return { nextGrid: work, moved };
-}
-
-function sameGrid(a, b) {
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (a[r][c] !== b[r][c]) return false;
-  return true;
 }
