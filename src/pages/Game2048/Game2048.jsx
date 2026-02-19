@@ -13,14 +13,11 @@ const GAP = 10;
 const BOARD_PAD = 12;
 
 // анимации
-const MOVE_MS = 140; // скорость "езда"
+const MOVE_MS = 140;
 const POP_MS = 120;
 
 function posToPx(r, c) {
-  return {
-    x: c * (CELL + GAP),
-    y: r * (CELL + GAP),
-  };
+  return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
 }
 
 function safeGridFromRun(run) {
@@ -58,7 +55,7 @@ function compactResp(resp) {
   };
 }
 
-// ---------- Tile engine (реальные анимации) ----------
+// ---------- Tile engine ----------
 let __tileId = 1;
 function newTileId() {
   __tileId += 1;
@@ -66,7 +63,7 @@ function newTileId() {
 }
 
 /**
- * tiles: Map(id -> {id,value,r,c, removeAt?, pop?, z?})
+ * tiles: Map(id -> {id,value,r,c, removeAt?, pop?, z?, appearAt?})
  * board: 2D of tileId|null
  */
 function buildTilesFromGrid(grid) {
@@ -85,7 +82,6 @@ function buildTilesFromGrid(grid) {
   return { tiles, board };
 }
 
-// направление -> список координат чтения линии
 function getLineCoords(i, dir) {
   const coords = [];
   if (dir === "left") for (let c = 0; c < GRID_SIZE; c++) coords.push([i, c]);
@@ -96,7 +92,6 @@ function getLineCoords(i, dir) {
 }
 
 function coordsIndexToWrite(i, k, dir) {
-  // k = 0..3 позиция в "сжатой" линии
   if (dir === "left") return [i, k];
   if (dir === "right") return [i, GRID_SIZE - 1 - k];
   if (dir === "up") return [k, i];
@@ -104,86 +99,60 @@ function coordsIndexToWrite(i, k, dir) {
   return [i, k];
 }
 
-function canMoveGridValues(grid) {
-  // простой canMove по значениям (для UI-логики)
-  // если есть пустые — можно
+function gridsEqualValues(a, b) {
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
-      if (!grid[r][c]) return true;
+      if ((a?.[r]?.[c] ?? 0) !== (b?.[r]?.[c] ?? 0)) return false;
     }
   }
-  // если есть соседние равные — можно
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      const v = grid[r][c];
-      if (r + 1 < GRID_SIZE && grid[r + 1][c] === v) return true;
-      if (c + 1 < GRID_SIZE && grid[r][c + 1] === v) return true;
-    }
-  }
-  return false;
+  return true;
 }
 
-/**
- * Локальная анимированная "движуха":
- * - вычисляет перемещения tileId
- * - при merge: два tileId едут в одну клетку, оба помечаются removeAt, создаётся новый tile (поп)
- * Возвращает:
- *  - nextTiles, nextBoard
- *  - gainedScore
- *  - moved:boolean
- *  - nextGridValues (матрица значений) для быстрого сравнения/логики
- */
 function applyMoveAnimated(tiles, board, dir) {
   const nextTiles = new Map();
-  // копируем tiles (чтобы не мутировать вход)
-  for (const [id, t] of tiles.entries()) nextTiles.set(id, { ...t, pop: false, z: 1, removeAt: null });
+  for (const [id, t] of tiles.entries()) nextTiles.set(id, { ...t, pop: false, z: t.z ?? 1, removeAt: null });
 
   const nextBoard = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   const nextGridValues = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
 
   let gained = 0;
   let anyMoved = false;
-
-  // чтобы z-index был красивый (движущиеся выше)
   let zCounter = 10;
 
   for (let i = 0; i < GRID_SIZE; i++) {
     const coords = getLineCoords(i, dir);
 
-    // собираем тайлы линии (id и value)
     const line = [];
     for (const [r, c] of coords) {
       const id = board[r][c];
       if (!id) continue;
       const t = nextTiles.get(id);
-      if (t) line.push({ id, value: t.value, from: { r, c } });
+      if (t) line.push({ id, value: t.value });
     }
 
-    // сжимаем/мержим
     const out = [];
     let p = 0;
+
     while (p < line.length) {
       const cur = line[p];
       const nxt = line[p + 1];
 
       if (nxt && cur.value === nxt.value) {
-        // merge
         const mergedValue = cur.value * 2;
         gained += mergedValue;
 
-        // целевая позиция для обоих
         const targetIndex = out.length;
         const [tr, tc] = coordsIndexToWrite(i, targetIndex, dir);
 
-        // оба тайла едут в target
         const a = nextTiles.get(cur.id);
         const b = nextTiles.get(nxt.id);
+
         if (a) {
           if (a.r !== tr || a.c !== tc) anyMoved = true;
           a.r = tr;
           a.c = tc;
           a.z = zCounter++;
-          a.removeAt = Date.now() + MOVE_MS; // убрать после анимации
+          a.removeAt = Date.now() + MOVE_MS;
         }
         if (b) {
           if (b.r !== tr || b.c !== tc) anyMoved = true;
@@ -193,22 +162,20 @@ function applyMoveAnimated(tiles, board, dir) {
           b.removeAt = Date.now() + MOVE_MS;
         }
 
-        // создаём новый тайл на target, появится после move
         const newId = newTileId();
         nextTiles.set(newId, {
           id: newId,
           value: mergedValue,
           r: tr,
           c: tc,
-          pop: false, // включим после завершения движения
+          pop: false,
           z: zCounter++,
-          appearAt: Date.now() + MOVE_MS, // показать после движения
+          appearAt: Date.now() + MOVE_MS,
         });
 
         out.push({ id: newId, value: mergedValue, r: tr, c: tc });
         p += 2;
       } else {
-        // просто сдвиг
         const targetIndex = out.length;
         const [tr, tc] = coordsIndexToWrite(i, targetIndex, dir);
 
@@ -225,7 +192,6 @@ function applyMoveAnimated(tiles, board, dir) {
       }
     }
 
-    // заполняем nextBoard/nextGridValues
     for (const item of out) {
       nextBoard[item.r][item.c] = item.id;
       nextGridValues[item.r][item.c] = item.value;
@@ -235,16 +201,7 @@ function applyMoveAnimated(tiles, board, dir) {
   return { nextTiles, nextBoard, gained, moved: anyMoved, nextGridValues };
 }
 
-function gridsEqualValues(a, b) {
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      if ((a?.[r]?.[c] ?? 0) !== (b?.[r]?.[c] ?? 0)) return false;
-    }
-  }
-  return true;
-}
-
-// ---------- UI ----------
+// ---------- Component ----------
 export default function Game2048() {
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState(null);
@@ -255,8 +212,8 @@ export default function Game2048() {
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
 
-  // tile engine state for rendering
-  const [tilesArr, setTilesArr] = useState([]); // array of tile objects for render
+  const [tilesArr, setTilesArr] = useState([]);
+
   const tilesRef = useRef(new Map());
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
@@ -264,12 +221,11 @@ export default function Game2048() {
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
 
-  // board DOM ref (для блокировки свайпа в Telegram)
   const boardRef = useRef(null);
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
 
-  // Telegram WebApp: фиксируем вертикальные свайпы (если метод есть)
+  // Telegram WebApp
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     try {
@@ -279,15 +235,12 @@ export default function Game2048() {
     } catch (_) {}
   }, []);
 
-  // блокируем "протяжку" внутри поля
+  // block "pull"
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
 
-    const prevent = (e) => {
-      e.preventDefault();
-    };
-
+    const prevent = (e) => e.preventDefault();
     el.addEventListener("touchmove", prevent, { passive: false });
     return () => el.removeEventListener("touchmove", prevent);
   }, []);
@@ -311,13 +264,78 @@ export default function Game2048() {
     const now = Date.now();
     const list = [];
     for (const t of tilesRef.current.values()) {
-      // скрываем тайлы, которые ещё "не появились" (после merge)
       if (t.appearAt && now < t.appearAt) continue;
       list.push(t);
     }
-    // стабильный порядок рендера: сначала низкие z
     list.sort((a, b) => (a.z ?? 1) - (b.z ?? 1));
     setTilesArr(list);
+  }
+
+  /**
+   * ✅ Главное: вместо rebuild после ответа сервера — пытаемся "доклеить" только spawn (1 клетка).
+   * Если ситуация сложнее (diff > 1 или конфликт) — делаем fallback rebuild.
+   */
+  function reconcileWithServerGrid(serverGrid) {
+    const current = gridValuesRef.current;
+
+    // Если ещё ничего нет — просто билд
+    const hasAny = current.some((row) => row.some((v) => v > 0));
+    if (!hasAny) {
+      const built = buildTilesFromGrid(serverGrid);
+      tilesRef.current = built.tiles;
+      boardRefState.current = built.board;
+      gridValuesRef.current = serverGrid.map((r) => r.slice());
+      syncTilesArrFromRef();
+      return;
+    }
+
+    // Если совпадает — ничего
+    if (gridsEqualValues(current, serverGrid)) return;
+
+    // Ищем различия
+    const diffs = [];
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const a = current[r][c] ?? 0;
+        const b = serverGrid[r][c] ?? 0;
+        if (a !== b) diffs.push({ r, c, a, b });
+      }
+    }
+
+    // Типичный случай: 1 diff = spawn 0 -> 2/4
+    if (diffs.length === 1) {
+      const d = diffs[0];
+      const isSpawn = d.a === 0 && (d.b === 2 || d.b === 4);
+
+      if (isSpawn) {
+        const board = boardRefState.current;
+        const map = new Map(tilesRef.current);
+
+        // безопасность: клетка должна быть свободна
+        if (!board[d.r][d.c]) {
+          const id = newTileId();
+          // z выше остальных
+          let zMax = 1;
+          for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
+
+          map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: true, z: zMax + 5 });
+          board[d.r][d.c] = id;
+
+          tilesRef.current = map;
+          boardRefState.current = board;
+          gridValuesRef.current = serverGrid.map((r) => r.slice());
+          syncTilesArrFromRef();
+          return;
+        }
+      }
+    }
+
+    // Иначе — редкий рассинхрон: fallback rebuild
+    const built = buildTilesFromGrid(serverGrid);
+    tilesRef.current = built.tiles;
+    boardRefState.current = built.board;
+    gridValuesRef.current = serverGrid.map((r) => r.slice());
+    syncTilesArrFromRef();
   }
 
   function applyRunToUi(data) {
@@ -335,25 +353,11 @@ export default function Game2048() {
 
     const g = safeGridFromRun(run);
     if (g) {
-      // синхронизируем tile engine по серверной сетке
-      // если уже есть анимации в процессе — делаем мягко:
-      // - если сетка совпадает по значениям, не трогаем
-      // - иначе перестраиваем (редко, но спасает от рассинхрона)
-      const current = gridValuesRef.current;
-      if (!gridsEqualValues(current, g)) {
-        const built = buildTilesFromGrid(g);
-        tilesRef.current = built.tiles;
-        boardRefState.current = built.board;
-        gridValuesRef.current = g.map((row) => row.slice());
-        syncTilesArrFromRef();
-      }
+      reconcileWithServerGrid(g);
     }
 
-    const sc = Number(run?.current_score ?? 0);
-    setScore(sc);
-
-    const mv = Number(run?.moves ?? 0);
-    setMoves(mv);
+    setScore(Number(run?.current_score ?? 0));
+    setMoves(Number(run?.moves ?? 0));
   }
 
   const startOrResume = async () => {
@@ -381,14 +385,14 @@ export default function Game2048() {
         return;
       }
 
-      // при старте/резюме всегда перестраиваем board (это нормально)
+      // старт/резюме: честно строим из серверной сетки
       const run = data?.run;
       const g = safeGridFromRun(run);
       if (g) {
         const built = buildTilesFromGrid(g);
         tilesRef.current = built.tiles;
         boardRefState.current = built.board;
-        gridValuesRef.current = g.map((row) => row.slice());
+        gridValuesRef.current = g.map((r) => r.slice());
         syncTilesArrFromRef();
       }
 
@@ -433,7 +437,6 @@ export default function Game2048() {
     else moveAnimated(dy > 0 ? "down" : "up");
   };
 
-  // ---------- Move WITH real animation ----------
   const moveAnimated = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
@@ -442,7 +445,6 @@ export default function Game2048() {
     }
     if (inFlightRef.current) return;
 
-    // если нет run/grid
     const curValues = gridValuesRef.current;
     const hasAny = curValues.some((row) => row.some((v) => v > 0));
     if (!hasAny) {
@@ -450,32 +452,28 @@ export default function Game2048() {
       return;
     }
 
-    // 1) локально запускаем анимацию движения/слияния
     const beforeTiles = tilesRef.current;
     const beforeBoard = boardRefState.current;
 
     const { nextTiles, nextBoard, gained, moved, nextGridValues } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
     if (!moved) return;
 
-    // применяем "движение"
     tilesRef.current = nextTiles;
     boardRefState.current = nextBoard;
     gridValuesRef.current = nextGridValues;
+
     setScore((prev) => prev + gained);
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // 2) через MOVE_MS — убираем merged-старые тайлы и включаем pop для новых
-    const removeAtTs = Date.now() + MOVE_MS + 5;
+    // после MOVE_MS — удаляем старые тайлы и включаем pop для новых merged
     window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
 
-      // удаляем те, что должны исчезнуть
       for (const [id, t] of map.entries()) {
         if (t.removeAt && now >= t.removeAt) map.delete(id);
       }
-      // включаем pop у новых/слитых (appearAt прошёл)
       for (const t of map.values()) {
         if (t.appearAt && now >= t.appearAt) {
           t.pop = true;
@@ -485,9 +483,9 @@ export default function Game2048() {
 
       tilesRef.current = map;
       syncTilesArrFromRef();
-    }, Math.max(0, removeAtTs - Date.now()));
+    }, MOVE_MS + 5);
 
-    // 3) параллельно отправляем ход на сервер (авторитет)
+    // сервер
     inFlightRef.current = true;
     setResp(null);
 
@@ -508,8 +506,7 @@ export default function Game2048() {
         return;
       }
 
-      // ✅ сервер прислал финальную сетку (уже со спавном)
-      // если значения совпадают — отлично. если нет — перестроим.
+      // ✅ теперь НЕ rebuild: добавляем только spawn (если он есть)
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
@@ -575,7 +572,6 @@ export default function Game2048() {
   };
 
   const debug = compactResp(resp);
-
   const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
   const boardH = boardW;
 
@@ -669,16 +665,8 @@ export default function Game2048() {
               WebkitOverflowScrolling: "auto",
             }}
           >
-            {/* GRID BACKGROUND */}
-            <div
-              style={{
-                position: "relative",
-                width: boardW,
-                height: boardH,
-                borderRadius: 16,
-              }}
-            >
-              {/* клетки-фон */}
+            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16 }}>
+              {/* фон-клетки */}
               <div
                 style={{
                   position: "absolute",
@@ -702,7 +690,7 @@ export default function Game2048() {
                 ))}
               </div>
 
-              {/* тайлы (absolute, двигаются transform) */}
+              {/* тайлы */}
               <div style={{ position: "absolute", inset: 0 }}>
                 {tilesArr.map((t) => (
                   <AnimatedTile key={t.id} tile={t} />
@@ -743,7 +731,6 @@ export default function Game2048() {
 
 function AnimatedTile({ tile }) {
   const [imgOk, setImgOk] = useState(true);
-
   const { x, y } = posToPx(tile.r, tile.c);
   const src = tile.value ? `/numbers/${tile.value}.png` : "";
 
@@ -760,7 +747,6 @@ function AnimatedTile({ tile }) {
         transform: `translate(${x}px, ${y}px)`,
         transition: `transform ${MOVE_MS}ms ease-in-out`,
         zIndex: tile.z ?? 1,
-        // pop анимация
         animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
       }}
     >
@@ -798,6 +784,7 @@ function btnPrimary(disabled) {
     opacity: disabled ? 0.85 : 1,
   };
 }
+
 function btnGhost(disabled) {
   return {
     padding: "12px 14px",
