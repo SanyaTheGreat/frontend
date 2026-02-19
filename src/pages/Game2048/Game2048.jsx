@@ -3,8 +3,6 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const API_BASE = "https://lottery-server-waif.onrender.com";
-
-// если у тебя логотип лежит в другом месте — поменяй путь
 const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
@@ -101,19 +99,31 @@ function applyMove(grid, dir) {
 
   const writeLine = (i, line) => {
     if (dir === "left") {
-      g[i][0] = line[0]; g[i][1] = line[1]; g[i][2] = line[2]; g[i][3] = line[3];
+      g[i][0] = line[0];
+      g[i][1] = line[1];
+      g[i][2] = line[2];
+      g[i][3] = line[3];
       return;
     }
     if (dir === "right") {
-      g[i][3] = line[0]; g[i][2] = line[1]; g[i][1] = line[2]; g[i][0] = line[3];
+      g[i][3] = line[0];
+      g[i][2] = line[1];
+      g[i][1] = line[2];
+      g[i][0] = line[3];
       return;
     }
     if (dir === "up") {
-      g[0][i] = line[0]; g[1][i] = line[1]; g[2][i] = line[2]; g[3][i] = line[3];
+      g[0][i] = line[0];
+      g[1][i] = line[1];
+      g[2][i] = line[2];
+      g[3][i] = line[3];
       return;
     }
     if (dir === "down") {
-      g[3][i] = line[0]; g[2][i] = line[1]; g[1][i] = line[2]; g[0][i] = line[3];
+      g[3][i] = line[0];
+      g[2][i] = line[1];
+      g[1][i] = line[2];
+      g[0][i] = line[3];
       return;
     }
   };
@@ -127,22 +137,40 @@ function applyMove(grid, dir) {
 
   return { grid: g, gained, moved: !gridsEqual(grid, g) };
 }
-function canMove(grid) {
-  if (getEmptyCells(grid).length > 0) return true;
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      const v = grid[r][c];
-      if (r + 1 < GRID_SIZE && grid[r + 1][c] === v) return true;
-      if (c + 1 < GRID_SIZE && grid[r][c + 1] === v) return true;
-    }
-  }
-  return false;
-}
 
 function safeGridFromRun(run) {
   const st = run?.state;
   if (!st?.grid || !Array.isArray(st.grid) || st.grid.length !== 4) return null;
   return st.grid;
+}
+
+function compactResp(resp) {
+  if (!resp) return null;
+  const d = resp.data || {};
+  const run = d.run || null;
+
+  return {
+    status: resp.status,
+    ok: resp.ok,
+    data: {
+      ok: d.ok,
+      moved: d.moved,
+      gained: d.gained,
+      finished: d.finished,
+      reason: d.reason,
+      run: run
+        ? {
+            id: run.id,
+            status: run.status,
+            moves: run.moves,
+            current_score: run.current_score,
+            rng_index: run.rng_index,
+            period_id: run.period_id,
+            seed: run.seed,
+          }
+        : null,
+    },
+  };
 }
 
 export default function Game2048() {
@@ -159,10 +187,20 @@ export default function Game2048() {
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
 
-  // чтобы не спамили свайпы пока один уже в полёте
   const inFlightRef = useRef(false);
+  const touchStartRef = useRef(null);
 
-  const token = useMemo(() => localStorage.getItem("jwt") || "", []);
+  useMemo(() => localStorage.getItem("jwt") || "", []);
+
+  // ✅ PRELOAD tiles (убирает задержку появления 2/4 и т.п.)
+  useEffect(() => {
+    const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+    values.forEach((v) => {
+      const img = new Image();
+      img.src = `/numbers/${v}.png`;
+      img.decoding = "async";
+    });
+  }, []);
 
   useEffect(() => {
     setRunId(localStorage.getItem("ffg_2048_run_id") || "");
@@ -170,7 +208,7 @@ export default function Game2048() {
   }, []);
 
   const applyRunToUi = (data) => {
-    const run = data?.run || data; // иногда мы зовём с {run:...}
+    const run = data?.run || data;
     if (!run) return;
 
     if (run?.id) {
@@ -226,13 +264,12 @@ export default function Game2048() {
     }
   };
 
-  // ---------- SWIPE ----------
-  const touchStartRef = useRef(null);
   const onTouchStart = (e) => {
     const t = e.touches?.[0];
     if (!t) return;
     touchStartRef.current = { x: t.clientX, y: t.clientY, ts: Date.now() };
   };
+
   const onTouchEnd = (e) => {
     const s = touchStartRef.current;
     touchStartRef.current = null;
@@ -247,17 +284,13 @@ export default function Game2048() {
     const ax = Math.abs(dx);
     const ay = Math.abs(dy);
 
-    const TH = 28; // порог
+    const TH = 28;
     if (ax < TH && ay < TH) return;
 
-    if (ax > ay) {
-      moveOptimistic(dx > 0 ? "right" : "left");
-    } else {
-      moveOptimistic(dy > 0 ? "down" : "up");
-    }
+    if (ax > ay) moveOptimistic(dx > 0 ? "right" : "left");
+    else moveOptimistic(dy > 0 ? "down" : "up");
   };
 
-  // ---------- Optimistic move ----------
   const moveOptimistic = async (dir) => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
@@ -268,12 +301,10 @@ export default function Game2048() {
 
     const g = Array.isArray(grid) ? grid : null;
     if (!g || !seed) {
-      // если UI ещё не готов — просто просим start/resume
       toast.info("Нажми Start / Resume");
       return;
     }
 
-    // 1) локально считаем ход мгновенно
     const before = cloneGrid(g);
     const { grid: movedGrid, gained, moved } = applyMove(before, dir);
     if (!moved) return;
@@ -286,13 +317,11 @@ export default function Game2048() {
     const nextMoves = Number(moves ?? 0) + 1;
     const nextRng = rng.getIndex();
 
-    // мгновенно в UI
     setGrid(afterGrid);
     setScore(nextScore);
     setMoves(nextMoves);
     setRngIndex(nextRng);
 
-    // 2) отправляем на сервер (авторитет)
     inFlightRef.current = true;
     setResp(null);
 
@@ -309,22 +338,16 @@ export default function Game2048() {
       if (!res.ok || !data?.ok) {
         toast.error(data?.error || "Move error");
         if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
-        // ресинк, чтобы не остаться в рассинхроне
         await startOrResume();
         return;
       }
 
-      // синхронизируемся (если вдруг отличия/сервер закрыл ран)
       applyRunToUi(data);
 
-      if (data?.finished) {
-        toast.info(`Game Over (${data?.reason || "finished"})`);
-      }
-      // ✅ success-toast на каждый ход — УБРАЛИ
+      if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
     } catch (e) {
       console.error(e);
       toast.error("Ошибка сети (move)");
-      // ресинк
       await startOrResume();
     } finally {
       inFlightRef.current = false;
@@ -379,6 +402,8 @@ export default function Game2048() {
     toast.info("Локалка очищена");
   };
 
+  const debug = compactResp(resp);
+
   return (
     <>
       <div className="starfield" aria-hidden="true" />
@@ -393,15 +418,22 @@ export default function Game2048() {
           margin: "0 auto",
         }}
       >
-        {/* Header */}
+        <style>{`
+          @keyframes ffgPop {
+            0% { transform: scale(0.88); opacity: 0.0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
+
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
             src={LOGO_4096}
             alt="4096"
             style={{ width: 54, height: 54, objectFit: "contain" }}
             draggable={false}
+            loading="eager"
+            decoding="async"
             onError={(e) => {
-              // если png не найден — хотя бы текстом
               e.currentTarget.style.display = "none";
             }}
           />
@@ -419,7 +451,6 @@ export default function Game2048() {
           </div>
         </div>
 
-        {/* Controls */}
         <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button type="button" onClick={startOrResume} disabled={loading} style={btnPrimary(loading)}>
             {loading ? "Запускаем..." : "Start / Resume"}
@@ -434,7 +465,6 @@ export default function Game2048() {
           </button>
         </div>
 
-        {/* ids */}
         <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
           <div>
             <b>run_id:</b> {runId || "—"}
@@ -444,7 +474,6 @@ export default function Game2048() {
           </div>
         </div>
 
-        {/* Board */}
         <div style={{ marginTop: 14 }}>
           <div style={{ fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>Поле</div>
 
@@ -478,7 +507,6 @@ export default function Game2048() {
           </div>
         </div>
 
-        {/* Debug server resp */}
         <div style={{ marginTop: 16 }}>
           <div style={{ fontWeight: 900, marginBottom: 8 }}>Ответ сервера (debug)</div>
           <pre
@@ -494,7 +522,7 @@ export default function Game2048() {
               minHeight: 120,
             }}
           >
-            {resp ? JSON.stringify(resp, null, 2) : "Start / Resume → свайпай по полю"}
+            {debug ? JSON.stringify(debug, null, 2) : "Start / Resume → свайпай по полю"}
           </pre>
         </div>
       </div>
@@ -530,7 +558,6 @@ function Tile({ value }) {
         alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
-        // ✅ лёгкий pop при появлении (быстро, не 1 сек)
         animation: value ? "ffgPop 120ms ease-out" : "none",
       }}
     >
@@ -542,19 +569,14 @@ function Tile({ value }) {
             style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none" }}
             onError={() => setImgOk(false)}
             draggable={false}
+            loading="eager"
+            decoding="async"
+            fetchPriority={value === 2 || value === 4 ? "high" : "auto"}
           />
         ) : (
           <span style={{ fontWeight: 900, fontSize: 18 }}>{value}</span>
         )
       ) : null}
-
-      {/* inline keyframes чтобы не трогать css файлы */}
-      <style>{`
-        @keyframes ffgPop {
-          0% { transform: scale(0.88); opacity: 0.0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
