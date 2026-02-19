@@ -145,7 +145,37 @@ export default function Game2048() {
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
 
+  // ✅ ref на игровую область, чтобы блокировать системные жесты Telegram (pull/scroll)
+  const boardRef = useRef(null);
+
   useMemo(() => localStorage.getItem("jwt") || "", []);
+
+  // ✅ Telegram WebApp: максимально фиксируем поведение (если доступно)
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    try {
+      tg?.ready?.();
+      tg?.expand?.();
+      tg?.disableVerticalSwipes?.(); // если метода нет — просто ничего не произойдет
+    } catch (_) {}
+  }, []);
+
+  // ✅ Блокируем "протяжку" (scroll/pull-to-close) внутри игрового поля
+  // iOS/Telegram: критично { passive:false }
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+
+    const prevent = (e) => {
+      e.preventDefault();
+    };
+
+    el.addEventListener("touchmove", prevent, { passive: false });
+
+    return () => {
+      el.removeEventListener("touchmove", prevent);
+    };
+  }, []);
 
   // Preload PNG tiles
   useEffect(() => {
@@ -226,12 +256,19 @@ export default function Game2048() {
 
   // ---------- SWIPE ----------
   const onTouchStart = (e) => {
+    // ✅ блокируем системные жесты на старте касания
+    // (важно, чтобы touchmove не улетал в Telegram)
+    e.preventDefault?.();
+
     const t = e.touches?.[0];
     if (!t) return;
     touchStartRef.current = { x: t.clientX, y: t.clientY, ts: Date.now() };
   };
 
   const onTouchEnd = (e) => {
+    // ✅ попытка убрать "дерганье" при отпускании
+    e.preventDefault?.();
+
     if (inFlightRef.current) return;
 
     const s = touchStartRef.current;
@@ -448,6 +485,7 @@ export default function Game2048() {
           <div style={{ fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>Поле</div>
 
           <div
+            ref={boardRef}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
             style={{
@@ -459,6 +497,8 @@ export default function Game2048() {
               touchAction: "none",
               userSelect: "none",
               WebkitUserSelect: "none",
+              overscrollBehavior: "none",
+              WebkitOverflowScrolling: "auto",
             }}
           >
             <div
