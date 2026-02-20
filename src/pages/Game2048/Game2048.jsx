@@ -13,7 +13,7 @@ const GAP = 10;
 const BOARD_PAD = 12;
 
 // animations
-const MOVE_MS = 140;
+const MOVE_MS = 240;
 const POP_MS = 120;
 
 function posToPx(r, c) {
@@ -53,6 +53,63 @@ function compactResp(resp) {
         : null,
     },
   };
+}
+
+// ---------- Deterministic RNG (same as backend) ----------
+const U64_MASK = (1n << 64n) - 1n;
+
+function splitmix64(x) {
+  let z = (x + 0x9e3779b97f4a7c15n) & U64_MASK;
+  z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & U64_MASK;
+  z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & U64_MASK;
+  return (z ^ (z >> 31n)) & U64_MASK;
+}
+
+function rand01From64(u64) {
+  const v = Number((u64 >> 11n) & ((1n << 53n) - 1n)); // 53 bits
+  return v / 9007199254740992; // 2^53
+}
+
+function makeRng(seedStr, startIndex = 0) {
+  const seed = BigInt(seedStr || "0");
+  let idx = BigInt(startIndex || 0);
+
+  return {
+    next01() {
+      const u = splitmix64((seed + idx) & U64_MASK);
+      idx += 1n;
+      return rand01From64(u);
+    },
+    getIndex() {
+      return Number(idx);
+    },
+  };
+}
+
+function getEmptyCellsFromGrid(grid) {
+  const cells = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (!grid[r][c]) cells.push([r, c]);
+    }
+  }
+  return cells;
+}
+
+// returns: { r,c,v,nextIndex } or null
+function predictSpawn(gridAfterMove, seedStr, rngIndex) {
+  if (!seedStr) return null;
+  const empties = getEmptyCellsFromGrid(gridAfterMove);
+  if (!empties.length) return null;
+
+  const rng = makeRng(seedStr, rngIndex);
+
+  const pick = Math.floor(rng.next01() * empties.length);
+  const [r, c] = empties[pick];
+
+  const v = rng.next01() < 0.9 ? 2 : 4;
+
+  return { r, c, v, nextIndex: rng.getIndex() };
 }
 
 // ---------- Tile engine ----------
@@ -218,17 +275,20 @@ export default function Game2048() {
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
 
+  // ✅ deterministic info for instant spawn
+  const runSeedRef = useRef("");
+  const rngIndexRef = useRef(0);
+
+  // ✅ prevents "jump": if server already responded, cancel local spawn timer
+  const spawnWaitRef = useRef(false);
+  const spawnTimerRef = useRef(null);
+
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
 
   const boardRef = useRef(null);
 
-  // ✅ server-apply gating (apply server grid at end of MOVE_MS)
-  const moveStartMsRef = useRef(0);
-  const endAnimTimerRef = useRef(null);
-  const pendingServerApplyRef = useRef(null); // { data }
-
-  useMemo(() => localStorage.getItem("jwt") || "", []);
+  const token = useMemo(() => localStorage.getItem("jwt") || "", []);
 
   // Telegram WebApp
   useEffect(() => {
@@ -249,9 +309,10 @@ export default function Game2048() {
     return () => el.removeEventListener("touchmove", prevent);
   }, []);
 
-  // preload png
+  // ✅ preload png + force decode (especially 2/4)
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+
     values.forEach((v) => {
       const img = new Image();
       img.src = `/numbers/${v}.png`;
@@ -280,14 +341,14 @@ export default function Game2048() {
   }
 
   /**
-   * ✅ stable reconcile:
-   * - try keep tile ids on same cells if value matches
-   * - avoid full rebuild (which causes “page blink”)
+   * reconcile server grid:
+   * - if only spawn diff (0 -> 2/4), add one tile with pop
+   * - else fallback rebuild
    */
   function reconcileWithServerGrid(serverGrid) {
-    const curValues = gridValuesRef.current;
+    const current = gridValuesRef.current;
 
-    const hasAny = curValues.some((row) => row.some((v) => v > 0));
+    const hasAny = current.some((row) => row.some((v) => v > 0));
     if (!hasAny) {
       const built = buildTilesFromGrid(serverGrid);
       tilesRef.current = built.tiles;
@@ -297,41 +358,45 @@ export default function Game2048() {
       return;
     }
 
-    if (gridsEqualValues(curValues, serverGrid)) return;
+    if (gridsEqualValues(current, serverGrid)) return;
 
-    const curBoard = boardRefState.current;
-    const curTiles = tilesRef.current;
-
-    const nextTiles = new Map();
-    const nextBoard = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-
-    let zMax = 1;
-    for (const t of curTiles.values()) zMax = Math.max(zMax, t.z ?? 1);
-
-    // reuse same-cell tiles if value matches; otherwise create new tile
+    const diffs = [];
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
-        const v = Number(serverGrid?.[r]?.[c] ?? 0);
-        if (!v) continue;
+        const a = current[r][c] ?? 0;
+        const b = serverGrid[r][c] ?? 0;
+        if (a !== b) diffs.push({ r, c, a, b });
+      }
+    }
 
-        const existingId = curBoard?.[r]?.[c] ?? null;
-        const existingTile = existingId ? curTiles.get(existingId) : null;
+    if (diffs.length === 1) {
+      const d = diffs[0];
+      const isSpawn = d.a === 0 && (d.b === 2 || d.b === 4);
+      if (isSpawn) {
+        const board = boardRefState.current;
+        const map = new Map(tilesRef.current);
 
-        if (existingTile && existingTile.value === v) {
-          // keep id
-          nextTiles.set(existingId, { ...existingTile, r, c, pop: false, removeAt: null, appearAt: null });
-          nextBoard[r][c] = existingId;
-        } else {
+        if (!board[d.r][d.c]) {
           const id = newTileId();
-          zMax += 1;
-          nextTiles.set(id, { id, value: v, r, c, pop: true, z: zMax });
-          nextBoard[r][c] = id;
+
+          let zMax = 1;
+          for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
+
+          map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: true, z: zMax + 5 });
+          board[d.r][d.c] = id;
+
+          tilesRef.current = map;
+          boardRefState.current = board;
+          gridValuesRef.current = serverGrid.map((r) => r.slice());
+          syncTilesArrFromRef();
+          return;
         }
       }
     }
 
-    tilesRef.current = nextTiles;
-    boardRefState.current = nextBoard;
+    const built = buildTilesFromGrid(serverGrid);
+    tilesRef.current = built.tiles;
+    boardRefState.current = built.board;
     gridValuesRef.current = serverGrid.map((r) => r.slice());
     syncTilesArrFromRef();
   }
@@ -348,6 +413,9 @@ export default function Game2048() {
       localStorage.setItem("ffg_2048_period_id", data.period.id);
       setPeriodId(String(data.period.id));
     }
+
+    runSeedRef.current = String(run?.seed || "");
+    rngIndexRef.current = Number(run?.rng_index ?? 0);
 
     const g = safeGridFromRun(run);
     if (g) reconcileWithServerGrid(g);
@@ -453,7 +521,6 @@ export default function Game2048() {
     const { nextTiles, nextBoard, gained, moved, nextGridValues } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
     if (!moved) return;
 
-    // local animation state
     tilesRef.current = nextTiles;
     boardRefState.current = nextBoard;
     gridValuesRef.current = nextGridValues;
@@ -462,13 +529,13 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // schedule end-of-animation cleanup + maybe apply early server response
-    moveStartMsRef.current = Date.now();
-    pendingServerApplyRef.current = null;
+    // ✅ schedule local spawn, but cancel if server response already applied
+    spawnWaitRef.current = true;
+    if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
 
-    if (endAnimTimerRef.current) window.clearTimeout(endAnimTimerRef.current);
-    endAnimTimerRef.current = window.setTimeout(() => {
-      // cleanup merged olds + pop merged news
+    spawnTimerRef.current = window.setTimeout(() => {
+      if (!spawnWaitRef.current) return;
+
       const now = Date.now();
       const map = new Map(tilesRef.current);
 
@@ -482,15 +549,34 @@ export default function Game2048() {
         }
       }
 
+      const seed = runSeedRef.current;
+      const idx = rngIndexRef.current;
+
+      const curGrid = gridValuesRef.current;
+      const s = predictSpawn(curGrid, seed, idx);
+
+      if (s) {
+        const nextGrid = curGrid.map((r) => r.slice());
+        nextGrid[s.r][s.c] = s.v;
+        gridValuesRef.current = nextGrid;
+
+        const board = boardRefState.current;
+        if (!board[s.r][s.c]) {
+          let zMax = 1;
+          for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
+
+          const id = newTileId();
+          map.set(id, { id, value: s.v, r: s.r, c: s.c, pop: true, z: zMax + 5 });
+          board[s.r][s.c] = id;
+
+          boardRefState.current = board;
+        }
+
+        rngIndexRef.current = s.nextIndex;
+      }
+
       tilesRef.current = map;
       syncTilesArrFromRef();
-
-      // ✅ if server already responded, apply EXACT server grid now (no jump)
-      const pending = pendingServerApplyRef.current;
-      if (pending?.data) {
-        applyRunToUi(pending.data);
-        pendingServerApplyRef.current = null;
-      }
     }, MOVE_MS + 5);
 
     // server
@@ -508,23 +594,22 @@ export default function Game2048() {
       setResp({ status: res.status, ok: res.ok, data });
 
       if (!res.ok || !data?.ok) {
+        spawnWaitRef.current = false;
         toast.error(data?.error || "Move error");
         if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
         await startOrResume();
         return;
       }
 
-      // ✅ apply server at end of animation if it arrived early; otherwise apply now
-      const elapsed = Date.now() - moveStartMsRef.current;
-      if (elapsed < MOVE_MS + 5) {
-        pendingServerApplyRef.current = { data };
-      } else {
-        applyRunToUi(data);
-      }
+      // ✅ cancel local spawn (server grid is authoritative and already includes spawn)
+      spawnWaitRef.current = false;
+
+      applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
     } catch (e) {
       console.error(e);
+      spawnWaitRef.current = false;
       toast.error("Ошибка сети (move)");
       await startOrResume();
     } finally {
@@ -578,9 +663,12 @@ export default function Game2048() {
     gridValuesRef.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
     setTilesArr([]);
 
-    pendingServerApplyRef.current = null;
-    if (endAnimTimerRef.current) window.clearTimeout(endAnimTimerRef.current);
-    endAnimTimerRef.current = null;
+    runSeedRef.current = "";
+    rngIndexRef.current = 0;
+
+    spawnWaitRef.current = false;
+    if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
+    spawnTimerRef.current = null;
 
     setScore(0);
     setMoves(0);
@@ -608,7 +696,7 @@ export default function Game2048() {
       >
         <style>{`
           @keyframes ffgPop {
-            0% { transform: scale(0.86); opacity: 0.0; }
+            0% { transform: scale(0.92); opacity: 1; }
             100% { transform: scale(1); opacity: 1; }
           }
         `}</style>
