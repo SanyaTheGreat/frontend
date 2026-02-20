@@ -305,13 +305,18 @@ export default function Game2048() {
     return () => el.removeEventListener("touchmove", prevent);
   }, []);
 
-  // preload png
+  // ✅ preload png + force decode (especially 2/4) to make spawn feel instant
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+
     values.forEach((v) => {
       const img = new Image();
       img.src = `/numbers/${v}.png`;
-      img.decoding = "async";
+      img.loading = "eager";
+      img.decoding = v === 2 || v === 4 ? "sync" : "async";
+      try {
+        img.decode?.().catch(() => {});
+      } catch (_) {}
     });
   }, []);
 
@@ -676,7 +681,7 @@ export default function Game2048() {
       >
         <style>{`
           @keyframes ffgPop {
-            0% { transform: scale(0.86); opacity: 0.0; }
+            0% { transform: scale(0.92); opacity: 1; }
             100% { transform: scale(1); opacity: 1; }
           }
         `}</style>
@@ -857,7 +862,7 @@ function AnimatedTile({ tile }) {
               onError={() => setImgOk(false)}
               draggable={false}
               loading="eager"
-              decoding="async"
+              decoding={tile.value === 2 || tile.value === 4 ? "sync" : "async"}
               fetchPriority={tile.value === 2 || tile.value === 4 ? "high" : "auto"}
             />
           ) : (
