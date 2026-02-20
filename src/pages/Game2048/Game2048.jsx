@@ -13,7 +13,7 @@ const GAP = 10;
 const BOARD_PAD = 12;
 
 // animations
-const MOVE_MS = 240;
+const MOVE_MS = 140;
 const POP_MS = 120;
 
 function posToPx(r, c) {
@@ -66,7 +66,7 @@ function splitmix64(x) {
 }
 
 function rand01From64(u64) {
-  const v = Number((u64 >> 11n) & ((1n << 53n) - 1n)); // 53 bits
+  const v = Number((u64 >> 11n) & ((1n << 53n) - 1n));
   return v / 9007199254740992; // 2^53
 }
 
@@ -112,7 +112,94 @@ function predictSpawn(gridAfterMove, seedStr, rngIndex) {
   return { r, c, v, nextIndex: rng.getIndex() };
 }
 
-// ---------- Tile engine ----------
+// ---------- Value-move engine (1:1 with backend) ----------
+function cloneGrid(g) {
+  return g.map((row) => row.slice());
+}
+
+function gridsEqual(a, b) {
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if ((a?.[r]?.[c] ?? 0) !== (b?.[r]?.[c] ?? 0)) return false;
+    }
+  }
+  return true;
+}
+
+function slideAndMergeLine(line) {
+  const filtered = line.filter((x) => x !== 0);
+  const out = [];
+  let score = 0;
+
+  for (let i = 0; i < filtered.length; i++) {
+    if (i + 1 < filtered.length && filtered[i] === filtered[i + 1]) {
+      const merged = filtered[i] * 2;
+      out.push(merged);
+      score += merged;
+      i += 1;
+    } else {
+      out.push(filtered[i]);
+    }
+  }
+
+  while (out.length < GRID_SIZE) out.push(0);
+  return { line: out, score };
+}
+
+function applyMoveValues(grid, dir) {
+  const g = cloneGrid(grid);
+  let gained = 0;
+
+  const readLine = (i) => {
+    if (dir === "left") return [g[i][0], g[i][1], g[i][2], g[i][3]];
+    if (dir === "right") return [g[i][3], g[i][2], g[i][1], g[i][0]];
+    if (dir === "up") return [g[0][i], g[1][i], g[2][i], g[3][i]];
+    if (dir === "down") return [g[3][i], g[2][i], g[1][i], g[0][i]];
+    return null;
+  };
+
+  const writeLine = (i, line) => {
+    if (dir === "left") {
+      g[i][0] = line[0];
+      g[i][1] = line[1];
+      g[i][2] = line[2];
+      g[i][3] = line[3];
+      return;
+    }
+    if (dir === "right") {
+      g[i][3] = line[0];
+      g[i][2] = line[1];
+      g[i][1] = line[2];
+      g[i][0] = line[3];
+      return;
+    }
+    if (dir === "up") {
+      g[0][i] = line[0];
+      g[1][i] = line[1];
+      g[2][i] = line[2];
+      g[3][i] = line[3];
+      return;
+    }
+    if (dir === "down") {
+      g[3][i] = line[0];
+      g[2][i] = line[1];
+      g[1][i] = line[2];
+      g[0][i] = line[3];
+      return;
+    }
+  };
+
+  for (let i = 0; i < GRID_SIZE; i++) {
+    const line = readLine(i);
+    const { line: merged, score } = slideAndMergeLine(line);
+    gained += score;
+    writeLine(i, merged);
+  }
+
+  return { grid: g, gained, moved: !gridsEqual(grid, g) };
+}
+
+// ---------- Tile engine (animation only) ----------
 let __tileId = 1;
 function newTileId() {
   __tileId += 1;
@@ -279,7 +366,7 @@ export default function Game2048() {
   const runSeedRef = useRef("");
   const rngIndexRef = useRef(0);
 
-  // ✅ prevents "jump": if server already responded, cancel local spawn timer
+  // ✅ prevents jump: if server already responded, cancel local spawn
   const spawnWaitRef = useRef(false);
   const spawnTimerRef = useRef(null);
 
@@ -288,7 +375,7 @@ export default function Game2048() {
 
   const boardRef = useRef(null);
 
-  const token = useMemo(() => localStorage.getItem("jwt") || "", []);
+  useMemo(() => localStorage.getItem("jwt") || "", []);
 
   // Telegram WebApp
   useEffect(() => {
@@ -312,7 +399,6 @@ export default function Game2048() {
   // ✅ preload png + force decode (especially 2/4)
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
-
     values.forEach((v) => {
       const img = new Image();
       img.src = `/numbers/${v}.png`;
@@ -340,11 +426,6 @@ export default function Game2048() {
     setTilesArr(list);
   }
 
-  /**
-   * reconcile server grid:
-   * - if only spawn diff (0 -> 2/4), add one tile with pop
-   * - else fallback rebuild
-   */
   function reconcileWithServerGrid(serverGrid) {
     const current = gridValuesRef.current;
 
@@ -378,10 +459,8 @@ export default function Game2048() {
 
         if (!board[d.r][d.c]) {
           const id = newTileId();
-
           let zMax = 1;
           for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
-
           map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: true, z: zMax + 5 });
           board[d.r][d.c] = id;
 
@@ -515,21 +594,27 @@ export default function Game2048() {
       return;
     }
 
+    // ✅ Use backend-identical value engine as the source of truth for gained + movedGrid
+    const mv = applyMoveValues(curValues, dir);
+    if (!mv.moved) return;
+
     const beforeTiles = tilesRef.current;
     const beforeBoard = boardRefState.current;
 
-    const { nextTiles, nextBoard, gained, moved, nextGridValues } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
-    if (!moved) return;
+    // animation engine only for visuals
+    const anim = applyMoveAnimated(beforeTiles, beforeBoard, dir);
 
-    tilesRef.current = nextTiles;
-    boardRefState.current = nextBoard;
-    gridValuesRef.current = nextGridValues;
+    tilesRef.current = anim.nextTiles;
+    boardRefState.current = anim.nextBoard;
 
-    setScore((prev) => prev + gained);
+    // ✅ IMPORTANT: gridValuesRef becomes value-engine result (not tile-engine)
+    gridValuesRef.current = mv.grid;
+
+    setScore((prev) => prev + mv.gained);
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // ✅ schedule local spawn, but cancel if server response already applied
+    // local spawn after move animation (but cancel if server answered)
     spawnWaitRef.current = true;
     if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
 
@@ -552,11 +637,12 @@ export default function Game2048() {
       const seed = runSeedRef.current;
       const idx = rngIndexRef.current;
 
-      const curGrid = gridValuesRef.current;
-      const s = predictSpawn(curGrid, seed, idx);
+      // ✅ predict spawn based on backend-identical moved grid
+      const movedGrid = gridValuesRef.current;
+      const s = predictSpawn(movedGrid, seed, idx);
 
       if (s) {
-        const nextGrid = curGrid.map((r) => r.slice());
+        const nextGrid = movedGrid.map((r) => r.slice());
         nextGrid[s.r][s.c] = s.v;
         gridValuesRef.current = nextGrid;
 
@@ -601,7 +687,7 @@ export default function Game2048() {
         return;
       }
 
-      // ✅ cancel local spawn (server grid is authoritative and already includes spawn)
+      // ✅ cancel local spawn (server is authoritative and includes spawn)
       spawnWaitRef.current = false;
 
       applyRunToUi(data);
@@ -834,6 +920,7 @@ export default function Game2048() {
   );
 }
 
+// ✅ FIX: split translate (outer) and pop/scale (inner) so transforms don't fight.
 function AnimatedTile({ tile }) {
   const [imgOk, setImgOk] = useState(true);
 
