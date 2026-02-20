@@ -275,9 +275,13 @@ export default function Game2048() {
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
 
-  // ✅ for instant deterministic spawn
+  // ✅ deterministic info for instant spawn
   const runSeedRef = useRef("");
   const rngIndexRef = useRef(0);
+
+  // ✅ prevents "jump": if server already responded, cancel local spawn timer
+  const spawnWaitRef = useRef(false);
+  const spawnTimerRef = useRef(null);
 
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
@@ -305,7 +309,7 @@ export default function Game2048() {
     return () => el.removeEventListener("touchmove", prevent);
   }, []);
 
-  // ✅ preload png + force decode (especially 2/4) to make spawn feel instant
+  // ✅ preload png + force decode (especially 2/4)
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
@@ -410,7 +414,6 @@ export default function Game2048() {
       setPeriodId(String(data.period.id));
     }
 
-    // ✅ keep deterministic info for instant spawn
     runSeedRef.current = String(run?.seed || "");
     rngIndexRef.current = Number(run?.rng_index ?? 0);
 
@@ -526,8 +529,13 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // after MOVE_MS — remove merged old tiles + pop for new merged + ✅ instant predicted spawn
-    window.setTimeout(() => {
+    // ✅ schedule local spawn, but cancel if server response already applied
+    spawnWaitRef.current = true;
+    if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
+
+    spawnTimerRef.current = window.setTimeout(() => {
+      if (!spawnWaitRef.current) return;
+
       const now = Date.now();
       const map = new Map(tilesRef.current);
 
@@ -541,11 +549,10 @@ export default function Game2048() {
         }
       }
 
-      // ✅ instant spawn (predicted deterministically, same as backend)
       const seed = runSeedRef.current;
       const idx = rngIndexRef.current;
 
-      const curGrid = gridValuesRef.current; // at this moment it's "after move" (no spawn yet)
+      const curGrid = gridValuesRef.current;
       const s = predictSpawn(curGrid, seed, idx);
 
       if (s) {
@@ -565,7 +572,6 @@ export default function Game2048() {
           boardRefState.current = board;
         }
 
-        // advance rng_index exactly like backend (2 draws per spawn)
         rngIndexRef.current = s.nextIndex;
       }
 
@@ -588,17 +594,22 @@ export default function Game2048() {
       setResp({ status: res.status, ok: res.ok, data });
 
       if (!res.ok || !data?.ok) {
+        spawnWaitRef.current = false;
         toast.error(data?.error || "Move error");
         if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
         await startOrResume();
         return;
       }
 
+      // ✅ cancel local spawn (server grid is authoritative and already includes spawn)
+      spawnWaitRef.current = false;
+
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
     } catch (e) {
       console.error(e);
+      spawnWaitRef.current = false;
       toast.error("Ошибка сети (move)");
       await startOrResume();
     } finally {
@@ -654,6 +665,10 @@ export default function Game2048() {
 
     runSeedRef.current = "";
     rngIndexRef.current = 0;
+
+    spawnWaitRef.current = false;
+    if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
+    spawnTimerRef.current = null;
 
     setScore(0);
     setMoves(0);
@@ -819,8 +834,6 @@ export default function Game2048() {
   );
 }
 
-// ✅ FIX: split translate (outer) and pop/scale (inner) so transforms don't fight.
-// This removes "jump to top-left" / micro overlay flicker.
 function AnimatedTile({ tile }) {
   const [imgOk, setImgOk] = useState(true);
 
