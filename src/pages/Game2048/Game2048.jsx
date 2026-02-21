@@ -13,8 +13,8 @@ const GAP = 10;
 const BOARD_PAD = 12;
 
 // animations
-const MOVE_MS = 140;
-const POP_MS = 120;
+const MOVE_MS = 240;
+const POP_MS = 230;
 
 function posToPx(r, c) {
   return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
