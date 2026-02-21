@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import lottie from 'lottie-web';
+import pako from 'pako';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './Home.css';
@@ -53,6 +54,70 @@ function ModeIconLottie({ url }) {
   }, [url]);
 
   return <div ref={elRef} style={{ width: 44, height: 44 }} />;
+}
+
+// ✅ TGS (gzipped Lottie JSON)
+function TgsLottie({ url, size = 140, speed = 1, loop = true }) {
+  const elRef = useRef(null);
+  const instRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`TGS not found: ${url}`);
+
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+
+        // .tgs = gzip compressed JSON
+        const ungzipped = pako.ungzip(bytes, { to: 'string' });
+        const animationData = JSON.parse(ungzipped);
+
+        if (cancelled) return;
+
+        try {
+          instRef.current?.destroy?.();
+        } catch {}
+        instRef.current = null;
+
+        instRef.current = lottie.loadAnimation({
+          container: elRef.current,
+          renderer: 'svg',
+          loop,
+          autoplay: true,
+          animationData,
+          rendererSettings: { progressiveLoad: true },
+        });
+
+        instRef.current.setSpeed(speed);
+      } catch (e) {
+        console.error('[TgsLottie] load error:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      try {
+        instRef.current?.destroy?.();
+      } catch {}
+      instRef.current = null;
+    };
+  }, [url, loop, speed]);
+
+  return (
+    <div
+      ref={elRef}
+      style={{
+        width: size,
+        height: size,
+        margin: '0 auto 14px',
+        pointerEvents: 'none',
+      }}
+    />
+  );
 }
 
 function Home() {
@@ -117,7 +182,7 @@ function Home() {
     }
   };
 
-  // ✅ MAIN: when LUDO is off, show 2048 home screen with 3 full-width buttons
+  // ✅ MAIN: when LUDO is off, show 2048 home screen with 3 full-width buttons + TGS on top
   if (!LUDO_ENABLED) {
     const btnStyle = {
       width: '100%',
@@ -135,6 +200,9 @@ function Home() {
         <div className="starfield" aria-hidden="true" />
 
         <div style={{ position: 'relative', zIndex: 5, padding: 16, color: 'white' }}>
+          {/* ✅ TGS animation above buttons */}
+          <TgsLottie url="/numbers/9401.tgs" size={160} speed={1} loop={true} />
+
           <button
             type="button"
             onClick={startOrResume2048}
