@@ -40,6 +40,7 @@ function compactResp(resp) {
       gained: d.gained,
       finished: d.finished,
       reason: d.reason,
+      spawn: d.spawn || null,
       run: run
         ? {
             id: run.id,
@@ -218,16 +219,12 @@ export default function Game2048() {
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
 
-  // ✅ prevents "jump": if server already responded, cancel local spawn timer
-  const spawnWaitRef = useRef(false);
-  const spawnTimerRef = useRef(null);
-
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
 
   const boardRef = useRef(null);
 
-  const token = useMemo(() => localStorage.getItem("jwt") || "", []);
+  useMemo(() => localStorage.getItem("jwt") || "", []);
 
   // Telegram WebApp
   useEffect(() => {
@@ -248,7 +245,7 @@ export default function Game2048() {
     return () => el.removeEventListener("touchmove", prevent);
   }, []);
 
-  // ✅ preload png + force decode (especially 2/4)
+  // preload png + force decode (especially 2/4)
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
@@ -337,6 +334,40 @@ export default function Game2048() {
     tilesRef.current = built.tiles;
     boardRefState.current = built.board;
     gridValuesRef.current = serverGrid.map((r) => r.slice());
+    syncTilesArrFromRef();
+  }
+
+  // ✅ добавляем spawn из ответа сервера сразу и в правильную клетку
+  function applyServerSpawn(spawn) {
+    if (!spawn) return;
+    const r = Number(spawn.r);
+    const c = Number(spawn.c);
+    const v = Number(spawn.v);
+
+    if (!Number.isFinite(r) || !Number.isFinite(c) || !Number.isFinite(v)) return;
+    if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
+    if (!(v === 2 || v === 4)) return;
+
+    const curGrid = gridValuesRef.current;
+    if (curGrid?.[r]?.[c]) return;
+
+    const nextGrid = curGrid.map((row) => row.slice());
+    nextGrid[r][c] = v;
+    gridValuesRef.current = nextGrid;
+
+    const board = boardRefState.current;
+    if (board[r][c]) return;
+
+    const map = new Map(tilesRef.current);
+    let zMax = 1;
+    for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
+
+    const id = newTileId();
+    map.set(id, { id, value: v, r, c, pop: true, z: zMax + 50 });
+    board[r][c] = id;
+
+    tilesRef.current = map;
+    boardRefState.current = board;
     syncTilesArrFromRef();
   }
 
@@ -465,11 +496,8 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // ✅ schedule cleanup after animation (NO local spawn anymore)
-    spawnWaitRef.current = true;
-    if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
-
-    spawnTimerRef.current = window.setTimeout(() => {
+    // после MOVE_MS — удалить merged old + pop для новых merged
+    window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
 
@@ -507,6 +535,9 @@ export default function Game2048() {
         await startOrResume();
         return;
       }
+
+      // ✅ спавним сразу по данным сервера, без ожиданий и без предикта
+      applyServerSpawn(data?.spawn);
 
       applyRunToUi(data);
 
@@ -565,10 +596,6 @@ export default function Game2048() {
     boardRefState.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
     gridValuesRef.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
     setTilesArr([]);
-
-    spawnWaitRef.current = false;
-    if (spawnTimerRef.current) window.clearTimeout(spawnTimerRef.current);
-    spawnTimerRef.current = null;
 
     setScore(0);
     setMoves(0);
