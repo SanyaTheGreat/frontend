@@ -113,7 +113,7 @@ function TgsLottie({ url, size = 140, speed = 1, loop = true }) {
       style={{
         width: size,
         height: size,
-        margin: '0 auto 14px',
+        margin: '24 auto 24px',
         pointerEvents: 'none',
       }}
     />
