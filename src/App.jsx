@@ -10,6 +10,8 @@ import Leaderboard from './pages/Leaderboard/Leaderboard';
 import SpinPage from "./components/Spins/SpinPage";
 import InventoryPage from "./components/Spins/InventoryPage";
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
+import Rules2048 from "./pages/Game2048/Rules2048";
+import Leaderboard2048 from "./pages/Game2048/Leaderboard2048";
 
 import Slots from './pages/slot/Slots';
 import SlotPlay from './pages/slot/SlotPlay';
@@ -40,7 +42,11 @@ function App() {
 
           {/* 🔥 2048 доступен когда лудо выключено */}
           {!LUDO_ENABLED && (
+            <>
             <Route path="/2048" element={<Game2048 />} />
+            <Route path="/2048-rules" element={<Rules2048 />} />
+            <Route path="/2048-leaderboard" element={<Leaderboard2048 />} />
+            </>
           )}
 
           {/* Лудо-роуты — закрыты, если флаг выключен */}

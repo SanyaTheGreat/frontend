@@ -117,7 +117,7 @@ function Home() {
     }
   };
 
-  // ✅ MAIN: when LUDO is off, show only 2048 start screen
+  // ✅ MAIN: when LUDO is off, show 2048 home screen with buttons
   if (!LUDO_ENABLED) {
     return (
       <>
@@ -151,8 +151,48 @@ function Home() {
               zIndex: 10,
             }}
           >
-            {loading2048 ? 'Запускаем...' : hasActive2048 ? 'Продолжить игру' : 'Новая игра'}
+            {loading2048 ? 'Запускаем...' : hasActive2048 ? 'Продолжить' : 'Играть'}
           </button>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={() => navigate('/2048-rules')}
+              style={{
+                flex: 1,
+                padding: 14,
+                borderRadius: 14,
+                border: '1px solid rgba(255,255,255,0.18)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+                fontWeight: 800,
+                cursor: 'pointer',
+                position: 'relative',
+                zIndex: 10,
+              }}
+            >
+              Правила
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/2048-leaderboard')}
+              style={{
+                flex: 1,
+                padding: 14,
+                borderRadius: 14,
+                border: '1px solid rgba(255,255,255,0.18)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+                fontWeight: 800,
+                cursor: 'pointer',
+                position: 'relative',
+                zIndex: 10,
+              }}
+            >
+              Лидеры
+            </button>
+          </div>
 
           <div style={{ marginTop: 16, opacity: 0.65, fontSize: 12 }}>
             Остальные режимы и таб-бар временно скрыты.
