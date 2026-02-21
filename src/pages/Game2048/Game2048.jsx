@@ -560,6 +560,42 @@ export default function Game2048() {
 
   return (
     <>
+      <style>{`
+        /* ✅ бесконечный звездный фон: фиксирован + repeating + бесконечная прокрутка */
+        .starfield{
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          background-color: #070712;
+          background-image:
+            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.22) 1px, transparent 2px),
+            radial-gradient(circle at 70% 10%, rgba(255,255,255,0.16) 1px, transparent 2px),
+            radial-gradient(circle at 40% 80%, rgba(255,255,255,0.12) 1px, transparent 2px),
+            radial-gradient(circle at 90% 60%, rgba(255,255,255,0.10) 1px, transparent 2px),
+            radial-gradient(circle at 10% 70%, rgba(255,255,255,0.08) 1px, transparent 2px);
+          background-size: 420px 420px, 520px 520px, 680px 680px, 900px 900px, 1200px 1200px;
+          background-repeat: repeat;
+          animation: starScroll 18s linear infinite;
+          opacity: 1;
+        }
+        @keyframes starScroll{
+          0%   { background-position: 0px 0px, 0px 0px, 0px 0px, 0px 0px, 0px 0px; }
+          100% { background-position: 0px -420px, 0px -520px, 0px -680px, 0px -900px, 0px -1200px; }
+        }
+
+        @keyframes ffgPop {
+          0% { transform: scale(0.92); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ✅ выезд модалки по центру */
+        @keyframes hintIn {
+          0% { transform: translate3d(0, 18px, 0) scale(0.98); opacity: 0; }
+          100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+        }
+      `}</style>
+
       <div className="starfield" aria-hidden="true" />
 
       <div
@@ -572,13 +608,6 @@ export default function Game2048() {
           margin: "0 auto",
         }}
       >
-        <style>{`
-          @keyframes ffgPop {
-            0% { transform: scale(0.92); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-          }
-        `}</style>
-
         {/* Top row like 2048: logo left, score/best right */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div
@@ -705,13 +734,17 @@ export default function Game2048() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "min(720px, 100%)",
+              width: "calc(100vw - 32px)", // ✅ всегда влезает в экран
+              maxWidth: 720,
+              boxSizing: "border-box",
               borderRadius: 16,
               background: "rgba(10,10,14,0.95)",
               border: "1px solid rgba(255,255,255,0.12)",
               boxShadow: "0 18px 46px rgba(0,0,0,0.5)",
               padding: 14,
               color: "white",
+              overflow: "hidden", // ✅ контент не раздувает карточку вправо
+              animation: "hintIn 180ms ease-out",
             }}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
@@ -739,11 +772,13 @@ export default function Game2048() {
 
             <div
               style={{
+                maxWidth: "100%",
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 12,
                 padding: 12,
-                overflowX: "auto",
+                overflowX: "auto", // ✅ лента скроллится внутри, не двигая модалку
+                overflowY: "hidden",
                 WebkitOverflowScrolling: "touch",
               }}
             >
@@ -759,6 +794,7 @@ export default function Game2048() {
                           color: "rgba(255,255,255,0.9)",
                           opacity: 0.9,
                           padding: "0 2px",
+                          flex: "0 0 auto",
                         }}
                       >
                         →
@@ -770,9 +806,7 @@ export default function Game2048() {
             </div>
 
             <div style={{ height: 10 }} />
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
-              Последовательность значений (от меньшего к большему).
-            </div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>Последовательность значений (от меньшего к большему).</div>
           </div>
         </div>
       )}
