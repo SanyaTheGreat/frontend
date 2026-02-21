@@ -108,15 +108,16 @@ function TgsLottie({ url, size = 140, speed = 1, loop = true }) {
   }, [url, loop, speed]);
 
   return (
-    <div
-      ref={elRef}
-      style={{
-        width: size,
-        height: size,
-        margin: '24 auto 24px',
-        pointerEvents: 'none',
-      }}
-    />
+    <div style={{ margin: '24px 0 24px', display: 'flex', justifyContent: 'center' }}>
+      <div
+        ref={elRef}
+        style={{
+          width: size,
+          height: size,
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
   );
 }
 
