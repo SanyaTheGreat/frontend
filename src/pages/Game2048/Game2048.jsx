@@ -177,13 +177,12 @@ export default function Game2048() {
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState(null);
 
-  const [runId, setRunId] = useState("");
-  const [periodId, setPeriodId] = useState("");
-
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
+  const [bestScore, setBestScore] = useState(0);
 
   const [tilesArr, setTilesArr] = useState([]);
+  const [hintOpen, setHintOpen] = useState(false);
 
   const tilesRef = useRef(new Map());
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
@@ -204,6 +203,29 @@ export default function Game2048() {
       tg?.expand?.();
       tg?.disableVerticalSwipes?.();
     } catch (_) {}
+  }, []);
+
+  // best score (local)
+  useEffect(() => {
+    const v = Number(localStorage.getItem("ffg_2048_best") || 0);
+    setBestScore(Number.isFinite(v) ? v : 0);
+  }, []);
+
+  useEffect(() => {
+    setBestScore((prev) => {
+      const next = Math.max(prev, score);
+      if (next !== prev) localStorage.setItem("ffg_2048_best", String(next));
+      return next;
+    });
+  }, [score]);
+
+  // close hint by ESC
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setHintOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // block "pull" inside board
@@ -228,11 +250,6 @@ export default function Game2048() {
         img.decode?.().catch(() => {});
       } catch (_) {}
     });
-  }, []);
-
-  useEffect(() => {
-    setRunId(localStorage.getItem("ffg_2048_run_id") || "");
-    setPeriodId(localStorage.getItem("ffg_2048_period_id") || "");
   }, []);
 
   function syncTilesArrFromRef() {
@@ -344,15 +361,6 @@ export default function Game2048() {
   function applyRunToUi(data) {
     const run = data?.run || data;
     if (!run) return;
-
-    if (run?.id) {
-      localStorage.setItem("ffg_2048_run_id", run.id);
-      setRunId(String(run.id));
-    }
-    if (data?.period?.id) {
-      localStorage.setItem("ffg_2048_period_id", data.period.id);
-      setPeriodId(String(data.period.id));
-    }
 
     const g = safeGridFromRun(run);
     if (g) reconcileWithServerGrid(g);
@@ -559,18 +567,16 @@ export default function Game2048() {
   const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
   const boardH = boardW;
 
+  const chainValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+
   return (
     <>
-      <div className="starfield" aria-hidden="true" />
-
       <div
         style={{
-          position: "relative",
-          zIndex: 5,
+          minHeight: "100vh",
+          background: "#faf8ef",
+          color: "#776e65",
           padding: 16,
-          color: "white",
-          maxWidth: 720,
-          margin: "0 auto",
         }}
       >
         <style>{`
@@ -580,55 +586,78 @@ export default function Game2048() {
           }
         `}</style>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img
-            src={LOGO_4096}
-            alt="4096"
-            style={{ width: 54, height: 54, objectFit: "contain" }}
-            draggable={false}
-            loading="eager"
-            decoding="async"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-          <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, opacity: 0.9 }}>
-            <div style={{ fontWeight: 900, fontSize: 12, letterSpacing: 0.3 }}>
-              {score.toLocaleString("en-US")}
+        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          {/* Top bar (like classic 2048) */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            {/* Logo block */}
+            <div
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: 12,
+                background: "#edc22e",
+                display: "grid",
+                placeItems: "center",
+                boxShadow: "0 6px 16px rgba(0,0,0,0.08)",
+                flex: "0 0 auto",
+              }}
+            >
+              <img
+                src={LOGO_4096}
+                alt="4096"
+                style={{ width: 70, height: 70, objectFit: "contain" }}
+                draggable={false}
+                loading="eager"
+                decoding="async"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
             </div>
-            <div style={{ opacity: 0.7, fontSize: 11 }}>moves: {moves}</div>
+
+            {/* Score boxes + buttons */}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <StatBox label="SCORE" value={score} />
+                <StatBox label="BEST" value={bestScore} />
+              </div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" onClick={startOrResume} disabled={loading} style={btnClassicPrimary(loading)}>
+                  {loading ? "..." : "START / RESUME"}
+                </button>
+
+                <button type="button" onClick={finish} disabled={loading} style={btnClassicSecondary(loading)}>
+                  FINISH
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={startOrResume} disabled={loading} style={btnPrimary(loading)}>
-            {loading ? "Запускаем..." : "Start / Resume"}
-          </button>
+          <div style={{ height: 14 }} />
 
-          <button type="button" onClick={finish} disabled={loading} style={btnGhost(loading)}>
-            Finish
-          </button>
-        </div>
-
-        <div style={{ marginTop: 14 }}>
+          {/* Board */}
           <div
             ref={boardRef}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
             style={{
               width: "fit-content",
-              borderRadius: 18,
+              borderRadius: 14,
               padding: BOARD_PAD,
-              background: "rgba(0,0,0,0.20)",
-              border: "1px solid rgba(255,255,255,0.10)",
+              background: "#bbada0",
               touchAction: "none",
               userSelect: "none",
               WebkitUserSelect: "none",
               overscrollBehavior: "none",
               WebkitOverflowScrolling: "auto",
+              boxShadow: "0 10px 22px rgba(0,0,0,0.10)",
+              margin: "0 auto",
             }}
           >
-            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16 }}>
+            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 12 }}>
               {/* background cells */}
               <div
                 style={{
@@ -645,9 +674,8 @@ export default function Game2048() {
                     style={{
                       width: CELL,
                       height: CELL,
-                      borderRadius: 16,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(0,0,0,0.25)",
+                      borderRadius: 12,
+                      background: "rgba(238, 228, 218, 0.35)",
                     }}
                   />
                 ))}
@@ -661,11 +689,161 @@ export default function Game2048() {
               </div>
             </div>
           </div>
+
+          {/* Hint button under board */}
+          <div style={{ height: 12 }} />
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <button type="button" onClick={() => setHintOpen(true)} style={btnHint()}>
+              ПОДСКАЗКА
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Hint modal */}
+      {hintOpen && (
+        <div
+          onClick={() => setHintOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 9999,
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(720px, 100%)",
+              background: "#faf8ef",
+              borderRadius: 16,
+              boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+              padding: 14,
+              color: "#776e65",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ fontWeight: 900, letterSpacing: 0.4 }}>Подсказка</div>
+              <button
+                type="button"
+                onClick={() => setHintOpen(false)}
+                style={{
+                  marginLeft: "auto",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: 22,
+                  lineHeight: 1,
+                  color: "#776e65",
+                  padding: 6,
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ height: 10 }} />
+
+            <div
+              style={{
+                background: "#eee4da",
+                borderRadius: 12,
+                padding: 12,
+                overflowX: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                {chainValues.map((v, idx) => (
+                  <div key={v} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <HintTile value={v} />
+                    {idx !== chainValues.length - 1 ? (
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 900,
+                          color: "#776e65",
+                          opacity: 0.9,
+                          padding: "0 2px",
+                        }}
+                      >
+                        →
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ height: 10 }} />
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              Направление: от меньшего значения к большему.
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastContainer position="top-right" autoClose={2200} newestOnTop closeOnClick draggable pauseOnHover theme="dark" />
     </>
+  );
+}
+
+function StatBox({ label, value }) {
+  return (
+    <div
+      style={{
+        width: 96,
+        borderRadius: 10,
+        background: "#bbada0",
+        color: "#f9f6f2",
+        padding: "10px 10px 9px",
+        textAlign: "center",
+        boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.9, letterSpacing: 0.6 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.15 }}>{Number(value || 0).toLocaleString("en-US")}</div>
+    </div>
+  );
+}
+
+function HintTile({ value }) {
+  const [ok, setOk] = useState(true);
+  const src = `/numbers/${value}.png`;
+
+  return (
+    <div
+      style={{
+        width: 54,
+        height: 54,
+        borderRadius: 12,
+        background: "rgba(255,255,255,0.65)",
+        display: "grid",
+        placeItems: "center",
+        boxShadow: "0 6px 12px rgba(0,0,0,0.08)",
+        border: "1px solid rgba(0,0,0,0.05)",
+        flex: "0 0 auto",
+      }}
+    >
+      {ok ? (
+        <img
+          src={src}
+          alt={String(value)}
+          style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none" }}
+          draggable={false}
+          loading="eager"
+          decoding={value === 2 || value === 4 ? "sync" : "async"}
+          fetchPriority={value === 2 || value === 4 ? "high" : "auto"}
+          onError={() => setOk(false)}
+        />
+      ) : (
+        <div style={{ fontWeight: 900 }}>{value}</div>
+      )}
+    </div>
   );
 }
 
@@ -692,13 +870,13 @@ function AnimatedTile({ tile }) {
         style={{
           width: "100%",
           height: "100%",
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "rgba(255,255,255,0.06)",
+          borderRadius: 12,
+          background: "rgba(255,255,255,0.65)",
           overflow: "hidden",
           animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
           transformOrigin: "50% 50%",
           willChange: tile.pop ? "transform, opacity" : "auto",
+          boxShadow: "0 8px 16px rgba(0,0,0,0.10)",
         }}
       >
         {tile.value ? (
@@ -724,28 +902,47 @@ function AnimatedTile({ tile }) {
   );
 }
 
-function btnPrimary(disabled) {
+function btnClassicPrimary(disabled) {
   return {
-    padding: "12px 14px",
-    borderRadius: 12,
+    padding: "10px 14px",
+    borderRadius: 8,
     border: "none",
-    background: "#ff9800",
-    color: "#000",
+    background: "#f59563",
+    color: "#f9f6f2",
     fontWeight: 900,
+    letterSpacing: 0.6,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.85 : 1,
+    boxShadow: "0 6px 14px rgba(0,0,0,0.10)",
   };
 }
 
-function btnGhost(disabled) {
+function btnClassicSecondary(disabled) {
   return {
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.2)",
-    background: "rgba(0,0,0,0.2)",
-    color: "white",
-    fontWeight: 800,
+    padding: "10px 14px",
+    borderRadius: 8,
+    border: "none",
+    background: "#f59563",
+    color: "#f9f6f2",
+    fontWeight: 900,
+    letterSpacing: 0.6,
     cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.7 : 1,
+    opacity: disabled ? 0.7 : 0.92,
+    boxShadow: "0 6px 14px rgba(0,0,0,0.10)",
+  };
+}
+
+function btnHint() {
+  return {
+    padding: "12px 16px",
+    borderRadius: 10,
+    border: "none",
+    background: "#8f7a66",
+    color: "#f9f6f2",
+    fontWeight: 900,
+    letterSpacing: 0.8,
+    cursor: "pointer",
+    boxShadow: "0 10px 18px rgba(0,0,0,0.10)",
+    minWidth: 220,
   };
 }
