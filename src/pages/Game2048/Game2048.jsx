@@ -263,11 +263,6 @@ export default function Game2048() {
     setTilesArr(list);
   }
 
-  /**
-   * reconcile server grid:
-   * - if only spawn diff (0 -> 2/4), add one tile with pop
-   * - else fallback rebuild
-   */
   function reconcileWithServerGrid(serverGrid) {
     const current = gridValuesRef.current;
 
@@ -324,7 +319,6 @@ export default function Game2048() {
     syncTilesArrFromRef();
   }
 
-  // ✅ добавляем spawn из ответа сервера сразу и в правильную клетку
   function applyServerSpawn(spawn) {
     if (!spawn) return;
     const r = Number(spawn.r);
@@ -413,7 +407,6 @@ export default function Game2048() {
     }
   };
 
-  // ---------- SWIPE ----------
   const onTouchStart = (e) => {
     e.preventDefault?.();
     const t = e.touches?.[0];
@@ -474,7 +467,6 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // после MOVE_MS — удалить merged old + pop для новых merged
     window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
@@ -493,7 +485,6 @@ export default function Game2048() {
       syncTilesArrFromRef();
     }, MOVE_MS + 5);
 
-    // server
     inFlightRef.current = true;
     setResp(null);
 
@@ -514,9 +505,7 @@ export default function Game2048() {
         return;
       }
 
-      // ✅ спавним сразу по данным сервера, без ожиданий и без предикта
       applyServerSpawn(data?.spawn);
-
       applyRunToUi(data);
 
       if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
@@ -571,12 +560,16 @@ export default function Game2048() {
 
   return (
     <>
+      <div className="starfield" aria-hidden="true" />
+
       <div
         style={{
-          minHeight: "100vh",
-          background: "#faf8ef",
-          color: "#776e65",
+          position: "relative",
+          zIndex: 5,
           padding: 16,
+          color: "white",
+          maxWidth: 720,
+          margin: "0 auto",
         }}
       >
         <style>{`
@@ -586,78 +579,72 @@ export default function Game2048() {
           }
         `}</style>
 
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          {/* Top bar (like classic 2048) */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-            {/* Logo block */}
-            <div
-              style={{
-                width: 96,
-                height: 96,
-                borderRadius: 12,
-                background: "#edc22e",
-                display: "grid",
-                placeItems: "center",
-                boxShadow: "0 6px 16px rgba(0,0,0,0.08)",
-                flex: "0 0 auto",
+        {/* Top row like 2048: logo left, score/best right */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: 16,
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              display: "grid",
+              placeItems: "center",
+              flex: "0 0 auto",
+            }}
+          >
+            <img
+              src={LOGO_4096}
+              alt="4096"
+              style={{ width: 60, height: 60, objectFit: "contain" }}
+              draggable={false}
+              loading="eager"
+              decoding="async"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
               }}
-            >
-              <img
-                src={LOGO_4096}
-                alt="4096"
-                style={{ width: 70, height: 70, objectFit: "contain" }}
-                draggable={false}
-                loading="eager"
-                decoding="async"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            </div>
-
-            {/* Score boxes + buttons */}
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <StatBox label="SCORE" value={score} />
-                <StatBox label="BEST" value={bestScore} />
-              </div>
-
-              <div style={{ height: 10 }} />
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                <button type="button" onClick={startOrResume} disabled={loading} style={btnClassicPrimary(loading)}>
-                  {loading ? "..." : "START / RESUME"}
-                </button>
-
-                <button type="button" onClick={finish} disabled={loading} style={btnClassicSecondary(loading)}>
-                  FINISH
-                </button>
-              </div>
-            </div>
+            />
           </div>
 
-          <div style={{ height: 14 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <StatBox label="SCORE" value={score} />
+              <StatBox label="BEST" value={bestScore} />
+            </div>
 
-          {/* Board */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button type="button" onClick={startOrResume} disabled={loading} style={btnPrimary(loading)}>
+                {loading ? "Запускаем..." : "Start / Resume"}
+              </button>
+
+              <button type="button" onClick={finish} disabled={loading} style={btnGhost(loading)}>
+                Finish
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Board */}
+        <div style={{ marginTop: 14 }}>
           <div
             ref={boardRef}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
             style={{
               width: "fit-content",
-              borderRadius: 14,
+              borderRadius: 18,
               padding: BOARD_PAD,
-              background: "#bbada0",
+              background: "rgba(0,0,0,0.20)",
+              border: "1px solid rgba(255,255,255,0.10)",
               touchAction: "none",
               userSelect: "none",
               WebkitUserSelect: "none",
               overscrollBehavior: "none",
               WebkitOverflowScrolling: "auto",
-              boxShadow: "0 10px 22px rgba(0,0,0,0.10)",
               margin: "0 auto",
             }}
           >
-            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 12 }}>
+            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16 }}>
               {/* background cells */}
               <div
                 style={{
@@ -674,8 +661,9 @@ export default function Game2048() {
                     style={{
                       width: CELL,
                       height: CELL,
-                      borderRadius: 12,
-                      background: "rgba(238, 228, 218, 0.35)",
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.25)",
                     }}
                   />
                 ))}
@@ -693,8 +681,8 @@ export default function Game2048() {
           {/* Hint button under board */}
           <div style={{ height: 12 }} />
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <button type="button" onClick={() => setHintOpen(true)} style={btnHint()}>
-              ПОДСКАЗКА
+            <button type="button" onClick={() => setHintOpen(true)} style={btnGhost(false)}>
+              Подсказка
             </button>
           </div>
         </div>
@@ -707,7 +695,7 @@ export default function Game2048() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.45)",
+            background: "rgba(0,0,0,0.55)",
             zIndex: 9999,
             display: "grid",
             placeItems: "center",
@@ -718,15 +706,16 @@ export default function Game2048() {
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "min(720px, 100%)",
-              background: "#faf8ef",
               borderRadius: 16,
-              boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+              background: "rgba(10,10,14,0.95)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 18px 46px rgba(0,0,0,0.5)",
               padding: 14,
-              color: "#776e65",
+              color: "white",
             }}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ fontWeight: 900, letterSpacing: 0.4 }}>Подсказка</div>
+              <div style={{ fontWeight: 900, letterSpacing: 0.3 }}>Подсказка</div>
               <button
                 type="button"
                 onClick={() => setHintOpen(false)}
@@ -737,7 +726,7 @@ export default function Game2048() {
                   cursor: "pointer",
                   fontSize: 22,
                   lineHeight: 1,
-                  color: "#776e65",
+                  color: "rgba(255,255,255,0.9)",
                   padding: 6,
                 }}
                 aria-label="Close"
@@ -750,7 +739,8 @@ export default function Game2048() {
 
             <div
               style={{
-                background: "#eee4da",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 12,
                 padding: 12,
                 overflowX: "auto",
@@ -766,7 +756,7 @@ export default function Game2048() {
                         style={{
                           fontSize: 18,
                           fontWeight: 900,
-                          color: "#776e65",
+                          color: "rgba(255,255,255,0.9)",
                           opacity: 0.9,
                           padding: "0 2px",
                         }}
@@ -781,7 +771,7 @@ export default function Game2048() {
 
             <div style={{ height: 10 }} />
             <div style={{ fontSize: 12, opacity: 0.8 }}>
-              Направление: от меньшего значения к большему.
+              Последовательность значений (от меньшего к большему).
             </div>
           </div>
         </div>
@@ -797,15 +787,16 @@ function StatBox({ label, value }) {
     <div
       style={{
         width: 96,
-        borderRadius: 10,
-        background: "#bbada0",
-        color: "#f9f6f2",
+        borderRadius: 12,
+        background: "rgba(0,0,0,0.22)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "white",
         padding: "10px 10px 9px",
         textAlign: "center",
-        boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+        boxShadow: "0 10px 20px rgba(0,0,0,0.18)",
       }}
     >
-      <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.9, letterSpacing: 0.6 }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.75, letterSpacing: 0.6 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.15 }}>{Number(value || 0).toLocaleString("en-US")}</div>
     </div>
   );
@@ -821,11 +812,10 @@ function HintTile({ value }) {
         width: 54,
         height: 54,
         borderRadius: 12,
-        background: "rgba(255,255,255,0.65)",
+        background: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.10)",
         display: "grid",
         placeItems: "center",
-        boxShadow: "0 6px 12px rgba(0,0,0,0.08)",
-        border: "1px solid rgba(0,0,0,0.05)",
         flex: "0 0 auto",
       }}
     >
@@ -870,13 +860,13 @@ function AnimatedTile({ tile }) {
         style={{
           width: "100%",
           height: "100%",
-          borderRadius: 12,
-          background: "rgba(255,255,255,0.65)",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
           overflow: "hidden",
           animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
           transformOrigin: "50% 50%",
           willChange: tile.pop ? "transform, opacity" : "auto",
-          boxShadow: "0 8px 16px rgba(0,0,0,0.10)",
         }}
       >
         {tile.value ? (
@@ -902,47 +892,28 @@ function AnimatedTile({ tile }) {
   );
 }
 
-function btnClassicPrimary(disabled) {
+function btnPrimary(disabled) {
   return {
-    padding: "10px 14px",
-    borderRadius: 8,
+    padding: "12px 14px",
+    borderRadius: 12,
     border: "none",
-    background: "#f59563",
-    color: "#f9f6f2",
+    background: "#ff9800",
+    color: "#000",
     fontWeight: 900,
-    letterSpacing: 0.6,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.85 : 1,
-    boxShadow: "0 6px 14px rgba(0,0,0,0.10)",
   };
 }
 
-function btnClassicSecondary(disabled) {
+function btnGhost(disabled) {
   return {
-    padding: "10px 14px",
-    borderRadius: 8,
-    border: "none",
-    background: "#f59563",
-    color: "#f9f6f2",
-    fontWeight: 900,
-    letterSpacing: 0.6,
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(0,0,0,0.2)",
+    color: "white",
+    fontWeight: 800,
     cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.7 : 0.92,
-    boxShadow: "0 6px 14px rgba(0,0,0,0.10)",
-  };
-}
-
-function btnHint() {
-  return {
-    padding: "12px 16px",
-    borderRadius: 10,
-    border: "none",
-    background: "#8f7a66",
-    color: "#f9f6f2",
-    fontWeight: 900,
-    letterSpacing: 0.8,
-    cursor: "pointer",
-    boxShadow: "0 10px 18px rgba(0,0,0,0.10)",
-    minWidth: 220,
+    opacity: disabled ? 0.7 : 1,
   };
 }
