@@ -26,36 +26,6 @@ function safeGridFromRun(run) {
   return st.grid;
 }
 
-function compactResp(resp) {
-  if (!resp) return null;
-  const d = resp.data || {};
-  const run = d.run || null;
-
-  return {
-    status: resp.status,
-    ok: resp.ok,
-    data: {
-      ok: d.ok,
-      moved: d.moved,
-      gained: d.gained,
-      finished: d.finished,
-      reason: d.reason,
-      spawn: d.spawn || null,
-      run: run
-        ? {
-            id: run.id,
-            status: run.status,
-            moves: run.moves,
-            current_score: run.current_score,
-            rng_index: run.rng_index,
-            period_id: run.period_id,
-            seed: run.seed,
-          }
-        : null,
-    },
-  };
-}
-
 // ---------- Tile engine ----------
 let __tileId = 1;
 function newTileId() {
@@ -603,7 +573,6 @@ export default function Game2048() {
     toast.info("Локалка очищена");
   };
 
-  const debug = compactResp(resp);
   const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
   const boardH = boardW;
 
@@ -734,25 +703,6 @@ export default function Game2048() {
           <div style={{ opacity: 0.65, fontSize: 12, marginTop: 8 }}>
             Tiles: <code>/public/numbers/2.png ... 4096.png</code>
           </div>
-        </div>
-
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>Ответ сервера (debug)</div>
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              background: "rgba(0,0,0,0.35)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 14,
-              padding: 12,
-              fontSize: 12,
-              lineHeight: 1.35,
-              minHeight: 120,
-            }}
-          >
-            {debug ? JSON.stringify(debug, null, 2) : "Start / Resume → свайпай по полю"}
-          </pre>
         </div>
       </div>
 
