@@ -117,86 +117,68 @@ function Home() {
     }
   };
 
-  // ✅ MAIN: when LUDO is off, show 2048 home screen with buttons
+  // ✅ MAIN: when LUDO is off, show 2048 home screen with 3 full-width buttons
   if (!LUDO_ENABLED) {
+    const btnStyle = {
+      width: '100%',
+      padding: 16,
+      borderRadius: 14,
+      fontWeight: 900,
+      fontSize: 16,
+      cursor: 'pointer',
+      position: 'relative',
+      zIndex: 10,
+    };
+
     return (
       <>
         <div className="starfield" aria-hidden="true" />
 
-        {/* FIX: гарантируем что контент кликабельный поверх любых слоёв */}
         <div style={{ position: 'relative', zIndex: 5, padding: 16, color: 'white' }}>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>2048</div>
-
-          <div style={{ opacity: 0.85, marginTop: 8 }}>
-            {hasActive2048 ? 'У тебя есть активная игра.' : 'Начни новую игру.'}
-          </div>
-
           <button
             type="button"
             onClick={startOrResume2048}
             disabled={loading2048}
             style={{
-              marginTop: 16,
-              width: '100%',
-              padding: 16,
-              borderRadius: 14,
+              ...btnStyle,
               border: 'none',
               background: '#ff9800',
               color: '#000',
-              fontWeight: 900,
-              fontSize: 16,
               cursor: loading2048 ? 'not-allowed' : 'pointer',
               opacity: loading2048 ? 0.85 : 1,
-              position: 'relative',
-              zIndex: 10,
+              marginTop: 4,
             }}
           >
             {loading2048 ? 'Запускаем...' : hasActive2048 ? 'Продолжить' : 'Играть'}
           </button>
 
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() => navigate('/2048-rules')}
-              style={{
-                flex: 1,
-                padding: 14,
-                borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#fff',
-                fontWeight: 800,
-                cursor: 'pointer',
-                position: 'relative',
-                zIndex: 10,
-              }}
-            >
-              Правила
-            </button>
+          <button
+            type="button"
+            onClick={() => navigate('/2048-rules')}
+            style={{
+              ...btnStyle,
+              marginTop: 12,
+              border: '1px solid rgba(255,255,255,0.18)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+            }}
+          >
+            Правила
+          </button>
 
-            <button
-              type="button"
-              onClick={() => navigate('/2048-leaderboard')}
-              style={{
-                flex: 1,
-                padding: 14,
-                borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#fff',
-                fontWeight: 800,
-                cursor: 'pointer',
-                position: 'relative',
-                zIndex: 10,
-              }}
-            >
-              Лидеры
-            </button>
-          </div>
-
-          <div style={{ marginTop: 16, opacity: 0.65, fontSize: 12 }}>
-            Остальные режимы и таб-бар временно скрыты.
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/2048-leaderboard')}
+            style={{
+              ...btnStyle,
+              marginTop: 12,
+              border: '1px solid rgba(255,255,255,0.18)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+            }}
+          >
+            Таблица лидеров
+          </button>
         </div>
 
         <ToastContainer
