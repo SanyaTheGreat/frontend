@@ -556,23 +556,6 @@ export default function Game2048() {
     }
   };
 
-  const clearLocal = () => {
-    localStorage.removeItem("ffg_2048_run_id");
-    localStorage.removeItem("ffg_2048_period_id");
-    setRunId("");
-    setPeriodId("");
-
-    tilesRef.current = new Map();
-    boardRefState.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-    gridValuesRef.current = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
-    setTilesArr([]);
-
-    setScore(0);
-    setMoves(0);
-
-    toast.info("Локалка очищена");
-  };
-
   const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
   const boardH = boardW;
 
@@ -609,17 +592,11 @@ export default function Game2048() {
               e.currentTarget.style.display = "none";
             }}
           />
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 18, lineHeight: 1 }}>4096</div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Свайпы • реальная анимация</div>
-          </div>
-          <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, opacity: 0.85 }}>
-            <div>
-              <b>Score:</b> {score}
+          <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, opacity: 0.9 }}>
+            <div style={{ fontWeight: 900, fontSize: 12, letterSpacing: 0.3 }}>
+              {score.toLocaleString("en-US")}
             </div>
-            <div>
-              <b>Moves:</b> {moves}
-            </div>
+            <div style={{ opacity: 0.7, fontSize: 11 }}>moves: {moves}</div>
           </div>
         </div>
 
@@ -629,26 +606,11 @@ export default function Game2048() {
           </button>
 
           <button type="button" onClick={finish} disabled={loading} style={btnGhost(loading)}>
-            Finish (manual)
+            Finish
           </button>
-
-          <button type="button" onClick={clearLocal} style={btnGhost(false)}>
-            Clear local
-          </button>
-        </div>
-
-        <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
-          <div>
-            <b>run_id:</b> {runId || "—"}
-          </div>
-          <div>
-            <b>period_id:</b> {periodId || "—"}
-          </div>
         </div>
 
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>Поле</div>
-
           <div
             ref={boardRef}
             onTouchStart={onTouchStart}
@@ -698,10 +660,6 @@ export default function Game2048() {
                 ))}
               </div>
             </div>
-          </div>
-
-          <div style={{ opacity: 0.65, fontSize: 12, marginTop: 8 }}>
-            Tiles: <code>/public/numbers/2.png ... 4096.png</code>
           </div>
         </div>
       </div>
