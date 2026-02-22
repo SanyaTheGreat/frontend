@@ -8,9 +8,9 @@ const LOGO_4096 = "/numbers/4096.png";
 const GRID_SIZE = 4;
 
 // sizes
-const CELL = 72;
-const GAP = 10;
-const BOARD_PAD = 12;
+const CELL = 84;
+const GAP = 12;
+const BOARD_PAD = 14;
 
 // animations
 const MOVE_MS = 220; // чуть быстрее и мягче
