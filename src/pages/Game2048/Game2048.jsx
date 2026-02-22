@@ -13,13 +13,18 @@ const GAP = 8;
 const BOARD_PAD = 12;
 
 // animations
-const POP_MS = 230;
-const MOVE_EASE = "cubic-bezier(0.2, 0.85, 0.25, 1)";
+// ✅ spawn: просто мягко проявляется (как в оригинале)
+const SPAWN_FADE_MS = 60;
+
+// ✅ merge: масштабная “пружинка”
+const MERGE_POP_MS = 230;
 
 // ✅ “реальная” механика: скорость постоянная, время зависит от расстояния
-const MOVE_PER_CELL_MS = 95; // мс на 1 клетку (подкрути: 60 быстрее, 80 медленнее)
-const MOVE_MIN_MS = 110;      // минимальная длительность, чтобы 1 клетка не была слишком резкой
-const MOVE_MAX_MS = 380;     // максимальная длительность, чтобы 3 клетки не были слишком долгими
+// (эти значения мягче, чтобы не было резкости)
+const MOVE_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
+const MOVE_PER_CELL_MS = 110;
+const MOVE_MIN_MS = 140;
+const MOVE_MAX_MS = 460;
 
 function posToPx(r, c) {
   return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
@@ -39,7 +44,7 @@ function newTileId() {
 }
 
 /**
- * tiles: Map(id -> {id,value,r,c, removeAt?, pop?, z?, appearAt?, moveMs?})
+ * tiles: Map(id -> {id,value,r,c, removeAt?, pop?: "spawn"|"merge"|null, z?, appearAt?, moveMs?})
  * board: 2D of tileId|null
  */
 function buildTilesFromGrid(grid) {
@@ -51,7 +56,8 @@ function buildTilesFromGrid(grid) {
       const v = Number(grid?.[r]?.[c] ?? 0);
       if (!v) continue;
       const id = newTileId();
-      tiles.set(id, { id, value: v, r, c, pop: true, z: 1, moveMs: 0 });
+      // ✅ при полной пересборке (start/reconcile) не анимируем каждую плитку
+      tiles.set(id, { id, value: v, r, c, pop: null, z: 1, moveMs: 0 });
       board[r][c] = id;
     }
   }
@@ -100,7 +106,7 @@ function applyMoveAnimated(tiles, board, dir) {
   for (const [id, t] of tiles.entries()) {
     nextTiles.set(id, {
       ...t,
-      pop: false,
+      pop: null,
       z: t.z ?? 1,
       removeAt: null,
       moveMs: 0,
@@ -114,7 +120,7 @@ function applyMoveAnimated(tiles, board, dir) {
   let anyMoved = false;
   let zCounter = 10;
 
-  let maxAnimEndAt = now; // ✅ для корректного таймера очистки
+  let maxAnimEndAt = now;
 
   for (let i = 0; i < GRID_SIZE; i++) {
     const coords = getLineCoords(i, dir);
@@ -144,7 +150,6 @@ function applyMoveAnimated(tiles, board, dir) {
         const a = nextTiles.get(cur.id);
         const b = nextTiles.get(nxt.id);
 
-        // ✅ длительность зависит от расстояния (в клетках)
         let aArriveAt = now;
         let bArriveAt = now;
 
@@ -178,7 +183,7 @@ function applyMoveAnimated(tiles, board, dir) {
           maxAnimEndAt = Math.max(maxAnimEndAt, bArriveAt);
         }
 
-        // ✅ новый тайл появляется когда оба доехали
+        // ✅ новый merged-тайл появляется когда оба доехали
         const mergeArriveAt = Math.max(aArriveAt, bArriveAt);
 
         const newId = newTileId();
@@ -187,11 +192,12 @@ function applyMoveAnimated(tiles, board, dir) {
           value: mergedValue,
           r: tr,
           c: tc,
-          pop: false,
+          pop: "merge", // ✅ только merge получает pop-эффект
           z: zCounter++,
           appearAt: mergeArriveAt,
           moveMs: 0,
         });
+
         maxAnimEndAt = Math.max(maxAnimEndAt, mergeArriveAt);
 
         out.push({ id: newId, value: mergedValue, r: tr, c: tc });
@@ -211,8 +217,7 @@ function applyMoveAnimated(tiles, board, dir) {
           t.z = zCounter++;
           t.moveMs = ms;
 
-          const arriveAt = now + ms;
-          maxAnimEndAt = Math.max(maxAnimEndAt, arriveAt);
+          maxAnimEndAt = Math.max(maxAnimEndAt, now + ms);
         }
 
         out.push({ id: cur.id, value: cur.value, r: tr, c: tc });
@@ -234,7 +239,7 @@ function applyMoveAnimated(tiles, board, dir) {
     gained,
     moved: anyMoved,
     nextGridValues,
-    maxAnimMs, // ✅ сколько ждать до cleanup
+    maxAnimMs,
   };
 }
 
@@ -366,7 +371,7 @@ export default function Game2048() {
           let zMax = 1;
           for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
 
-          map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: true, z: zMax + 5, moveMs: 0 });
+          map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: "spawn", z: zMax + 5, moveMs: 0 });
           board[d.r][d.c] = id;
 
           tilesRef.current = map;
@@ -410,7 +415,8 @@ export default function Game2048() {
     for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
 
     const id = newTileId();
-    map.set(id, { id, value: v, r, c, pop: true, z: zMax + 50, moveMs: 0 });
+    // ✅ spawn: только fade-in, без scale
+    map.set(id, { id, value: v, r, c, pop: "spawn", z: zMax + 50, moveMs: 0 });
     board[r][c] = id;
 
     tilesRef.current = map;
@@ -533,7 +539,7 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // ✅ cleanup строго после максимальной анимации
+    // cleanup после максимальной анимации движения
     window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
@@ -543,16 +549,16 @@ export default function Game2048() {
       }
       for (const t of map.values()) {
         if (t.appearAt && now >= t.appearAt) {
-          t.pop = true;
           delete t.appearAt;
         }
-        // ✅ чтобы следующий ход снова посчитал корректную длительность
+        // ✅ чтобы анимация не пыталась “перезапускаться” на будущих рендерах
+        if (t.pop) t.pop = null;
         if (t.moveMs) delete t.moveMs;
       }
 
       tilesRef.current = map;
       syncTilesArrFromRef();
-    }, maxAnimMs + 8);
+    }, maxAnimMs + 10);
 
     inFlightRef.current = true;
     setResp(null);
@@ -652,9 +658,16 @@ export default function Game2048() {
           100% { background-position: 0px -420px, 0px -520px, 0px -680px, 0px -900px, 0px -1200px; }
         }
 
+        /* ✅ merge pop (scale) */
         @keyframes ffgPop {
-          0% { transform: scale(0.92); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
+          0% { transform: scale(0.92); }
+          100% { transform: scale(1); }
+        }
+
+        /* ✅ spawn fade-in (no scale) */
+        @keyframes ffgFade {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
         }
 
         @keyframes hintIn {
@@ -961,6 +974,13 @@ function AnimatedTile({ tile }) {
 
   const ms = Number.isFinite(tile.moveMs) ? tile.moveMs : 0;
 
+  const innerAnimation =
+    tile.pop === "merge"
+      ? `ffgPop ${MERGE_POP_MS}ms ease-out`
+      : tile.pop === "spawn"
+      ? `ffgFade ${SPAWN_FADE_MS}ms linear`
+      : "none";
+
   return (
     <div
       style={{
@@ -968,7 +988,7 @@ function AnimatedTile({ tile }) {
         width: CELL,
         height: CELL,
         transform: `translate3d(${x}px, ${y}px, 0) translateZ(0)`,
-        transition: `transform ${ms}ms ${MOVE_EASE}`,
+        transition: ms > 0 ? `transform ${ms}ms ${MOVE_EASE}` : "none",
         zIndex: tile.z ?? 1,
         willChange: "transform",
         backfaceVisibility: "hidden",
@@ -983,7 +1003,7 @@ function AnimatedTile({ tile }) {
           border: "1px solid rgba(255,255,255,0.12)",
           background: "rgba(255,255,255,0.06)",
           overflow: "hidden",
-          animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
+          animation: innerAnimation,
           transformOrigin: "50% 50%",
           willChange: tile.pop ? "transform, opacity" : "auto",
           boxSizing: "border-box",
