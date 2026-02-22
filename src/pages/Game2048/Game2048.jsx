@@ -13,8 +13,9 @@ const GAP = 10;
 const BOARD_PAD = 12;
 
 // animations
-const MOVE_MS = 240;
+const MOVE_MS = 220; // чуть быстрее и мягче
 const POP_MS = 230;
+const MOVE_EASE = "cubic-bezier(0.22, 0.9, 0.26, 1)";
 
 function posToPx(r, c) {
   return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
@@ -620,12 +621,13 @@ export default function Game2048() {
               display: "grid",
               placeItems: "center",
               flex: "0 0 auto",
+              boxSizing: "border-box",
             }}
           >
             <img
               src={LOGO_4096}
               alt="4096"
-              style={{ width: 60, height: 60, objectFit: "contain" }}
+              style={{ width: 60, height: 60, objectFit: "contain", display: "block" }}
               draggable={false}
               loading="eager"
               decoding="async"
@@ -671,9 +673,10 @@ export default function Game2048() {
               overscrollBehavior: "none",
               WebkitOverflowScrolling: "auto",
               margin: "0 auto",
+              boxSizing: "border-box",
             }}
           >
-            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16 }}>
+            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16, boxSizing: "border-box" }}>
               {/* background cells */}
               <div
                 style={{
@@ -682,6 +685,7 @@ export default function Game2048() {
                   display: "grid",
                   gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL}px)`,
                   gap: GAP,
+                  boxSizing: "border-box",
                 }}
               >
                 {Array.from({ length: 16 }).map((_, i) => (
@@ -693,6 +697,7 @@ export default function Game2048() {
                       borderRadius: 16,
                       border: "1px solid rgba(255,255,255,0.12)",
                       background: "rgba(0,0,0,0.25)",
+                      boxSizing: "border-box", // ✅ важно
                     }}
                   />
                 ))}
@@ -743,7 +748,7 @@ export default function Game2048() {
               boxShadow: "0 18px 46px rgba(0,0,0,0.5)",
               padding: 14,
               color: "white",
-              overflow: "hidden", // ✅ контент не раздувает карточку вправо
+              overflow: "hidden",
               animation: "hintIn 180ms ease-out",
             }}
           >
@@ -777,9 +782,10 @@ export default function Game2048() {
                 border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 12,
                 padding: 12,
-                overflowX: "auto", // ✅ лента скроллится внутри, не двигая модалку
+                overflowX: "auto",
                 overflowY: "hidden",
                 WebkitOverflowScrolling: "touch",
+                boxSizing: "border-box",
               }}
             >
               <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
@@ -828,6 +834,7 @@ function StatBox({ label, value }) {
         padding: "10px 10px 9px",
         textAlign: "center",
         boxShadow: "0 10px 20px rgba(0,0,0,0.18)",
+        boxSizing: "border-box",
       }}
     >
       <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.75, letterSpacing: 0.6 }}>{label}</div>
@@ -851,13 +858,14 @@ function HintTile({ value }) {
         display: "grid",
         placeItems: "center",
         flex: "0 0 auto",
+        boxSizing: "border-box",
       }}
     >
       {ok ? (
         <img
           src={src}
           alt={String(value)}
-          style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none" }}
+          style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none", display: "block", margin: 0, padding: 0 }}
           draggable={false}
           loading="eager"
           decoding={value === 2 || value === 4 ? "sync" : "async"}
@@ -883,11 +891,12 @@ function AnimatedTile({ tile }) {
         position: "absolute",
         width: CELL,
         height: CELL,
-        transform: `translate3d(${x}px, ${y}px, 0)`,
-        transition: `transform ${MOVE_MS}ms ease-in-out`,
+        transform: `translate3d(${x}px, ${y}px, 0) translateZ(0)`,
+        transition: `transform ${MOVE_MS}ms ${MOVE_EASE}`,
         zIndex: tile.z ?? 1,
         willChange: "transform",
         backfaceVisibility: "hidden",
+        boxSizing: "border-box", // ✅ фикс “выпадения” из-за border
       }}
     >
       <div
@@ -901,6 +910,10 @@ function AnimatedTile({ tile }) {
           animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
           transformOrigin: "50% 50%",
           willChange: tile.pop ? "transform, opacity" : "auto",
+          boxSizing: "border-box", // ✅ фикс “выпадения”
+          display: "flex", // ✅ центрируем без margin у img
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         {tile.value ? (
@@ -908,7 +921,15 @@ function AnimatedTile({ tile }) {
             <img
               src={src}
               alt={String(tile.value)}
-              style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none", margin: "9%" }}
+              style={{
+                width: "82%",
+                height: "82%",
+                objectFit: "contain",
+                pointerEvents: "none",
+                display: "block", // ✅ убирает baseline-gap
+                margin: 0,
+                padding: 0,
+              }}
               onError={() => setImgOk(false)}
               draggable={false}
               loading="eager"
