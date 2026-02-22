@@ -13,9 +13,13 @@ const GAP = 8;
 const BOARD_PAD = 12;
 
 // animations
-const MOVE_MS = 220; // чуть быстрее и мягче
 const POP_MS = 230;
 const MOVE_EASE = "cubic-bezier(0.22, 0.9, 0.26, 1)";
+
+// ✅ “реальная” механика: скорость постоянная, время зависит от расстояния
+const MOVE_PER_CELL_MS = 70; // мс на 1 клетку (подкрути: 60 быстрее, 80 медленнее)
+const MOVE_MIN_MS = 60;      // минимальная длительность, чтобы 1 клетка не была слишком резкой
+const MOVE_MAX_MS = 260;     // максимальная длительность, чтобы 3 клетки не были слишком долгими
 
 function posToPx(r, c) {
   return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
@@ -35,7 +39,7 @@ function newTileId() {
 }
 
 /**
- * tiles: Map(id -> {id,value,r,c, removeAt?, pop?, z?, appearAt?})
+ * tiles: Map(id -> {id,value,r,c, removeAt?, pop?, z?, appearAt?, moveMs?})
  * board: 2D of tileId|null
  */
 function buildTilesFromGrid(grid) {
@@ -47,7 +51,7 @@ function buildTilesFromGrid(grid) {
       const v = Number(grid?.[r]?.[c] ?? 0);
       if (!v) continue;
       const id = newTileId();
-      tiles.set(id, { id, value: v, r, c, pop: true, z: 1 });
+      tiles.set(id, { id, value: v, r, c, pop: true, z: 1, moveMs: 0 });
       board[r][c] = id;
     }
   }
@@ -80,9 +84,28 @@ function gridsEqualValues(a, b) {
   return true;
 }
 
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function moveDurationMs(distCells) {
+  const ms = distCells * MOVE_PER_CELL_MS;
+  return clamp(ms, MOVE_MIN_MS, MOVE_MAX_MS);
+}
+
 function applyMoveAnimated(tiles, board, dir) {
+  const now = Date.now();
+
   const nextTiles = new Map();
-  for (const [id, t] of tiles.entries()) nextTiles.set(id, { ...t, pop: false, z: t.z ?? 1, removeAt: null });
+  for (const [id, t] of tiles.entries()) {
+    nextTiles.set(id, {
+      ...t,
+      pop: false,
+      z: t.z ?? 1,
+      removeAt: null,
+      moveMs: 0,
+    });
+  }
 
   const nextBoard = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   const nextGridValues = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
@@ -90,6 +113,8 @@ function applyMoveAnimated(tiles, board, dir) {
   let gained = 0;
   let anyMoved = false;
   let zCounter = 10;
+
+  let maxAnimEndAt = now; // ✅ для корректного таймера очистки
 
   for (let i = 0; i < GRID_SIZE; i++) {
     const coords = getLineCoords(i, dir);
@@ -119,20 +144,42 @@ function applyMoveAnimated(tiles, board, dir) {
         const a = nextTiles.get(cur.id);
         const b = nextTiles.get(nxt.id);
 
+        // ✅ длительность зависит от расстояния (в клетках)
+        let aArriveAt = now;
+        let bArriveAt = now;
+
         if (a) {
-          if (a.r !== tr || a.c !== tc) anyMoved = true;
+          const dist = Math.abs(a.r - tr) + Math.abs(a.c - tc);
+          const ms = dist > 0 ? moveDurationMs(dist) : 0;
+          if (dist > 0) anyMoved = true;
+
           a.r = tr;
           a.c = tc;
           a.z = zCounter++;
-          a.removeAt = Date.now() + MOVE_MS;
+          a.moveMs = ms;
+          a.removeAt = now + ms;
+
+          aArriveAt = now + ms;
+          maxAnimEndAt = Math.max(maxAnimEndAt, aArriveAt);
         }
+
         if (b) {
-          if (b.r !== tr || b.c !== tc) anyMoved = true;
+          const dist = Math.abs(b.r - tr) + Math.abs(b.c - tc);
+          const ms = dist > 0 ? moveDurationMs(dist) : 0;
+          if (dist > 0) anyMoved = true;
+
           b.r = tr;
           b.c = tc;
           b.z = zCounter++;
-          b.removeAt = Date.now() + MOVE_MS;
+          b.moveMs = ms;
+          b.removeAt = now + ms;
+
+          bArriveAt = now + ms;
+          maxAnimEndAt = Math.max(maxAnimEndAt, bArriveAt);
         }
+
+        // ✅ новый тайл появляется когда оба доехали
+        const mergeArriveAt = Math.max(aArriveAt, bArriveAt);
 
         const newId = newTileId();
         nextTiles.set(newId, {
@@ -142,8 +189,10 @@ function applyMoveAnimated(tiles, board, dir) {
           c: tc,
           pop: false,
           z: zCounter++,
-          appearAt: Date.now() + MOVE_MS,
+          appearAt: mergeArriveAt,
+          moveMs: 0,
         });
+        maxAnimEndAt = Math.max(maxAnimEndAt, mergeArriveAt);
 
         out.push({ id: newId, value: mergedValue, r: tr, c: tc });
         p += 2;
@@ -153,10 +202,17 @@ function applyMoveAnimated(tiles, board, dir) {
 
         const t = nextTiles.get(cur.id);
         if (t) {
-          if (t.r !== tr || t.c !== tc) anyMoved = true;
+          const dist = Math.abs(t.r - tr) + Math.abs(t.c - tc);
+          const ms = dist > 0 ? moveDurationMs(dist) : 0;
+          if (dist > 0) anyMoved = true;
+
           t.r = tr;
           t.c = tc;
           t.z = zCounter++;
+          t.moveMs = ms;
+
+          const arriveAt = now + ms;
+          maxAnimEndAt = Math.max(maxAnimEndAt, arriveAt);
         }
 
         out.push({ id: cur.id, value: cur.value, r: tr, c: tc });
@@ -170,7 +226,16 @@ function applyMoveAnimated(tiles, board, dir) {
     }
   }
 
-  return { nextTiles, nextBoard, gained, moved: anyMoved, nextGridValues };
+  const maxAnimMs = Math.max(0, maxAnimEndAt - now);
+
+  return {
+    nextTiles,
+    nextBoard,
+    gained,
+    moved: anyMoved,
+    nextGridValues,
+    maxAnimMs, // ✅ сколько ждать до cleanup
+  };
 }
 
 // ---------- Component ----------
@@ -301,7 +366,7 @@ export default function Game2048() {
           let zMax = 1;
           for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
 
-          map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: true, z: zMax + 5 });
+          map.set(id, { id, value: d.b, r: d.r, c: d.c, pop: true, z: zMax + 5, moveMs: 0 });
           board[d.r][d.c] = id;
 
           tilesRef.current = map;
@@ -345,7 +410,7 @@ export default function Game2048() {
     for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
 
     const id = newTileId();
-    map.set(id, { id, value: v, r, c, pop: true, z: zMax + 50 });
+    map.set(id, { id, value: v, r, c, pop: true, z: zMax + 50, moveMs: 0 });
     board[r][c] = id;
 
     tilesRef.current = map;
@@ -457,7 +522,7 @@ export default function Game2048() {
     const beforeTiles = tilesRef.current;
     const beforeBoard = boardRefState.current;
 
-    const { nextTiles, nextBoard, gained, moved, nextGridValues } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
+    const { nextTiles, nextBoard, gained, moved, nextGridValues, maxAnimMs } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
     if (!moved) return;
 
     tilesRef.current = nextTiles;
@@ -468,6 +533,7 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
+    // ✅ cleanup строго после максимальной анимации
     window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
@@ -480,11 +546,13 @@ export default function Game2048() {
           t.pop = true;
           delete t.appearAt;
         }
+        // ✅ чтобы следующий ход снова посчитал корректную длительность
+        if (t.moveMs) delete t.moveMs;
       }
 
       tilesRef.current = map;
       syncTilesArrFromRef();
-    }, MOVE_MS + 5);
+    }, maxAnimMs + 8);
 
     inFlightRef.current = true;
     setResp(null);
@@ -562,7 +630,6 @@ export default function Game2048() {
   return (
     <>
       <style>{`
-        /* ✅ бесконечный звездный фон: фиксирован + repeating + бесконечная прокрутка */
         .starfield{
           position: fixed;
           inset: 0;
@@ -590,7 +657,6 @@ export default function Game2048() {
           100% { transform: scale(1); opacity: 1; }
         }
 
-        /* ✅ выезд модалки по центру */
         @keyframes hintIn {
           0% { transform: translate3d(0, 18px, 0) scale(0.98); opacity: 0; }
           100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
@@ -609,7 +675,7 @@ export default function Game2048() {
           margin: "0 auto",
         }}
       >
-        {/* Top row like 2048: logo left, score/best right */}
+        {/* Top row */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div
             style={{
@@ -697,7 +763,7 @@ export default function Game2048() {
                       borderRadius: 16,
                       border: "1px solid rgba(255,255,255,0.12)",
                       background: "rgba(0,0,0,0.25)",
-                      boxSizing: "border-box", // ✅ важно
+                      boxSizing: "border-box",
                     }}
                   />
                 ))}
@@ -739,7 +805,7 @@ export default function Game2048() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "calc(100vw - 32px)", // ✅ всегда влезает в экран
+              width: "calc(100vw - 32px)",
               maxWidth: 720,
               boxSizing: "border-box",
               borderRadius: 16,
@@ -865,7 +931,15 @@ function HintTile({ value }) {
         <img
           src={src}
           alt={String(value)}
-          style={{ width: "82%", height: "82%", objectFit: "contain", pointerEvents: "none", display: "block", margin: 0, padding: 0 }}
+          style={{
+            width: "82%",
+            height: "82%",
+            objectFit: "contain",
+            pointerEvents: "none",
+            display: "block",
+            margin: 0,
+            padding: 0,
+          }}
           draggable={false}
           loading="eager"
           decoding={value === 2 || value === 4 ? "sync" : "async"}
@@ -885,6 +959,8 @@ function AnimatedTile({ tile }) {
   const { x, y } = posToPx(tile.r, tile.c);
   const src = tile.value ? `/numbers/${tile.value}.png` : "";
 
+  const ms = Number.isFinite(tile.moveMs) ? tile.moveMs : 0;
+
   return (
     <div
       style={{
@@ -892,11 +968,11 @@ function AnimatedTile({ tile }) {
         width: CELL,
         height: CELL,
         transform: `translate3d(${x}px, ${y}px, 0) translateZ(0)`,
-        transition: `transform ${MOVE_MS}ms ${MOVE_EASE}`,
+        transition: `transform ${ms}ms ${MOVE_EASE}`,
         zIndex: tile.z ?? 1,
         willChange: "transform",
         backfaceVisibility: "hidden",
-        boxSizing: "border-box", // ✅ фикс “выпадения” из-за border
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -910,8 +986,8 @@ function AnimatedTile({ tile }) {
           animation: tile.pop ? `ffgPop ${POP_MS}ms ease-out` : "none",
           transformOrigin: "50% 50%",
           willChange: tile.pop ? "transform, opacity" : "auto",
-          boxSizing: "border-box", // ✅ фикс “выпадения”
-          display: "flex", // ✅ центрируем без margin у img
+          boxSizing: "border-box",
+          display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -926,7 +1002,7 @@ function AnimatedTile({ tile }) {
                 height: "82%",
                 objectFit: "contain",
                 pointerEvents: "none",
-                display: "block", // ✅ убирает baseline-gap
+                display: "block",
                 margin: 0,
                 padding: 0,
               }}
