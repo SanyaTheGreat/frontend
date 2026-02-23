@@ -26,6 +26,12 @@ const MOVE_PER_CELL_MS = 110;
 const MOVE_MIN_MS = 140;
 const MOVE_MAX_MS = 460;
 
+// --- Durov FX ---
+const DUROV_IMG = "/stickers/Durov.png";
+const DUROV_FX_MS = 620; // общая сцена (дуров+лучи+полёт)
+const DUROV_FLY_MS = 520; // полёт тайлов
+const DUROV_PHRASES = ["переставил", "не баг, а фича", "чисто телеграм"];
+
 function posToPx(r, c) {
   return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
 }
@@ -255,6 +261,12 @@ export default function Game2048() {
   const [tilesArr, setTilesArr] = useState([]);
   const [hintOpen, setHintOpen] = useState(false);
 
+  // --- Durov FX state ---
+  const [durovFx, setDurovFx] = useState(null);
+  // durovFx: { phrase, a:{r,c,v}, b:{r,c,v}, mouth:{x,y}, aCenter:{x,y}, bCenter:{x,y}, dx, dy, t0 }
+
+  const durovTimersRef = useRef({ clear: null, apply: null });
+
   const tilesRef = useRef(new Map());
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
@@ -321,6 +333,15 @@ export default function Game2048() {
         img.decode?.().catch(() => {});
       } catch (_) {}
     });
+
+    // preload durov
+    const d = new Image();
+    d.src = DUROV_IMG;
+    d.loading = "eager";
+    d.decoding = "async";
+    try {
+      d.decode?.().catch(() => {});
+    } catch (_) {}
   }, []);
 
   function syncTilesArrFromRef() {
@@ -435,6 +456,79 @@ export default function Game2048() {
     setMoves(Number(run?.moves ?? 0));
   }
 
+  function clearDurovTimers() {
+    if (durovTimersRef.current.clear) {
+      window.clearTimeout(durovTimersRef.current.clear);
+      durovTimersRef.current.clear = null;
+    }
+    if (durovTimersRef.current.apply) {
+      window.clearTimeout(durovTimersRef.current.apply);
+      durovTimersRef.current.apply = null;
+    }
+  }
+
+  function pickPhrase() {
+    const i = Math.floor(Math.random() * DUROV_PHRASES.length);
+    return DUROV_PHRASES[i] || DUROV_PHRASES[0];
+  }
+
+  function cellCenterInBoard(r, c) {
+    // координаты относительно внутренней области tiles (0..boardW/boardH)
+    const x = c * (CELL + GAP) + CELL / 2;
+    const y = r * (CELL + GAP) + CELL / 2;
+    return { x, y };
+  }
+
+  function startDurovFx(ev, dataToApplyLater) {
+    // ev: { from:{r,c,v}, to:{r,c,v} }
+    // отрисовка "над полем": задаём mouth точку чуть выше поля
+    const mouth = {
+      x: BOARD_PAD + (GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP) / 2,
+      y: 18, // в header-zone над полем
+    };
+
+    const aCenter0 = cellCenterInBoard(ev.from.r, ev.from.c);
+    const bCenter0 = cellCenterInBoard(ev.to.r, ev.to.c);
+
+    const aCenter = { x: BOARD_PAD + aCenter0.x, y: BOARD_PAD + 92 + aCenter0.y }; // 92 = высота header-zone
+    const bCenter = { x: BOARD_PAD + bCenter0.x, y: BOARD_PAD + 92 + bCenter0.y };
+
+    const aStart = { x: aCenter.x - CELL / 2, y: aCenter.y - CELL / 2 };
+    const bStart = { x: bCenter.x - CELL / 2, y: bCenter.y - CELL / 2 };
+
+    const dx = bStart.x - aStart.x;
+    const dy = bStart.y - aStart.y;
+
+    clearDurovTimers();
+
+    setDurovFx({
+      phrase: pickPhrase(),
+      a: { r: ev.from.r, c: ev.from.c, v: ev.from.v },
+      b: { r: ev.to.r, c: ev.to.c, v: ev.to.v },
+      mouth,
+      aCenter,
+      bCenter,
+      aStart,
+      bStart,
+      dx,
+      dy,
+      t0: Date.now(),
+    });
+
+    // применяем server-state после полёта
+    durovTimersRef.current.apply = window.setTimeout(() => {
+      // В durov-кейсе мы НЕ делаем applyServerSpawn отдельно — всё приходит в run.state.grid
+      applyRunToUi(dataToApplyLater);
+      if (dataToApplyLater?.finished) toast.info(`Game Over (${dataToApplyLater?.reason || "finished"})`);
+    }, DUROV_FLY_MS + 20);
+
+    // гасим эффект
+    durovTimersRef.current.clear = window.setTimeout(() => {
+      setDurovFx(null);
+      clearDurovTimers();
+    }, DUROV_FX_MS);
+  }
+
   const startOrResume = async () => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
@@ -528,7 +622,11 @@ export default function Game2048() {
     const beforeTiles = tilesRef.current;
     const beforeBoard = boardRefState.current;
 
-    const { nextTiles, nextBoard, gained, moved, nextGridValues, maxAnimMs } = applyMoveAnimated(beforeTiles, beforeBoard, dir);
+    const { nextTiles, nextBoard, gained, moved, nextGridValues, maxAnimMs } = applyMoveAnimated(
+      beforeTiles,
+      beforeBoard,
+      dir
+    );
     if (!moved) return;
 
     tilesRef.current = nextTiles;
@@ -580,6 +678,45 @@ export default function Game2048() {
         return;
       }
 
+      // ✅ Durov swap: НЕ телепортим сразу сетку — показываем лучи/полёт, потом применяем server-state
+      const ev = data?.durov_event;
+      if (ev?.type === "durov_swap" && ev?.from && ev?.to) {
+        const from = {
+          r: Number(ev.from.r),
+          c: Number(ev.from.c),
+          v: Number(ev.from.v),
+        };
+        const to = {
+          r: Number(ev.to.r),
+          c: Number(ev.to.c),
+          v: Number(ev.to.v),
+        };
+
+        const ok =
+          Number.isFinite(from.r) &&
+          Number.isFinite(from.c) &&
+          Number.isFinite(from.v) &&
+          Number.isFinite(to.r) &&
+          Number.isFinite(to.c) &&
+          Number.isFinite(to.v) &&
+          from.r >= 0 &&
+          from.r < GRID_SIZE &&
+          from.c >= 0 &&
+          from.c < GRID_SIZE &&
+          to.r >= 0 &&
+          to.r < GRID_SIZE &&
+          to.c >= 0 &&
+          to.c < GRID_SIZE &&
+          from.v > 0 &&
+          to.v > 0;
+
+        if (ok) {
+          startDurovFx({ from, to }, data);
+          return; // важно: ниже не делать reconcile/spawn сразу
+        }
+      }
+
+      // обычный путь
       applyServerSpawn(data?.spawn);
       applyRunToUi(data);
 
@@ -633,6 +770,35 @@ export default function Game2048() {
 
   const chainValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
+  // --- Durov computed styles ---
+  const durovRender = (() => {
+    if (!durovFx) return null;
+
+    const mouthX = durovFx.mouth.x;
+    const mouthY = durovFx.mouth.y;
+
+    const beamA = makeBeamStyle(mouthX, mouthY, durovFx.aCenter.x, durovFx.aCenter.y);
+    const beamB = makeBeamStyle(mouthX, mouthY, durovFx.bCenter.x, durovFx.bCenter.y);
+
+    const flyAStyle = {
+      "--x0": `${durovFx.aStart.x}px`,
+      "--y0": `${durovFx.aStart.y}px`,
+      "--dx": `${durovFx.dx}px`,
+      "--dy": `${durovFx.dy}px`,
+      "--ms": `${DUROV_FLY_MS}ms`,
+    };
+
+    const flyBStyle = {
+      "--x0": `${durovFx.bStart.x}px`,
+      "--y0": `${durovFx.bStart.y}px`,
+      "--dx": `${-durovFx.dx}px`,
+      "--dy": `${-durovFx.dy}px`,
+      "--ms": `${DUROV_FLY_MS}ms`,
+    };
+
+    return { beamA, beamB, flyAStyle, flyBStyle, mouthX, mouthY };
+  })();
+
   return (
     <>
       <style>{`
@@ -673,6 +839,148 @@ export default function Game2048() {
         @keyframes hintIn {
           0% { transform: translate3d(0, 18px, 0) scale(0.98); opacity: 0; }
           100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+        }
+
+        /* --- Durov FX --- */
+        @keyframes durovPopIn {
+          0% { opacity: 0; transform: translate3d(-50%, -8px, 0) scale(0.92) rotate(-2deg); }
+          25% { opacity: 1; transform: translate3d(-50%, 0px, 0) scale(1) rotate(1deg); }
+          100% { opacity: 1; transform: translate3d(-50%, 0px, 0) scale(1) rotate(0deg); }
+        }
+
+        @keyframes durovFadeOut {
+          0% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+
+        @keyframes durovBubbleIn {
+          0% { opacity: 0; transform: translate3d(10px, 6px, 0) scale(0.92); }
+          100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+        }
+
+        @keyframes durovBeamIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+
+        @keyframes durovBeamOut {
+          0% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+
+        @keyframes durovFly {
+          0% { transform: translate3d(var(--x0), var(--y0), 0); }
+          100% { transform: translate3d(calc(var(--x0) + var(--dx)), calc(var(--y0) + var(--dy)), 0); }
+        }
+
+        .durov-layer{
+          position: absolute;
+          inset: 0;
+          z-index: 90;
+          pointer-events: none;
+        }
+
+        .durov-headzone{
+          position: absolute;
+          left: 50%;
+          top: 0px;
+          width: 160px;
+          height: 96px;
+          transform: translateX(-50%);
+          z-index: 95;
+          pointer-events: none;
+        }
+
+        .durov-img{
+          position: absolute;
+          left: 50%;
+          top: 0px;
+          width: 92px;
+          height: 92px;
+          transform: translateX(-50%);
+          opacity: 0;
+          animation: durovPopIn 150ms ease-out forwards;
+          filter: drop-shadow(0 10px 22px rgba(0,0,0,0.55));
+        }
+
+        .durov-bubble{
+          position: absolute;
+          left: 92px;
+          top: 6px;
+          max-width: 190px;
+          padding: 9px 10px;
+          border-radius: 14px;
+          background: rgba(12, 16, 26, 0.92);
+          border: 1px solid rgba(255,255,255,0.12);
+          box-shadow: 0 14px 36px rgba(0,0,0,0.42);
+          color: rgba(255,255,255,0.95);
+          font-weight: 900;
+          font-size: 12.5px;
+          letter-spacing: 0.15px;
+          opacity: 0;
+          animation: durovBubbleIn 120ms ease-out forwards;
+          white-space: nowrap;
+        }
+
+        .durov-bubble:after{
+          content: "";
+          position: absolute;
+          left: -6px;
+          top: 18px;
+          width: 10px;
+          height: 10px;
+          background: rgba(12, 16, 26, 0.92);
+          border-left: 1px solid rgba(255,255,255,0.12);
+          border-bottom: 1px solid rgba(255,255,255,0.12);
+          transform: rotate(45deg);
+          border-radius: 2px;
+        }
+
+        .beam{
+          position: absolute;
+          height: 3px;
+          transform-origin: 0 50%;
+          background: rgba(77,166,255,0.92);
+          box-shadow: 0 0 14px rgba(77,166,255,0.30), 0 0 30px rgba(77,166,255,0.14);
+          border-radius: 999px;
+          opacity: 0;
+          animation: durovBeamIn 80ms ease-out forwards, durovBeamOut 120ms ease-out forwards;
+          animation-delay: 0ms, 460ms;
+        }
+
+        .beam-end{
+          position: absolute;
+          right: -6px;
+          top: 50%;
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          transform: translateY(-50%);
+          background: rgba(140,205,255,0.92);
+          box-shadow: 0 0 14px rgba(77,166,255,0.35), 0 0 30px rgba(77,166,255,0.16);
+        }
+
+        .durov-fly{
+          position: absolute;
+          width: ${CELL}px;
+          height: ${CELL}px;
+          z-index: 98;
+          will-change: transform;
+          animation: durovFly var(--ms) ${MOVE_EASE} forwards;
+          backface-visibility: hidden;
+        }
+
+        .durov-fly-inner{
+          width: 100%;
+          height: 100%;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.06);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          box-shadow: 0 12px 24px rgba(0,0,0,0.28);
         }
       `}</style>
 
@@ -753,40 +1061,108 @@ export default function Game2048() {
               WebkitOverflowScrolling: "auto",
               margin: "0 auto",
               boxSizing: "border-box",
+              position: "relative",
             }}
           >
-            <div style={{ position: "relative", width: boardW, height: boardH, borderRadius: 16, boxSizing: "border-box" }}>
-              {/* background cells */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL}px)`,
-                  gap: GAP,
-                  boxSizing: "border-box",
-                }}
-              >
-                {Array.from({ length: 16 }).map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: CELL,
-                      height: CELL,
-                      borderRadius: 16,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(0,0,0,0.25)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                ))}
-              </div>
+            {/* ✅ Header-zone над полем (сюда “вылезает” Дуров) */}
+            <div
+              style={{
+                position: "relative",
+                width: boardW,
+                height: 92 + boardH, // 92px над полем
+                borderRadius: 16,
+                boxSizing: "border-box",
+                overflow: "visible",
+              }}
+            >
+              {/* Durov FX layer (над полем и над тайлами) */}
+              {durovFx && durovRender && (
+                <div className="durov-layer">
+                  {/* Durov над полем */}
+                  <div className="durov-headzone" style={{ top: 0 }}>
+                    <img className="durov-img" src={DUROV_IMG} alt="Durov" draggable={false} />
+                    <div className="durov-bubble">{durovFx.phrase}</div>
+                  </div>
 
-              {/* tiles */}
-              <div style={{ position: "absolute", inset: 0 }}>
-                {tilesArr.map((t) => (
-                  <AnimatedTile key={t.id} tile={t} />
-                ))}
+                  {/* Лучи от “рта” (точка mouth) к целям */}
+                  <div className="beam" style={durovRender.beamA}>
+                    <div className="beam-end" />
+                  </div>
+                  <div className="beam" style={durovRender.beamB}>
+                    <div className="beam-end" />
+                  </div>
+
+                  {/* Летающие тайлы A -> B и B -> A */}
+                  <div className="durov-fly" style={durovRender.flyAStyle}>
+                    <div className="durov-fly-inner">
+                      <img
+                        src={`/numbers/${durovFx.a.v}.png`}
+                        alt={String(durovFx.a.v)}
+                        style={{ width: "82%", height: "82%", objectFit: "contain", display: "block", pointerEvents: "none" }}
+                        draggable={false}
+                        loading="eager"
+                        decoding={durovFx.a.v === 2 || durovFx.a.v === 4 ? "sync" : "async"}
+                        fetchPriority={durovFx.a.v === 2 || durovFx.a.v === 4 ? "high" : "auto"}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="durov-fly" style={durovRender.flyBStyle}>
+                    <div className="durov-fly-inner">
+                      <img
+                        src={`/numbers/${durovFx.b.v}.png`}
+                        alt={String(durovFx.b.v)}
+                        style={{ width: "82%", height: "82%", objectFit: "contain", display: "block", pointerEvents: "none" }}
+                        draggable={false}
+                        loading="eager"
+                        decoding={durovFx.b.v === 2 || durovFx.b.v === 4 ? "sync" : "async"}
+                        fetchPriority={durovFx.b.v === 2 || durovFx.b.v === 4 ? "high" : "auto"}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* игровая зона (поле) — сдвинута вниз на высоту header-zone */}
+              <div style={{ position: "absolute", left: 0, top: 92, width: boardW, height: boardH, borderRadius: 16, boxSizing: "border-box" }}>
+                {/* background cells */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL}px)`,
+                    gap: GAP,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {Array.from({ length: 16 }).map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: CELL,
+                        height: CELL,
+                        borderRadius: 16,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(0,0,0,0.25)",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* tiles */}
+                <div style={{ position: "absolute", inset: 0 }}>
+                  {tilesArr.map((t) => (
+                    <AnimatedTile key={t.id} tile={t} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -899,6 +1275,20 @@ export default function Game2048() {
       <ToastContainer position="top-right" autoClose={2200} newestOnTop closeOnClick draggable pauseOnHover theme="dark" />
     </>
   );
+}
+
+function makeBeamStyle(x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.max(0, Math.hypot(dx, dy));
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  return {
+    left: `${x1}px`,
+    top: `${y1}px`,
+    width: `${len}px`,
+    transform: `rotate(${angle}deg)`,
+  };
 }
 
 function StatBox({ label, value }) {
