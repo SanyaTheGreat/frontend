@@ -28,8 +28,8 @@ const MOVE_MAX_MS = 460;
 
 // --- Durov FX ---
 const DUROV_IMG = "/stickers/Durov.png";
-const DUROV_FX_MS = 620; // общая сцена (дуров+лучи+полёт)
-const DUROV_FLY_MS = 520; // полёт тайлов
+const DUROV_FX_MS = 1200; // общая сцена (дуров+лучи+полёт)
+const DUROV_FLY_MS = 620; // полёт тайлов
 const DUROV_PHRASES = ["переставил", "не баг, а фича", "чисто телеграм"];
 
 function posToPx(r, c) {
@@ -945,7 +945,7 @@ export default function Game2048() {
           border-radius: 999px;
           opacity: 0;
           animation: durovBeamIn 80ms ease-out forwards, durovBeamOut 120ms ease-out forwards;
-          animation-delay: 0ms, 460ms;
+          animation-delay: 0ms, 560ms;
         }
 
         .beam-end{
