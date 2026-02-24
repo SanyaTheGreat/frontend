@@ -20,7 +20,6 @@ const SPAWN_FADE_MS = 60;
 const MERGE_POP_MS = 230;
 
 // ✅ “реальная” механика: скорость постоянная, время зависит от расстояния
-// (эти значения мягче, чтобы не было резкости)
 const MOVE_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 const MOVE_PER_CELL_MS = 110;
 const MOVE_MIN_MS = 140;
@@ -267,6 +266,9 @@ export default function Game2048() {
 
   const durovTimersRef = useRef({ clear: null, apply: null });
 
+  // ✅ блокируем свайпы во время сцены Дурова
+  const durovLockRef = useRef(false);
+
   const tilesRef = useRef(new Map());
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
@@ -277,6 +279,9 @@ export default function Game2048() {
   const boardRef = useRef(null);
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
+
+  const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
+  const boardH = boardW;
 
   // Telegram WebApp
   useEffect(() => {
@@ -465,6 +470,8 @@ export default function Game2048() {
       window.clearTimeout(durovTimersRef.current.apply);
       durovTimersRef.current.apply = null;
     }
+    // ✅ на всякий — снимаем лок, если что-то прервалось
+    durovLockRef.current = false;
   }
 
   function pickPhrase() {
@@ -473,33 +480,39 @@ export default function Game2048() {
   }
 
   function cellCenterInBoard(r, c) {
-    // координаты относительно внутренней области tiles (0..boardW/boardH)
+    // координаты относительно области tiles (0..boardW/boardH)
     const x = c * (CELL + GAP) + CELL / 2;
     const y = r * (CELL + GAP) + CELL / 2;
     return { x, y };
   }
 
   function startDurovFx(ev, dataToApplyLater) {
-    // ev: { from:{r,c,v}, to:{r,c,v} }
-    // отрисовка "над полем": задаём mouth точку чуть выше поля
+    // ✅ блокируем свайпы на время сцены
+    durovLockRef.current = true;
+
+    // ✅ координаты строго в системе header-zone контейнера (без BOARD_PAD)
     const mouth = {
-      x: BOARD_PAD + (GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP) / 2,
-      y: 18, // в header-zone над полем
+      x: Math.round(boardW / 2),
+      y: 18,
     };
 
     const aCenter0 = cellCenterInBoard(ev.from.r, ev.from.c);
     const bCenter0 = cellCenterInBoard(ev.to.r, ev.to.c);
 
-    const aCenter = { x: BOARD_PAD + aCenter0.x, y: BOARD_PAD + 92 + aCenter0.y }; // 92 = высота header-zone
-    const bCenter = { x: BOARD_PAD + bCenter0.x, y: BOARD_PAD + 92 + bCenter0.y };
+    const aCenter = { x: Math.round(aCenter0.x), y: Math.round(92 + aCenter0.y) };
+    const bCenter = { x: Math.round(bCenter0.x), y: Math.round(92 + bCenter0.y) };
 
-    const aStart = { x: aCenter.x - CELL / 2, y: aCenter.y - CELL / 2 };
-    const bStart = { x: bCenter.x - CELL / 2, y: bCenter.y - CELL / 2 };
+    const aStart = { x: Math.round(aCenter.x - CELL / 2), y: Math.round(aCenter.y - CELL / 2) };
+    const bStart = { x: Math.round(bCenter.x - CELL / 2), y: Math.round(bCenter.y - CELL / 2) };
 
-    const dx = bStart.x - aStart.x;
-    const dy = bStart.y - aStart.y;
+    const dx = Math.round(bStart.x - aStart.x);
+    const dy = Math.round(bStart.y - aStart.y);
 
-    clearDurovTimers();
+    // чистим прошлые таймеры, но НЕ снимаем лок прямо здесь
+    if (durovTimersRef.current.clear) window.clearTimeout(durovTimersRef.current.clear);
+    if (durovTimersRef.current.apply) window.clearTimeout(durovTimersRef.current.apply);
+    durovTimersRef.current.clear = null;
+    durovTimersRef.current.apply = null;
 
     setDurovFx({
       phrase: pickPhrase(),
@@ -517,15 +530,18 @@ export default function Game2048() {
 
     // применяем server-state после полёта
     durovTimersRef.current.apply = window.setTimeout(() => {
-      // В durov-кейсе мы НЕ делаем applyServerSpawn отдельно — всё приходит в run.state.grid
       applyRunToUi(dataToApplyLater);
       if (dataToApplyLater?.finished) toast.info(`Game Over (${dataToApplyLater?.reason || "finished"})`);
     }, DUROV_FLY_MS + 20);
 
-    // гасим эффект
+    // гасим эффект + снимаем лок
     durovTimersRef.current.clear = window.setTimeout(() => {
       setDurovFx(null);
-      clearDurovTimers();
+      durovLockRef.current = false;
+      if (durovTimersRef.current.clear) window.clearTimeout(durovTimersRef.current.clear);
+      if (durovTimersRef.current.apply) window.clearTimeout(durovTimersRef.current.apply);
+      durovTimersRef.current.clear = null;
+      durovTimersRef.current.apply = null;
     }, DUROV_FX_MS);
   }
 
@@ -574,6 +590,7 @@ export default function Game2048() {
   };
 
   const onTouchStart = (e) => {
+    if (durovLockRef.current) return;
     e.preventDefault?.();
     const t = e.touches?.[0];
     if (!t) return;
@@ -581,6 +598,7 @@ export default function Game2048() {
   };
 
   const onTouchEnd = (e) => {
+    if (durovLockRef.current) return;
     e.preventDefault?.();
     if (inFlightRef.current) return;
 
@@ -605,6 +623,8 @@ export default function Game2048() {
   };
 
   const moveAnimated = async (dir) => {
+    if (durovLockRef.current) return;
+
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -765,9 +785,6 @@ export default function Game2048() {
     }
   };
 
-  const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
-  const boardH = boardW;
-
   const chainValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
   // --- Durov computed styles ---
@@ -846,11 +863,6 @@ export default function Game2048() {
           0% { opacity: 0; transform: translate3d(-50%, -8px, 0) scale(0.92) rotate(-2deg); }
           25% { opacity: 1; transform: translate3d(-50%, 0px, 0) scale(1) rotate(1deg); }
           100% { opacity: 1; transform: translate3d(-50%, 0px, 0) scale(1) rotate(0deg); }
-        }
-
-        @keyframes durovFadeOut {
-          0% { opacity: 1; }
-          100% { opacity: 0; }
         }
 
         @keyframes durovBubbleIn {
@@ -962,6 +974,8 @@ export default function Game2048() {
 
         .durov-fly{
           position: absolute;
+          left: 0;
+          top: 0;
           width: ${CELL}px;
           height: ${CELL}px;
           z-index: 98;
