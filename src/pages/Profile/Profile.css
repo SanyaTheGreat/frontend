@@ -470,3 +470,70 @@ button.ton-connect-button,
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ===== Glass UI over starfield ===== */
+
+/* общий “стеклянный” блок */
+.profile-block,
+.stat-card,
+.attempts-item {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* чуть разные акценты (чтобы карточки отличались от блока) */
+.stat-card,
+.attempts-item {
+  background: rgba(0, 0, 0, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+}
+
+/* заголовки читаемее на стекле */
+.profile-title {
+  text-shadow: 0 1px 10px rgba(0,0,0,0.35);
+}
+
+/* реф-инпут под стекло */
+.profile-ref-link {
+  background: rgba(0, 0, 0, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+/* кнопка копирования — тоже стекло */
+.copy-btn {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* на всякий: чтобы текст не “терялся” */
+.profile-row,
+.stat-label,
+.stat-sub,
+.attempts-label {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.stat-value,
+.attempts-value,
+.username-text {
+  color: #fff;
+}
+
+/* мягкие углы покрупнее — красивее на стекле */
+.profile-block,
+.stat-card,
+.attempts-item {
+  border-radius: 16px;
+}
