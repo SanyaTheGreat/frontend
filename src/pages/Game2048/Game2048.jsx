@@ -21,15 +21,15 @@ const MERGE_POP_MS = 230;
 
 // ✅ “реальная” механика: скорость постоянная, время зависит от расстояния
 const MOVE_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
-const MOVE_PER_CELL_MS = 110;
-const MOVE_MIN_MS = 140;
-const MOVE_MAX_MS = 460;
+const MOVE_PER_CELL_MS = 130;
+const MOVE_MIN_MS = 170;
+const MOVE_MAX_MS = 540;
 
 // --- Durov FX ---
 const DUROV_IMG = "/stickers/Durov.png";
 const DUROV_FX_MS = 1200; // общая сцена (дуров+лучи+полёт)
 const DUROV_FLY_MS = 620; // полёт тайлов
-const DUROV_PHRASES = ["переставил", "не баг, а фича", "чисто телеграм"];
+const DUROV_PHRASES = ["переставил", "не баг, а фича", "чисто телеграм", "я тут главный", "ЫыЫыыыЫ", "сори, мне пришлось"];
 
 function posToPx(r, c) {
   return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
