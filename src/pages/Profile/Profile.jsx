@@ -120,7 +120,7 @@ export default function Profile() {
 
         {/* ===== 2048: Stats ===== */}
         <div className="profile-block">
-          <div className="profile-title">🎮 2048 — Статистика</div>
+          <div className="profile-title"> Статистика</div>
 
           <div className="stat-grid">
             <div className="stat-card">
@@ -130,7 +130,7 @@ export default function Profile() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-label">Лучший недели</div>
+              <div className="stat-label">Лучший этой недели</div>
               <div className="stat-value">{bestWeek}</div>
               <div className="stat-sub">
                 {weekPlace ? `место #${weekPlace}` : 'нет в топе'}
@@ -145,7 +145,7 @@ export default function Profile() {
 
         {/* ===== Attempts ===== */}
         <div className="profile-block">
-          <div className="profile-title">⚡ Попытки</div>
+          <div className="profile-title"> Попытки</div>
 
           <div className="attempts-row">
             <div className="attempts-item">
