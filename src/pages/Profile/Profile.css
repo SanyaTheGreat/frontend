@@ -397,3 +397,76 @@ button.ton-connect-button,
     animation: none;
   }
 }
+
+
+
+/* ===== 2048 profile additions ===== */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-card {
+  background-color: #1b263b;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.stat-label {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #e0e1dd;
+  line-height: 1.1;
+}
+
+.stat-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.attempts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 10px;
+}
+
+.attempts-item {
+  background-color: #1b263b;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+
+.attempts-label {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+.attempts-value {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.attempts-timer {
+  letter-spacing: 0.5px;
+}
+
+/* адаптация */
+@media (max-width: 380px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  .attempts-row {
+    grid-template-columns: 1fr;
+  }
+}

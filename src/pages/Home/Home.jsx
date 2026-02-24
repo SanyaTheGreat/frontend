@@ -234,6 +234,20 @@ function Home() {
           >
             Правила
           </button>
+          
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+              style={{
+              ...btnStyle,
+              marginTop: 12,
+              border: '1px solid rgba(255,255,255,0.18)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+              }}
+            >
+            Профиль
+          </button>
 
           <button
             type="button"
