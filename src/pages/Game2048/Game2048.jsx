@@ -6,8 +6,6 @@ const API_BASE = "https://lottery-server-waif.onrender.com";
 const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
-
-// animations
 const SPAWN_FADE_MS = 60;
 const MERGE_POP_MS = 230;
 
@@ -16,7 +14,6 @@ const MOVE_PER_CELL_MS = 130;
 const MOVE_MIN_MS = 170;
 const MOVE_MAX_MS = 540;
 
-// --- Durov FX ---
 const DUROV_IMG = "/stickers/Durov.png";
 const DUROV_FX_MS = 1200;
 const DUROV_FLY_MS = 620;
@@ -245,8 +242,6 @@ function makeBeamStyle(x1, y1, x2, y2) {
 function getBoardMetrics(viewportWidth) {
   const safeViewport = Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : 390;
   const outerHorizontalPadding = 32;
-  const boardWrapPadding = 12;
-
   const maxOuterWidth = Math.min(520, safeViewport - outerHorizontalPadding);
   const pad = maxOuterWidth <= 360 ? 10 : 12;
   const innerAvailable = Math.max(240, maxOuterWidth - pad * 2);
@@ -264,8 +259,17 @@ function getBoardMetrics(viewportWidth) {
     BOARD_PAD: pad,
     boardW,
     boardH: boardW,
-    boardWrapPadding,
   };
+}
+
+function formatUndoPrice(price) {
+  const n = Number(price ?? 0);
+  if (n <= 0) return "Undo Free";
+  return `Undo ${n}⭐`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export default function Game2048() {
@@ -276,6 +280,7 @@ export default function Game2048() {
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
   const [bestScore, setBestScore] = useState(0);
+  const [undoPrice, setUndoPrice] = useState(0);
 
   const [tilesArr, setTilesArr] = useState([]);
   const [hintOpen, setHintOpen] = useState(false);
@@ -316,7 +321,7 @@ export default function Game2048() {
       tg?.ready?.();
       tg?.expand?.();
       tg?.disableVerticalSwipes?.();
-    } catch (_) {}
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -358,7 +363,7 @@ export default function Game2048() {
       img.decoding = v === 2 || v === 4 ? "sync" : "async";
       try {
         img.decode?.().catch(() => {});
-      } catch (_) {}
+      } catch {}
     });
 
     const d = new Image();
@@ -367,13 +372,14 @@ export default function Game2048() {
     d.decoding = "async";
     try {
       d.decode?.().catch(() => {});
-    } catch (_) {}
+    } catch {}
   }, []);
 
   useEffect(() => {
     if (autoStartedRef.current) return;
     autoStartedRef.current = true;
     startOrResume({ silentNoJwt: true });
+
     return () => {
       clearDurovTimers();
     };
@@ -488,6 +494,7 @@ export default function Game2048() {
 
     setScore(Number(run?.current_score ?? 0));
     setMoves(Number(run?.moves ?? 0));
+    setUndoPrice(Number(run?.undo_next_price ?? 0));
   }
 
   function clearDurovTimers() {
@@ -567,7 +574,7 @@ export default function Game2048() {
     }, DUROV_FX_MS);
   }
 
-  const startOrResume = async (opts = {}) => {
+  async function startOrResume(opts = {}) {
     const { silentNoJwt = false } = opts;
     const jwt = localStorage.getItem("jwt");
 
@@ -611,49 +618,149 @@ export default function Game2048() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const undo = async () => {
-    if (loading || undoLoading || inFlightRef.current || durovLockRef.current) return;
-
+  async function requestUndo() {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
-      return;
+      return { ok: false, error: "No jwt" };
     }
+
+    const res = await fetch(`${API_BASE}/game/run/undo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+    });
+
+    const data = await res.json().catch(() => ({}));
+    setResp({ status: res.status, ok: res.ok, data });
+
+    return { httpOk: res.ok, data, status: res.status };
+  }
+
+  async function createUndoInvoice() {
+    const jwt = localStorage.getItem("jwt");
+    if (!jwt) throw new Error("Нет jwt");
+
+    const res = await fetch(`${API_BASE}/payments/create-undo-invoice`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data?.ok || !data?.invoice_link) {
+      throw new Error(data?.error || "Не удалось создать invoice");
+    }
+
+    return data;
+  }
+
+  async function openUndoInvoice(invoiceLink) {
+    const tg = window.Telegram?.WebApp;
+
+    return new Promise((resolve, reject) => {
+      try {
+        if (tg?.openInvoice) {
+          tg.openInvoice(invoiceLink, (status) => {
+            resolve(status || "unknown");
+          });
+          return;
+        }
+
+        window.open(invoiceLink, "_blank", "noopener,noreferrer");
+        resolve("opened_external");
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  async function retryUndoAfterPayment() {
+    const retryDelays = [300, 700, 1200, 1800, 2600];
+
+    for (let i = 0; i < retryDelays.length; i++) {
+      if (retryDelays[i] > 0) await sleep(retryDelays[i]);
+
+      const result = await requestUndo();
+      const data = result?.data || {};
+
+      if (result?.httpOk && data?.ok) {
+        clearDurovTimers();
+        setDurovFx(null);
+        applyRunToUi(data);
+        toast.success("Undo выполнен");
+        return true;
+      }
+
+      if (!data?.need_payment) {
+        if (data?.error) toast.error(data.error);
+        return false;
+      }
+    }
+
+    toast.info("Оплата прошла. Нажми Undo ещё раз, если откат не применился сразу.");
+    return false;
+  }
+
+  async function undo() {
+    if (loading || undoLoading || inFlightRef.current || durovLockRef.current) return;
 
     setUndoLoading(true);
     setResp(null);
 
     try {
-      const res = await fetch(`${API_BASE}/game/run/undo`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
-      });
+      const firstTry = await requestUndo();
+      const data = firstTry?.data || {};
 
-      const data = await res.json().catch(() => ({}));
-      setResp({ status: res.status, ok: res.ok, data });
-
-      if (!res.ok || !data?.ok) {
-        toast.error(data?.error || "Undo error");
-        if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
+      if (firstTry?.httpOk && data?.ok) {
+        clearDurovTimers();
+        setDurovFx(null);
+        applyRunToUi(data);
         return;
       }
 
-      clearDurovTimers();
-      setDurovFx(null);
-      applyRunToUi(data);
+      if (!data?.need_payment) {
+        toast.error(data?.error || "Undo error");
+        if (firstTry?.status === 401 || firstTry?.status === 403) localStorage.removeItem("jwt");
+        return;
+      }
+
+      const price = Number(data?.price ?? 0);
+      setUndoPrice(price);
+
+      const invoice = await createUndoInvoice();
+      const invoiceStatus = await openUndoInvoice(invoice.invoice_link);
+
+      if (invoiceStatus === "paid") {
+        await retryUndoAfterPayment();
+        return;
+      }
+
+      if (invoiceStatus === "cancelled") {
+        toast.info("Оплата отменена");
+        return;
+      }
+
+      if (invoiceStatus === "failed") {
+        toast.error("Оплата не прошла");
+        return;
+      }
+
+      if (invoiceStatus === "opened_external" || invoiceStatus === "pending" || invoiceStatus === "unknown") {
+        toast.info(`Invoice открыт на ${price} ⭐`);
+        return;
+      }
     } catch (e) {
       console.error(e);
-      toast.error("Ошибка сети (undo)");
+      toast.error(e?.message || "Ошибка сети (undo)");
     } finally {
       setUndoLoading(false);
     }
-  };
+  }
 
   const onTouchStart = (e) => {
     if (durovLockRef.current) return;
-    e.preventDefault?.();
     const t = e.touches?.[0];
     if (!t) return;
     touchStartRef.current = { x: t.clientX, y: t.clientY, ts: Date.now() };
@@ -661,7 +768,6 @@ export default function Game2048() {
 
   const onTouchEnd = (e) => {
     if (durovLockRef.current) return;
-    e.preventDefault?.();
     if (inFlightRef.current) return;
 
     const s = touchStartRef.current;
@@ -724,9 +830,7 @@ export default function Game2048() {
         if (t.removeAt && now >= t.removeAt) map.delete(id);
       }
       for (const t of map.values()) {
-        if (t.appearAt && now >= t.appearAt) {
-          delete t.appearAt;
-        }
+        if (t.appearAt && now >= t.appearAt) delete t.appearAt;
         if (t.pop) t.pop = null;
         if (t.moveMs) delete t.moveMs;
       }
@@ -1095,11 +1199,21 @@ export default function Game2048() {
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <button type="button" onClick={undo} disabled={loading || undoLoading || durovLockRef.current} style={btnPrimary(loading || undoLoading || durovLockRef.current)}>
-                {undoLoading ? "Undo..." : "Undo"}
+              <button
+                type="button"
+                onClick={undo}
+                disabled={loading || undoLoading || durovLockRef.current}
+                style={btnPrimary(loading || undoLoading || durovLockRef.current)}
+              >
+                {undoLoading ? "Undo..." : formatUndoPrice(undoPrice)}
               </button>
 
-              <button type="button" onClick={finish} disabled={loading || undoLoading} style={btnGhost(loading || undoLoading)}>
+              <button
+                type="button"
+                onClick={finish}
+                disabled={loading || undoLoading}
+                style={btnGhost(loading || undoLoading)}
+              >
                 Finish
               </button>
             </div>
