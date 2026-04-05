@@ -7,19 +7,10 @@ const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
 
-// sizes
-const CELL = 80;
-const GAP = 8;
-const BOARD_PAD = 12;
-
 // animations
-// ✅ spawn: просто мягко проявляется (как в оригинале)
 const SPAWN_FADE_MS = 60;
-
-// ✅ merge: масштабная “пружинка”
 const MERGE_POP_MS = 230;
 
-// ✅ “реальная” механика: скорость постоянная, время зависит от расстояния
 const MOVE_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 const MOVE_PER_CELL_MS = 130;
 const MOVE_MIN_MS = 170;
@@ -27,13 +18,9 @@ const MOVE_MAX_MS = 540;
 
 // --- Durov FX ---
 const DUROV_IMG = "/stickers/Durov.png";
-const DUROV_FX_MS = 1200; // общая сцена (дуров+лучи+полёт)
-const DUROV_FLY_MS = 620; // полёт тайлов
+const DUROV_FX_MS = 1200;
+const DUROV_FLY_MS = 620;
 const DUROV_PHRASES = ["переставил", "не баг, а фича", "чисто телеграм", "я тут главный", "ЫыЫыыыЫ", "сори, мне пришлось"];
-
-function posToPx(r, c) {
-  return { x: c * (CELL + GAP), y: r * (CELL + GAP) };
-}
 
 function safeGridFromRun(run) {
   const st = run?.state;
@@ -41,17 +28,12 @@ function safeGridFromRun(run) {
   return st.grid;
 }
 
-// ---------- Tile engine ----------
 let __tileId = 1;
 function newTileId() {
   __tileId += 1;
   return String(__tileId);
 }
 
-/**
- * tiles: Map(id -> {id,value,r,c, removeAt?, pop?: "spawn"|"merge"|null, z?, appearAt?, moveMs?})
- * board: 2D of tileId|null
- */
 function buildTilesFromGrid(grid) {
   const tiles = new Map();
   const board = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
@@ -61,11 +43,11 @@ function buildTilesFromGrid(grid) {
       const v = Number(grid?.[r]?.[c] ?? 0);
       if (!v) continue;
       const id = newTileId();
-      // ✅ при полной пересборке (start/reconcile) не анимируем каждую плитку
       tiles.set(id, { id, value: v, r, c, pop: null, z: 1, moveMs: 0 });
       board[r][c] = id;
     }
   }
+
   return { tiles, board };
 }
 
@@ -124,7 +106,6 @@ function applyMoveAnimated(tiles, board, dir) {
   let gained = 0;
   let anyMoved = false;
   let zCounter = 10;
-
   let maxAnimEndAt = now;
 
   for (let i = 0; i < GRID_SIZE; i++) {
@@ -188,7 +169,6 @@ function applyMoveAnimated(tiles, board, dir) {
           maxAnimEndAt = Math.max(maxAnimEndAt, bArriveAt);
         }
 
-        // ✅ новый merged-тайл появляется когда оба доехали
         const mergeArriveAt = Math.max(aArriveAt, bArriveAt);
 
         const newId = newTileId();
@@ -197,7 +177,7 @@ function applyMoveAnimated(tiles, board, dir) {
           value: mergedValue,
           r: tr,
           c: tc,
-          pop: "merge", // ✅ только merge получает pop-эффект
+          pop: "merge",
           z: zCounter++,
           appearAt: mergeArriveAt,
           moveMs: 0,
@@ -248,9 +228,49 @@ function applyMoveAnimated(tiles, board, dir) {
   };
 }
 
-// ---------- Component ----------
+function makeBeamStyle(x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.max(0, Math.hypot(dx, dy));
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  return {
+    left: `${x1}px`,
+    top: `${y1}px`,
+    width: `${len}px`,
+    transform: `rotate(${angle}deg)`,
+  };
+}
+
+function getBoardMetrics(viewportWidth) {
+  const safeViewport = Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : 390;
+  const outerHorizontalPadding = 32;
+  const boardWrapPadding = 12;
+
+  const maxOuterWidth = Math.min(520, safeViewport - outerHorizontalPadding);
+  const pad = maxOuterWidth <= 360 ? 10 : 12;
+  const innerAvailable = Math.max(240, maxOuterWidth - pad * 2);
+
+  let gap = 8;
+  if (innerAvailable < 320) gap = 6;
+  if (innerAvailable < 280) gap = 5;
+
+  const cell = Math.floor((innerAvailable - gap * (GRID_SIZE - 1)) / GRID_SIZE);
+  const boardW = cell * GRID_SIZE + gap * (GRID_SIZE - 1);
+
+  return {
+    CELL: cell,
+    GAP: gap,
+    BOARD_PAD: pad,
+    boardW,
+    boardH: boardW,
+    boardWrapPadding,
+  };
+}
+
 export default function Game2048() {
   const [loading, setLoading] = useState(false);
+  const [undoLoading, setUndoLoading] = useState(false);
   const [resp, setResp] = useState(null);
 
   const [score, setScore] = useState(0);
@@ -259,15 +279,15 @@ export default function Game2048() {
 
   const [tilesArr, setTilesArr] = useState([]);
   const [hintOpen, setHintOpen] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 390
+  );
 
-  // --- Durov FX state ---
   const [durovFx, setDurovFx] = useState(null);
-  // durovFx: { phrase, a:{r,c,v}, b:{r,c,v}, mouth:{x,y}, aCenter:{x,y}, bCenter:{x,y}, dx, dy, t0 }
 
   const durovTimersRef = useRef({ clear: null, apply: null });
-
-  // ✅ блокируем свайпы во время сцены Дурова
   const durovLockRef = useRef(false);
+  const autoStartedRef = useRef(false);
 
   const tilesRef = useRef(new Map());
   const boardRefState = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
@@ -275,15 +295,21 @@ export default function Game2048() {
 
   const inFlightRef = useRef(false);
   const touchStartRef = useRef(null);
-
   const boardRef = useRef(null);
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
 
-  const boardW = GRID_SIZE * CELL + (GRID_SIZE - 1) * GAP;
-  const boardH = boardW;
+  const { CELL, GAP, BOARD_PAD, boardW, boardH } = useMemo(
+    () => getBoardMetrics(viewportWidth),
+    [viewportWidth]
+  );
 
-  // Telegram WebApp
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     try {
@@ -293,7 +319,6 @@ export default function Game2048() {
     } catch (_) {}
   }, []);
 
-  // best score (local)
   useEffect(() => {
     const v = Number(localStorage.getItem("ffg_2048_best") || 0);
     setBestScore(Number.isFinite(v) ? v : 0);
@@ -307,7 +332,6 @@ export default function Game2048() {
     });
   }, [score]);
 
-  // close hint by ESC
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") setHintOpen(false);
@@ -316,7 +340,6 @@ export default function Game2048() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // block "pull" inside board
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
@@ -325,7 +348,6 @@ export default function Game2048() {
     return () => el.removeEventListener("touchmove", prevent);
   }, []);
 
-  // preload png + force decode (especially 2/4)
   useEffect(() => {
     const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
@@ -339,7 +361,6 @@ export default function Game2048() {
       } catch (_) {}
     });
 
-    // preload durov
     const d = new Image();
     d.src = DUROV_IMG;
     d.loading = "eager";
@@ -347,6 +368,15 @@ export default function Game2048() {
     try {
       d.decode?.().catch(() => {});
     } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    startOrResume({ silentNoJwt: true });
+    return () => {
+      clearDurovTimers();
+    };
   }, []);
 
   function syncTilesArrFromRef() {
@@ -441,7 +471,6 @@ export default function Game2048() {
     for (const t of map.values()) zMax = Math.max(zMax, t.z ?? 1);
 
     const id = newTileId();
-    // ✅ spawn: только fade-in, без scale
     map.set(id, { id, value: v, r, c, pop: "spawn", z: zMax + 50, moveMs: 0 });
     board[r][c] = id;
 
@@ -470,7 +499,6 @@ export default function Game2048() {
       window.clearTimeout(durovTimersRef.current.apply);
       durovTimersRef.current.apply = null;
     }
-    // ✅ на всякий — снимаем лок, если что-то прервалось
     durovLockRef.current = false;
   }
 
@@ -480,17 +508,14 @@ export default function Game2048() {
   }
 
   function cellCenterInBoard(r, c) {
-    // координаты относительно области tiles (0..boardW/boardH)
     const x = c * (CELL + GAP) + CELL / 2;
     const y = r * (CELL + GAP) + CELL / 2;
     return { x, y };
   }
 
   function startDurovFx(ev, dataToApplyLater) {
-    // ✅ блокируем свайпы на время сцены
     durovLockRef.current = true;
 
-    // ✅ координаты строго в системе header-zone контейнера (без BOARD_PAD)
     const mouth = {
       x: Math.round(boardW / 2),
       y: 18,
@@ -508,7 +533,6 @@ export default function Game2048() {
     const dx = Math.round(bStart.x - aStart.x);
     const dy = Math.round(bStart.y - aStart.y);
 
-    // чистим прошлые таймеры, но НЕ снимаем лок прямо здесь
     if (durovTimersRef.current.clear) window.clearTimeout(durovTimersRef.current.clear);
     if (durovTimersRef.current.apply) window.clearTimeout(durovTimersRef.current.apply);
     durovTimersRef.current.clear = null;
@@ -528,13 +552,11 @@ export default function Game2048() {
       t0: Date.now(),
     });
 
-    // применяем server-state после полёта
     durovTimersRef.current.apply = window.setTimeout(() => {
       applyRunToUi(dataToApplyLater);
       if (dataToApplyLater?.finished) toast.info(`Game Over (${dataToApplyLater?.reason || "finished"})`);
     }, DUROV_FLY_MS + 20);
 
-    // гасим эффект + снимаем лок
     durovTimersRef.current.clear = window.setTimeout(() => {
       setDurovFx(null);
       durovLockRef.current = false;
@@ -545,10 +567,12 @@ export default function Game2048() {
     }, DUROV_FX_MS);
   }
 
-  const startOrResume = async () => {
+  const startOrResume = async (opts = {}) => {
+    const { silentNoJwt = false } = opts;
     const jwt = localStorage.getItem("jwt");
+
     if (!jwt) {
-      toast.error("Нет jwt. Открой Mini App в Telegram заново.");
+      if (!silentNoJwt) toast.error("Нет jwt. Открой Mini App в Telegram заново.");
       return;
     }
 
@@ -565,7 +589,7 @@ export default function Game2048() {
       setResp({ status: res.status, ok: res.ok, data });
 
       if (!res.ok || !data?.ok) {
-        toast.error(data?.error || "Ошибка запуска");
+        if (!silentNoJwt) toast.error(data?.error || "Ошибка запуска");
         if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
         return;
       }
@@ -583,9 +607,47 @@ export default function Game2048() {
       applyRunToUi(data);
     } catch (e) {
       console.error(e);
-      toast.error("Ошибка сети");
+      if (!silentNoJwt) toast.error("Ошибка сети");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const undo = async () => {
+    if (loading || undoLoading || inFlightRef.current || durovLockRef.current) return;
+
+    const jwt = localStorage.getItem("jwt");
+    if (!jwt) {
+      toast.error("Нет jwt. Открой Mini App в Telegram заново.");
+      return;
+    }
+
+    setUndoLoading(true);
+    setResp(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/game/run/undo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      setResp({ status: res.status, ok: res.ok, data });
+
+      if (!res.ok || !data?.ok) {
+        toast.error(data?.error || "Undo error");
+        if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
+        return;
+      }
+
+      clearDurovTimers();
+      setDurovFx(null);
+      applyRunToUi(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Ошибка сети (undo)");
+    } finally {
+      setUndoLoading(false);
     }
   };
 
@@ -634,10 +696,7 @@ export default function Game2048() {
 
     const curValues = gridValuesRef.current;
     const hasAny = curValues.some((row) => row.some((v) => v > 0));
-    if (!hasAny) {
-      toast.info("Нажми Start / Resume");
-      return;
-    }
+    if (!hasAny) return;
 
     const beforeTiles = tilesRef.current;
     const beforeBoard = boardRefState.current;
@@ -657,7 +716,6 @@ export default function Game2048() {
     setMoves((prev) => prev + 1);
     syncTilesArrFromRef();
 
-    // cleanup после максимальной анимации движения
     window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
@@ -669,7 +727,6 @@ export default function Game2048() {
         if (t.appearAt && now >= t.appearAt) {
           delete t.appearAt;
         }
-        // ✅ чтобы анимация не пыталась “перезапускаться” на будущих рендерах
         if (t.pop) t.pop = null;
         if (t.moveMs) delete t.moveMs;
       }
@@ -694,11 +751,10 @@ export default function Game2048() {
       if (!res.ok || !data?.ok) {
         toast.error(data?.error || "Move error");
         if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
-        await startOrResume();
+        await startOrResume({ silentNoJwt: true });
         return;
       }
 
-      // ✅ Durov swap: НЕ телепортим сразу сетку — показываем лучи/полёт, потом применяем server-state
       const ev = data?.durov_event;
       if (ev?.type === "durov_swap" && ev?.from && ev?.to) {
         const from = {
@@ -732,11 +788,10 @@ export default function Game2048() {
 
         if (ok) {
           startDurovFx({ from, to }, data);
-          return; // важно: ниже не делать reconcile/spawn сразу
+          return;
         }
       }
 
-      // обычный путь
       applyServerSpawn(data?.spawn);
       applyRunToUi(data);
 
@@ -744,7 +799,7 @@ export default function Game2048() {
     } catch (e) {
       console.error(e);
       toast.error("Ошибка сети (move)");
-      await startOrResume();
+      await startOrResume({ silentNoJwt: true });
     } finally {
       inFlightRef.current = false;
     }
@@ -787,7 +842,6 @@ export default function Game2048() {
 
   const chainValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
-  // --- Durov computed styles ---
   const durovRender = (() => {
     if (!durovFx) return null;
 
@@ -813,7 +867,7 @@ export default function Game2048() {
       "--ms": `${DUROV_FLY_MS}ms`,
     };
 
-    return { beamA, beamB, flyAStyle, flyBStyle, mouthX, mouthY };
+    return { beamA, beamB, flyAStyle, flyBStyle };
   })();
 
   return (
@@ -841,13 +895,11 @@ export default function Game2048() {
           100% { background-position: 0px -420px, 0px -520px, 0px -680px, 0px -900px, 0px -1200px; }
         }
 
-        /* ✅ merge pop (scale) */
         @keyframes ffgPop {
           0% { transform: scale(0.92); }
           100% { transform: scale(1); }
         }
 
-        /* ✅ spawn fade-in (no scale) */
         @keyframes ffgFade {
           0% { opacity: 0; }
           100% { opacity: 1; }
@@ -858,7 +910,6 @@ export default function Game2048() {
           100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
         }
 
-        /* --- Durov FX --- */
         @keyframes durovPopIn {
           0% { opacity: 0; transform: translate3d(-50%, -8px, 0) scale(0.92) rotate(-2deg); }
           25% { opacity: 1; transform: translate3d(-50%, 0px, 0) scale(1) rotate(1deg); }
@@ -1010,7 +1061,6 @@ export default function Game2048() {
           margin: "0 auto",
         }}
       >
-        {/* Top row */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div
             style={{
@@ -1045,18 +1095,17 @@ export default function Game2048() {
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <button type="button" onClick={startOrResume} disabled={loading} style={btnPrimary(loading)}>
-                {loading ? "Запускаем..." : "Start / Resume"}
+              <button type="button" onClick={undo} disabled={loading || undoLoading || durovLockRef.current} style={btnPrimary(loading || undoLoading || durovLockRef.current)}>
+                {undoLoading ? "Undo..." : "Undo"}
               </button>
 
-              <button type="button" onClick={finish} disabled={loading} style={btnGhost(loading)}>
+              <button type="button" onClick={finish} disabled={loading || undoLoading} style={btnGhost(loading || undoLoading)}>
                 Finish
               </button>
             </div>
           </div>
         </div>
 
-        {/* Board */}
         <div style={{ marginTop: 14 }}>
           <div
             ref={boardRef}
@@ -1064,6 +1113,7 @@ export default function Game2048() {
             onTouchEnd={onTouchEnd}
             style={{
               width: "fit-content",
+              maxWidth: "100%",
               borderRadius: 18,
               padding: BOARD_PAD,
               background: "rgba(0,0,0,0.20)",
@@ -1078,27 +1128,23 @@ export default function Game2048() {
               position: "relative",
             }}
           >
-            {/* ✅ Header-zone над полем (сюда “вылезает” Дуров) */}
             <div
               style={{
                 position: "relative",
                 width: boardW,
-                height: 92 + boardH, // 92px над полем
+                height: 92 + boardH,
                 borderRadius: 16,
                 boxSizing: "border-box",
                 overflow: "visible",
               }}
             >
-              {/* Durov FX layer (над полем и над тайлами) */}
               {durovFx && durovRender && (
                 <div className="durov-layer">
-                  {/* Durov над полем */}
                   <div className="durov-headzone" style={{ top: 0 }}>
                     <img className="durov-img" src={DUROV_IMG} alt="Durov" draggable={false} />
                     <div className="durov-bubble">{durovFx.phrase}</div>
                   </div>
 
-                  {/* Лучи от “рта” (точка mouth) к целям */}
                   <div className="beam" style={durovRender.beamA}>
                     <div className="beam-end" />
                   </div>
@@ -1106,7 +1152,6 @@ export default function Game2048() {
                     <div className="beam-end" />
                   </div>
 
-                  {/* Летающие тайлы A -> B и B -> A */}
                   <div className="durov-fly" style={durovRender.flyAStyle}>
                     <div className="durov-fly-inner">
                       <img
@@ -1143,9 +1188,17 @@ export default function Game2048() {
                 </div>
               )}
 
-              {/* игровая зона (поле) — сдвинута вниз на высоту header-zone */}
-              <div style={{ position: "absolute", left: 0, top: 92, width: boardW, height: boardH, borderRadius: 16, boxSizing: "border-box" }}>
-                {/* background cells */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 92,
+                  width: boardW,
+                  height: boardH,
+                  borderRadius: 16,
+                  boxSizing: "border-box",
+                }}
+              >
                 <div
                   style={{
                     position: "absolute",
@@ -1171,17 +1224,15 @@ export default function Game2048() {
                   ))}
                 </div>
 
-                {/* tiles */}
                 <div style={{ position: "absolute", inset: 0 }}>
                   {tilesArr.map((t) => (
-                    <AnimatedTile key={t.id} tile={t} />
+                    <AnimatedTile key={t.id} tile={t} cell={CELL} gap={GAP} />
                   ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Hint button under board */}
           <div style={{ height: 12 }} />
           <div style={{ display: "flex", justifyContent: "center" }}>
             <button type="button" onClick={() => setHintOpen(true)} style={btnGhost(false)}>
@@ -1191,7 +1242,6 @@ export default function Game2048() {
         </div>
       </div>
 
-      {/* Hint modal */}
       {hintOpen && (
         <div
           onClick={() => setHintOpen(false)}
@@ -1291,20 +1341,6 @@ export default function Game2048() {
   );
 }
 
-function makeBeamStyle(x1, y1, x2, y2) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.max(0, Math.hypot(dx, dy));
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-  return {
-    left: `${x1}px`,
-    top: `${y1}px`,
-    width: `${len}px`,
-    transform: `rotate(${angle}deg)`,
-  };
-}
-
 function StatBox({ label, value }) {
   return (
     <div
@@ -1370,10 +1406,11 @@ function HintTile({ value }) {
   );
 }
 
-function AnimatedTile({ tile }) {
+function AnimatedTile({ tile, cell, gap }) {
   const [imgOk, setImgOk] = useState(true);
 
-  const { x, y } = posToPx(tile.r, tile.c);
+  const x = tile.c * (cell + gap);
+  const y = tile.r * (cell + gap);
   const src = tile.value ? `/numbers/${tile.value}.png` : "";
 
   const ms = Number.isFinite(tile.moveMs) ? tile.moveMs : 0;
@@ -1389,8 +1426,8 @@ function AnimatedTile({ tile }) {
     <div
       style={{
         position: "absolute",
-        width: CELL,
-        height: CELL,
+        width: cell,
+        height: cell,
         transform: `translate3d(${x}px, ${y}px, 0) translateZ(0)`,
         transition: ms > 0 ? `transform ${ms}ms ${MOVE_EASE}` : "none",
         zIndex: tile.z ?? 1,
