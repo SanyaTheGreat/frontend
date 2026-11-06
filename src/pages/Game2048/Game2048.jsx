@@ -7,13 +7,11 @@ import { stepMove } from "./engine";
 const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
-const SPAWN_FADE_MS = 60;
-const MERGE_POP_MS = 230;
+const SPAWN_FADE_MS = 80;
+const MERGE_POP_MS = 120;
 
-const MOVE_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
-const MOVE_PER_CELL_MS = 130;
-const MOVE_MIN_MS = 170;
-const MOVE_MAX_MS = 540;
+const MOVE_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
+const MOVE_DURATION_MS = 120;
 
 const DUROV_IMG = "/stickers/Durov.png";
 const DUROV_FX_MS = 1200;
@@ -75,13 +73,8 @@ function gridsEqualValues(a, b) {
   return true;
 }
 
-function clamp(n, min, max) {
-  return Math.min(max, Math.max(min, n));
-}
-
-function moveDurationMs(distCells) {
-  const ms = distCells * MOVE_PER_CELL_MS;
-  return clamp(ms, MOVE_MIN_MS, MOVE_MAX_MS);
+function moveDurationMs() {
+  return MOVE_DURATION_MS;
 }
 
 function applyMoveAnimated(tiles, board, dir) {
@@ -91,7 +84,7 @@ function applyMoveAnimated(tiles, board, dir) {
   for (const [id, t] of tiles.entries()) {
     nextTiles.set(id, {
       ...t,
-      pop: null,
+      pop: t.pop ?? null,
       z: t.z ?? 1,
       removeAt: null,
       moveMs: 0,
@@ -301,6 +294,10 @@ export default function Game2048() {
 
   const inFlightRef = useRef(false);
   const moveTimerRef = useRef(null);
+  const slideCompleteRef = useRef(null);
+  const queuedDirectionRef = useRef(null);
+  const queuedFrameRef = useRef(null);
+  const moveHandlerRef = useRef(null);
   const touchStartRef = useRef(null);
   const boardRef = useRef(null);
 
@@ -370,12 +367,11 @@ export default function Game2048() {
       const dir = map[e.key];
       if (dir) {
         e.preventDefault();
-        moveAnimated(dir);
+        moveHandlerRef.current?.(dir);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -416,6 +412,9 @@ export default function Game2048() {
     return () => {
       clearDurovTimers();
       if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+      if (queuedFrameRef.current) cancelAnimationFrame(queuedFrameRef.current);
+      slideCompleteRef.current = null;
+      queuedDirectionRef.current = null;
     };
   }, []);
 
@@ -627,6 +626,9 @@ export default function Game2048() {
     }
 
     if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+    if (queuedFrameRef.current) cancelAnimationFrame(queuedFrameRef.current);
+    slideCompleteRef.current = null;
+    queuedDirectionRef.current = null;
     animLockRef.current = false;
     clearDurovTimers();
     setDurovFx(null);
@@ -768,6 +770,7 @@ export default function Game2048() {
   async function undo() {
     if (loading || undoLoading || inFlightRef.current || durovLockRef.current) return;
 
+    queuedDirectionRef.current = null;
     inFlightRef.current = true;
     setUndoLoading(true);
     setResp(null);
@@ -833,7 +836,6 @@ export default function Game2048() {
 
   const onTouchEnd = (e) => {
     if (durovLockRef.current) return;
-    if (animLockRef.current) return;
 
     const s = touchStartRef.current;
     touchStartRef.current = null;
@@ -902,7 +904,10 @@ export default function Game2048() {
 
   const moveAnimated = (dir) => {
     if (durovLockRef.current || inFlightRef.current) return;
-    if (animLockRef.current) return;
+    if (animLockRef.current) {
+      queuedDirectionRef.current = dir;
+      return;
+    }
 
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
@@ -930,7 +935,7 @@ export default function Game2048() {
     if (!pred.moved) return;
 
     // 2) Анимация слайда (тайлы)
-    const { nextTiles, nextBoard, nextGridValues, maxAnimMs } = applyMoveAnimated(
+    const { nextTiles, nextBoard, nextGridValues } = applyMoveAnimated(
       tilesRef.current,
       boardRefState.current,
       dir
@@ -954,15 +959,17 @@ export default function Game2048() {
 
 
     // 5) После слайда: чистим анимацию и добавляем спавн/«Дурова» локально
-    moveTimerRef.current = window.setTimeout(() => {
-      const now = Date.now();
+    const completeSlide = () => {
+      if (slideCompleteRef.current !== completeSlide) return;
+      slideCompleteRef.current = null;
+      clearTimeout(moveTimerRef.current);
+      moveTimerRef.current = null;
       const map = new Map(tilesRef.current);
       for (const [id, t] of map.entries()) {
-        if (t.removeAt && now >= t.removeAt) map.delete(id);
+        if (t.removeAt) map.delete(id);
       }
       for (const t of map.values()) {
-        if (t.appearAt && now >= t.appearAt) delete t.appearAt;
-        if (t.pop) t.pop = null;
+        delete t.appearAt;
         if (t.moveMs) delete t.moveMs;
       }
       tilesRef.current = map;
@@ -982,15 +989,29 @@ export default function Game2048() {
         if (pred.finished) toast.info("Game Over (no_moves)");
       }
       animLockRef.current = false;
-    }, Math.max(MOVE_MIN_MS, maxAnimMs + 12));
+      const queued = queuedDirectionRef.current;
+      queuedDirectionRef.current = null;
+      if (queued && !ev && !pred.finished) {
+        queuedFrameRef.current = requestAnimationFrame(() => {
+          queuedFrameRef.current = null;
+          if (!animLockRef.current) moveHandlerRef.current?.(queued);
+        });
+      }
+    };
+    slideCompleteRef.current = completeSlide;
+    // Transition events follow the painted slide; the timer covers interruptions.
+    moveTimerRef.current = window.setTimeout(completeSlide, MOVE_DURATION_MS + 60);
 
     // 6) Фоновый персист на сервер по порядку
     sendQueueRef.current.push(dir);
     flushQueue();
   };
 
+  moveHandlerRef.current = moveAnimated;
+
   const finish = async () => {
     if (inFlightRef.current) return;
+    queuedDirectionRef.current = null;
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -1424,7 +1445,7 @@ export default function Game2048() {
 
                 <div style={{ position: "absolute", inset: 0 }}>
                   {tilesArr.map((t) => (
-                    <AnimatedTile key={t.id} tile={t} cell={CELL} gap={GAP} />
+                    <AnimatedTile key={t.id} tile={t} cell={CELL} gap={GAP} onSlideEnd={() => slideCompleteRef.current?.()} />
                   ))}
                 </div>
               </div>
@@ -1604,7 +1625,7 @@ function HintTile({ value }) {
   );
 }
 
-function AnimatedTile({ tile, cell, gap }) {
+function AnimatedTile({ tile, cell, gap, onSlideEnd }) {
   const [imgOk, setImgOk] = useState(true);
 
   const x = tile.c * (cell + gap);
@@ -1622,6 +1643,9 @@ function AnimatedTile({ tile, cell, gap }) {
 
   return (
     <div
+      onTransitionEnd={(event) => {
+        if (event.target === event.currentTarget && event.propertyName === "transform") onSlideEnd();
+      }}
       style={{
         position: "absolute",
         width: cell,
