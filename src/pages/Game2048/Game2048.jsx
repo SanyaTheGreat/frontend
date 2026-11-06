@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { API_BASE } from "../../apiBase";
+import { stepMove } from "./engine";
 
-const API_BASE = "https://lottery-server-waif.onrender.com";
 const LOGO_4096 = "/numbers/4096.png";
 
 const GRID_SIZE = 4;
@@ -275,10 +276,10 @@ function sleep(ms) {
 export default function Game2048() {
   const [loading, setLoading] = useState(false);
   const [undoLoading, setUndoLoading] = useState(false);
-  const [resp, setResp] = useState(null);
+  const [, setResp] = useState(null);
 
   const [score, setScore] = useState(0);
-  const [moves, setMoves] = useState(0);
+  const [, setMoves] = useState(0);
   const [bestScore, setBestScore] = useState(0);
   const [undoPrice, setUndoPrice] = useState(0);
 
@@ -299,8 +300,21 @@ export default function Game2048() {
   const gridValuesRef = useRef(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0)));
 
   const inFlightRef = useRef(false);
+  const moveTimerRef = useRef(null);
   const touchStartRef = useRef(null);
   const boardRef = useRef(null);
+
+  // 🔧 Локальный детерминированный движок (Phase 3A): считаем спавн/«Дурова»
+  // на клиенте, сервер дёргаем фоном очередью.
+  const seedRef = useRef(null);
+  const rngIndexRef = useRef(0);
+  const durovCooldownRef = useRef(0);
+  const scoreRef = useRef(0);   // синхронная истина (React-стейт может отставать при серии ходов)
+  const movesRef = useRef(0);
+
+  const animLockRef = useRef(false);          // блок на время анимации хода
+  const sendQueueRef = useRef([]);            // очередь ходов на сервер (по порядку)
+  const sendingRef = useRef(false);           // флаг активной отправки
 
   useMemo(() => localStorage.getItem("jwt") || "", []);
 
@@ -321,7 +335,7 @@ export default function Game2048() {
       tg?.ready?.();
       tg?.expand?.();
       tg?.disableVerticalSwipes?.();
-    } catch {}
+    } catch { /* Optional browser or animation cleanup. */ }
   }, []);
 
   useEffect(() => {
@@ -339,10 +353,29 @@ export default function Game2048() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") setHintOpen(false);
+      if (e.key === "Escape") {
+        setHintOpen(false);
+        return;
+      }
+      const map = {
+        ArrowUp: "up",
+        ArrowDown: "down",
+        ArrowLeft: "left",
+        ArrowRight: "right",
+        w: "up",
+        s: "down",
+        a: "left",
+        d: "right",
+      };
+      const dir = map[e.key];
+      if (dir) {
+        e.preventDefault();
+        moveAnimated(dir);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -363,7 +396,7 @@ export default function Game2048() {
       img.decoding = v === 2 || v === 4 ? "sync" : "async";
       try {
         img.decode?.().catch(() => {});
-      } catch {}
+      } catch { /* Optional browser or animation cleanup. */ }
     });
 
     const d = new Image();
@@ -372,7 +405,7 @@ export default function Game2048() {
     d.decoding = "async";
     try {
       d.decode?.().catch(() => {});
-    } catch {}
+    } catch { /* Optional browser or animation cleanup. */ }
   }, []);
 
   useEffect(() => {
@@ -382,6 +415,7 @@ export default function Game2048() {
 
     return () => {
       clearDurovTimers();
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
     };
   }, []);
 
@@ -492,9 +526,18 @@ export default function Game2048() {
     const g = safeGridFromRun(run);
     if (g) reconcileWithServerGrid(g);
 
-    setScore(Number(run?.current_score ?? 0));
-    setMoves(Number(run?.moves ?? 0));
-    setUndoPrice(Number(run?.undo_next_price ?? 0));
+    scoreRef.current = Number(run?.current_score ?? 0);
+    movesRef.current = Number(run?.moves ?? 0);
+    setScore(scoreRef.current);
+    setMoves(movesRef.current);
+    if (run?.undo_next_price != null) setUndoPrice(Number(run.undo_next_price));
+
+    // 🔧 синхронизируем локальный движок с сервером (после undo/finish/resync)
+    if (run?.seed != null) seedRef.current = run.seed;
+    if (run?.rng_index != null) rngIndexRef.current = Number(run.rng_index);
+    if (run?.state?.durov?.cooldown != null) {
+      durovCooldownRef.current = Number(run.state.durov.cooldown);
+    }
   }
 
   function clearDurovTimers() {
@@ -583,6 +626,11 @@ export default function Game2048() {
       return;
     }
 
+    if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+    animLockRef.current = false;
+    clearDurovTimers();
+    setDurovFx(null);
+    durovLockRef.current = false;
     setLoading(true);
     setResp(null);
 
@@ -610,6 +658,12 @@ export default function Game2048() {
         gridValuesRef.current = g.map((r) => r.slice());
         syncTilesArrFromRef();
       }
+
+      // 🔧 сбрасываем очередь отправки и инициализируем движок из run
+      sendQueueRef.current = [];
+      seedRef.current = run?.seed ?? null;
+      rngIndexRef.current = Number(run?.rng_index ?? 0);
+      durovCooldownRef.current = Number(run?.state?.durov?.cooldown ?? 0);
 
       applyRunToUi(data);
     } catch (e) {
@@ -703,13 +757,23 @@ export default function Game2048() {
     return false;
   }
 
+  async function waitForSavedMoves() {
+    const deadline = Date.now() + 65000;
+    while (sendingRef.current || sendQueueRef.current.length || animLockRef.current || durovLockRef.current) {
+      if (Date.now() > deadline) throw new Error("Moves are still saving. Please retry.");
+      await sleep(25);
+    }
+  }
+
   async function undo() {
     if (loading || undoLoading || inFlightRef.current || durovLockRef.current) return;
 
+    inFlightRef.current = true;
     setUndoLoading(true);
     setResp(null);
 
     try {
+      await waitForSavedMoves();
       const firstTry = await requestUndo();
       const data = firstTry?.data || {};
 
@@ -755,6 +819,7 @@ export default function Game2048() {
       console.error(e);
       toast.error(e?.message || "Ошибка сети (undo)");
     } finally {
+      inFlightRef.current = false;
       setUndoLoading(false);
     }
   }
@@ -768,7 +833,7 @@ export default function Game2048() {
 
   const onTouchEnd = (e) => {
     if (durovLockRef.current) return;
-    if (inFlightRef.current) return;
+    if (animLockRef.current) return;
 
     const s = touchStartRef.current;
     touchStartRef.current = null;
@@ -790,42 +855,108 @@ export default function Game2048() {
     else moveAnimated(dy > 0 ? "down" : "up");
   };
 
-  const moveAnimated = async (dir) => {
-    if (durovLockRef.current) return;
+  // Фоновая отправка ходов на сервер строго по порядку.
+  // UI не ждёт ответа — сервер лишь персистит/валидирует то, что движок уже посчитал.
+  const flushQueue = async () => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    try {
+      while (sendQueueRef.current.length > 0) {
+        const dir = sendQueueRef.current[0];
+        const jwt = localStorage.getItem("jwt");
+        if (!jwt) {
+          sendQueueRef.current = [];
+          break;
+        }
+
+        let res, data;
+        try {
+          res = await fetch(`${API_BASE}/game/run/move`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ dir }),
+            signal: AbortSignal.timeout(60000),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch (e) {
+          console.error("2048 move network error:", e);
+          sendQueueRef.current = [];
+          await startOrResume({ silentNoJwt: true }); // ресинк с сервера
+          break;
+        }
+
+        if (!res.ok || !data?.ok) {
+          console.error("2048 server move rejected:", res.status, data);
+          if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
+          sendQueueRef.current = [];
+          await startOrResume({ silentNoJwt: true }); // ресинк с сервера
+          break;
+        }
+
+        sendQueueRef.current.shift(); // успех — снимаем из очереди
+      }
+    } finally {
+      sendingRef.current = false;
+    }
+  };
+
+  const moveAnimated = (dir) => {
+    if (durovLockRef.current || inFlightRef.current) return;
+    if (animLockRef.current) return;
 
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
       return;
     }
-    if (inFlightRef.current) return;
+    if (seedRef.current == null) return; // движок ещё не инициализирован
 
     const curValues = gridValuesRef.current;
     const hasAny = curValues.some((row) => row.some((v) => v > 0));
     if (!hasAny) return;
 
-    const beforeTiles = tilesRef.current;
-    const beforeBoard = boardRefState.current;
-
-    const { nextTiles, nextBoard, gained, moved, nextGridValues, maxAnimMs } = applyMoveAnimated(
-      beforeTiles,
-      beforeBoard,
+    // 1) Истина — детерминированный движок (спавн/«Дуров»/счёт/rng_index)
+    const pred = stepMove(
+      {
+        grid: curValues,
+        seed: seedRef.current,
+        rngIndex: rngIndexRef.current,
+        cooldown: durovCooldownRef.current,
+        score: scoreRef.current,
+        moves: movesRef.current,
+      },
       dir
     );
-    if (!moved) return;
+    if (!pred.moved) return;
+
+    // 2) Анимация слайда (тайлы)
+    const { nextTiles, nextBoard, nextGridValues, maxAnimMs } = applyMoveAnimated(
+      tilesRef.current,
+      boardRefState.current,
+      dir
+    );
 
     tilesRef.current = nextTiles;
     boardRefState.current = nextBoard;
-    gridValuesRef.current = nextGridValues;
+    gridValuesRef.current = nextGridValues; // post-merge, pre-spawn
 
-    setScore((prev) => prev + gained);
-    setMoves((prev) => prev + 1);
+    // 3) Продвигаем состояние движка (синхронно)
+    rngIndexRef.current = pred.rngIndex;
+    durovCooldownRef.current = pred.cooldown;
+    scoreRef.current = pred.score;
+    movesRef.current = pred.moves;
+    setScore(pred.score);
+    setMoves(pred.moves);
     syncTilesArrFromRef();
 
-    window.setTimeout(() => {
+    // 4) Короткий лок на время анимации (вместо ожидания сети)
+    animLockRef.current = true;
+
+
+    // 5) После слайда: чистим анимацию и добавляем спавн/«Дурова» локально
+    moveTimerRef.current = window.setTimeout(() => {
       const now = Date.now();
       const map = new Map(tilesRef.current);
-
       for (const [id, t] of map.entries()) {
         if (t.removeAt && now >= t.removeAt) map.delete(id);
       }
@@ -834,82 +965,32 @@ export default function Game2048() {
         if (t.pop) t.pop = null;
         if (t.moveMs) delete t.moveMs;
       }
-
       tilesRef.current = map;
       syncTilesArrFromRef();
-    }, maxAnimMs + 10);
 
-    inFlightRef.current = true;
-    setResp(null);
-
-    try {
-      const res = await fetch(`${API_BASE}/game/run/move`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ dir }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      setResp({ status: res.status, ok: res.ok, data });
-
-      if (!res.ok || !data?.ok) {
-        toast.error(data?.error || "Move error");
-        if (res.status === 401 || res.status === 403) localStorage.removeItem("jwt");
-        await startOrResume({ silentNoJwt: true });
-        return;
-      }
-
-      const ev = data?.durov_event;
-      if (ev?.type === "durov_swap" && ev?.from && ev?.to) {
-        const from = {
-          r: Number(ev.from.r),
-          c: Number(ev.from.c),
-          v: Number(ev.from.v),
+      const ev = pred.durov_event;
+      if (ev?.from && ev?.to) {
+        applyServerSpawn(pred.spawn);
+        const localData = {
+          run: { state: { grid: pred.grid }, current_score: pred.score, moves: pred.moves },
+          finished: pred.finished,
+          reason: "no_moves",
         };
-        const to = {
-          r: Number(ev.to.r),
-          c: Number(ev.to.c),
-          v: Number(ev.to.v),
-        };
-
-        const ok =
-          Number.isFinite(from.r) &&
-          Number.isFinite(from.c) &&
-          Number.isFinite(from.v) &&
-          Number.isFinite(to.r) &&
-          Number.isFinite(to.c) &&
-          Number.isFinite(to.v) &&
-          from.r >= 0 &&
-          from.r < GRID_SIZE &&
-          from.c >= 0 &&
-          from.c < GRID_SIZE &&
-          to.r >= 0 &&
-          to.r < GRID_SIZE &&
-          to.c >= 0 &&
-          to.c < GRID_SIZE &&
-          from.v > 0 &&
-          to.v > 0;
-
-        if (ok) {
-          startDurovFx({ from, to }, data);
-          return;
-        }
+        startDurovFx({ from: ev.from, to: ev.to }, localData);
+      } else {
+        applyServerSpawn(pred.spawn);
+        if (pred.finished) toast.info("Game Over (no_moves)");
       }
+      animLockRef.current = false;
+    }, Math.max(MOVE_MIN_MS, maxAnimMs + 12));
 
-      applyServerSpawn(data?.spawn);
-      applyRunToUi(data);
-
-      if (data?.finished) toast.info(`Game Over (${data?.reason || "finished"})`);
-    } catch (e) {
-      console.error(e);
-      toast.error("Ошибка сети (move)");
-      await startOrResume({ silentNoJwt: true });
-    } finally {
-      inFlightRef.current = false;
-    }
+    // 6) Фоновый персист на сервер по порядку
+    sendQueueRef.current.push(dir);
+    flushQueue();
   };
 
   const finish = async () => {
+    if (inFlightRef.current) return;
     const jwt = localStorage.getItem("jwt");
     if (!jwt) {
       toast.error("Нет jwt. Открой Mini App в Telegram заново.");
@@ -919,7 +1000,9 @@ export default function Game2048() {
     setLoading(true);
     setResp(null);
 
+    inFlightRef.current = true;
     try {
+      await waitForSavedMoves();
       const res = await fetch(`${API_BASE}/game/run/finish`, {
         method: "POST",
         headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
@@ -940,6 +1023,7 @@ export default function Game2048() {
       console.error(e);
       toast.error("Ошибка сети (finish)");
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };

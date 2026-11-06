@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion, useAnimationControls } from "framer-motion";
+import { motion as Motion, useAnimationControls } from "framer-motion";
 import { supabase } from "../../supabaseClient";
 import "./SlotPlay.css";
 
 // 👉 добавь компонент модалки (путь под свой проект; если components лежит в src/components)
 import InventoryModal from "./InventoryModal.jsx";
+import { API_BASE } from "../../apiBase";
 
-const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
 /* -------------------- символы -------------------- */
@@ -376,7 +376,7 @@ export default function SlotPlay() {
           <div className="machine-body">
             {[0, 1, 2].map((i) => (
               <div className="window" key={i}>
-                <motion.div
+                <Motion.div
                   key={`reel-${i}-${spinSeq}`}
                   className="reel"
                   animate={i === 0 ? r1 : i === 1 ? r2 : r3}
@@ -402,7 +402,7 @@ export default function SlotPlay() {
                       </div>
                     );
                   })}
-                </motion.div>
+                </Motion.div>
               </div>
             ))}
           </div>

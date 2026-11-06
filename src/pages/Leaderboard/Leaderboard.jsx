@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import lottie from 'lottie-web';
 import './Leaderboard.css';
-
-const API_BASE = 'https://lottery-server-waif.onrender.com';
+import { API_BASE } from '../../apiBase';
 
 /** Берём JWT из localStorage. Никакого обмена initData → JWT здесь не делаем. */
 async function getJwt() {
@@ -53,7 +52,7 @@ export default function Leaderboard() {
   const [top3, setTop3]   = useState([]);
   const [list, setList]   = useState([]);
   const [me, setMe]       = useState(null);
-  const [total, setTotal] = useState(0);
+  const [, setTotal] = useState(0);
   const [prizes, setPrizes] = useState([]);
   const [endAt, setEndAt] = useState(null);
 

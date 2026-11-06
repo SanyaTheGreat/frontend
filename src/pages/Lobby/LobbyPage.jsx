@@ -6,9 +6,10 @@ import lottie from 'lottie-web';
 import 'react-toastify/dist/ReactToastify.css';
 import './LobbyPage.css';
 
+import { API_BASE } from '../../apiBase';
+
 // ← укажи ник своего бота (без @)
 const BOT = 'fightforgift_bot';
-const API_BASE = 'https://lottery-server-waif.onrender.com';
 
 // === JWT helper (локально в файле) ===
 async function getJwt() {

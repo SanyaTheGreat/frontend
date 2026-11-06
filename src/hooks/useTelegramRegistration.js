@@ -1,10 +1,36 @@
 import { useEffect, useState } from 'react';
+import { API_BASE, DEV_AUTH } from '../apiBase';
 
 export function useTelegramRegistration() {
   const [authOk, setAuthOk] = useState(false);
 
   useEffect(() => {
     let timer;
+
+    // 🔧 DEV: вне Telegram получаем JWT через /auth/dev (VITE_DEV_AUTH=true)
+    if (DEV_AUTH) {
+      fetch(`${API_BASE}/auth/dev`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.ok && data?.token) {
+            localStorage.setItem('jwt', data.token);
+            setAuthOk(true);
+            console.warn('🔧 DEV AUTH: токен получен через /auth/dev');
+          } else {
+            console.error('❌ /auth/dev ошибка:', data);
+            setAuthOk(false);
+          }
+        })
+        .catch((err) => {
+          console.error('❌ Сеть /auth/dev:', err);
+          setAuthOk(false);
+        });
+      return; // в dev-режиме Telegram-флоу не нужен
+    }
 
     const boot = () => {
       timer = setInterval(() => {
@@ -36,7 +62,7 @@ export function useTelegramRegistration() {
         const ref = refFromStart || refFromUrl || '';
 
         // 2) Авторизация через /auth/telegram (реф прокидываем как есть)
-        fetch(`https://lottery-server-waif.onrender.com/auth/telegram${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`, {
+        fetch(`${API_BASE}/auth/telegram${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ initData }),
@@ -53,7 +79,7 @@ export function useTelegramRegistration() {
               if (!alreadyRegistered) {
                 try {
                   const qs = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-                  const r = await fetch(`https://lottery-server-waif.onrender.com/users/register${qs}`, {
+                  const r = await fetch(`${API_BASE}/users/register${qs}`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

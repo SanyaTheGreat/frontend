@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = "https://lottery-server-waif.onrender.com";
+import { API_BASE } from "../../apiBase";
 
 function medal(place) {
   if (place === 1) return "🥇";

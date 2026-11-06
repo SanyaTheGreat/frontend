@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import lottie from "lottie-web";
 import "./InventoryModal.css";
+import { API_BASE } from "../../apiBase";
 
-const API_BASE = "https://lottery-server-waif.onrender.com";
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
 function authHeaders() {
@@ -16,9 +16,9 @@ function slugify(s) {
     .toString()
     .toLowerCase()
     .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9\-_.]/g, "")
-    .replace(/\-+/g, "-")
-    .replace(/^\-+|\-+$/g, "");
+    .replace(/[^a-z0-9-_.]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export default function InventoryModal({ open, onClose, onWithdrawSuccess, balanceStars = 0 }) {
@@ -85,7 +85,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
   useEffect(() => {
     try {
       animInstRef.current?.destroy?.();
-    } catch {}
+    } catch { /* Optional browser or animation cleanup. */ }
     animInstRef.current = null;
     setAnimFailed(false);
 
@@ -117,7 +117,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
           json = await res.json();
           animCacheRef.current.set(p, json);
           break;
-        } catch {}
+        } catch { /* Optional browser or animation cleanup. */ }
       }
 
       if (!json) {
@@ -141,7 +141,7 @@ export default function InventoryModal({ open, onClose, onWithdrawSuccess, balan
       cancelled = true;
       try {
         animInstRef.current?.destroy?.();
-      } catch {}
+      } catch { /* Optional browser or animation cleanup. */ }
       animInstRef.current = null;
     };
   }, [open, selected]);

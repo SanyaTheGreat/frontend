@@ -456,7 +456,7 @@ export default function SpinPage() {
     setAnimDone(true);
   }
 
-  async function handleClaim() {
+  async function _handleClaim() {
     if (!spinId || actionBusy) return;
     setActionBusy(true);
     try {

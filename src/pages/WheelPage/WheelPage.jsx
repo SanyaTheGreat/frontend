@@ -2,8 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Wheel from '../../components/Wheel/Wheel';
 import './WheelPage.css';
+import { API_BASE } from '../../apiBase';
 
-const API_BASE_URL = 'https://lottery-server-waif.onrender.com/wheel';
+const API_BASE_URL = `${API_BASE}/wheel`;
 
 export default function WheelPage() {
   const { id: wheel_id } = useParams();

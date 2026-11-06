@@ -5,6 +5,7 @@ import lottie from "lottie-web";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./Slots.css";
+import { API_BASE } from "../../apiBase";
 
 const asset = (p) => `${import.meta.env.BASE_URL || "/"}${p.replace(/^\/+/, "")}`;
 
@@ -24,7 +25,7 @@ function Slots() {
   useEffect(() => {
     const fetchSlots = async () => {
       try {
-        const res = await fetch("https://lottery-server-waif.onrender.com/api/slots/active");
+        const res = await fetch(`${API_BASE}/api/slots/active`);
         const data = await res.json();
         setSlots(data || []);
       } catch (e) {
@@ -57,7 +58,7 @@ function Slots() {
     lottie.setQuality("low");
 
     const destroyAll = () => {
-      Object.values(animRefs.current).forEach((a) => { try { a?.destroy?.(); } catch {} });
+      Object.values(animRefs.current).forEach((a) => { try { a?.destroy?.(); } catch { /* Optional browser or animation cleanup. */ } });
       animRefs.current = {};
     };
 

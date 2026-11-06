@@ -537,3 +537,119 @@ button.ton-connect-button,
 .attempts-item {
   border-radius: 16px;
 }
+
+/* ===== Модалка пополнения TON ===== */
+.deposit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.deposit-modal {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(18, 24, 36, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  color: #fff;
+  animation: fadeIn 0.18s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.deposit-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 4px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  border-radius: 14px;
+}
+.deposit-tab {
+  flex: 1 1 0;
+  padding: 10px 0;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.deposit-tab.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.deposit-sub {
+  font-size: 13px;
+  opacity: 0.8;
+  margin: 10px 0 14px;
+  line-height: 1.35;
+}
+
+.deposit-presets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.deposit-chip {
+  flex: 1 1 0;
+  padding: 10px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+.deposit-chip.active {
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.28);
+}
+
+.deposit-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  outline: none;
+  margin-bottom: 14px;
+}
+
+.deposit-actions {
+  display: flex;
+  gap: 10px;
+}
+.deposit-actions .btn {
+  flex: 1 1 0;
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+}

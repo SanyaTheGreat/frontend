@@ -4,8 +4,6 @@ export default function SpinControls({
   allowStars,
   priceTon,
   priceStars,
-  balanceStars,     // пробрасываются как раньше (не используем здесь)
-  balanceTickets,   // пробрасываются как раньше (не используем здесь)
   spinning,
   onSpin,
   freeAvailable = false,

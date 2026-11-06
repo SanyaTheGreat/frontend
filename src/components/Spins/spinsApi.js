@@ -1,4 +1,5 @@
-export const API_BASE = "https://lottery-server-waif.onrender.com"; // бекенд
+import { API_BASE } from "../../apiBase"; // бекенд
+export { API_BASE };
 
 // --- общие заголовки авторизации из localStorage ---
 function authHeaders() {
