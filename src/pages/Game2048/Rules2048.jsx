@@ -71,7 +71,8 @@ export default function Rules2048() {
         </div>
 
         <button
-          onClick={() => navigate(-1)}
+          type="button"
+          onClick={() => navigate("/")}
           style={{
             marginTop: 40,
             width: "100%",

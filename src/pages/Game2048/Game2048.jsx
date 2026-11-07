@@ -1,3 +1,4 @@
+import HomeBackButton from '../../components/HomeBackButton';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -1049,6 +1050,22 @@ export default function Game2048() {
     }
   };
 
+  async function prepareToLeaveGame() {
+    if (inFlightRef.current) return false;
+    queuedDirectionRef.current = null;
+    inFlightRef.current = true;
+    try {
+      await waitForSavedMoves();
+      return true;
+    } catch (error) {
+      console.error('Failed to save moves before returning home:', error);
+      toast.error('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0445\u043e\u0434\u044b. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0435\u0449\u0451 \u0440\u0430\u0437.');
+      return false;
+    } finally {
+      inFlightRef.current = false;
+    }
+  }
+
   const chainValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
   const durovRender = (() => {
@@ -1270,6 +1287,7 @@ export default function Game2048() {
           margin: "0 auto",
         }}
       >
+        <HomeBackButton beforeNavigate={prepareToLeaveGame} disabled={loading || undoLoading} />
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div
             style={{

@@ -1,3 +1,4 @@
+import HomeBackButton from '../../components/HomeBackButton';
 import { API_BASE } from '../../apiBase';
 import { useEffect, useMemo, useState } from 'react';
 import './Profile.css';
@@ -87,7 +88,7 @@ export default function Profile() {
     return (
       <>
         <div className="starfield" aria-hidden="true" />
-        <p className="profile-wrapper">Loading Profile...</p>
+        <div className="profile-wrapper"><HomeBackButton /><p>Loading Profile...</p></div>
       </>
     );
   }
@@ -96,7 +97,7 @@ export default function Profile() {
     return (
       <>
         <div className="starfield" aria-hidden="true" />
-        <p className="profile-wrapper">Нет данных профиля</p>
+        <div className="profile-wrapper"><HomeBackButton /><p>Нет данных профиля</p></div>
       </>
     );
   }
@@ -106,6 +107,7 @@ export default function Profile() {
       <div className="starfield" aria-hidden="true" />
 
       <div className="profile-wrapper">
+        <HomeBackButton />
         {profile?.avatar_url ? (
           <img
             src={profile.avatar_url}

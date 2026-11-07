@@ -252,7 +252,8 @@ export default function Leaderboard2048() {
         )}
 
         <button
-          onClick={() => navigate(-1)}
+          type="button"
+          onClick={() => navigate("/")}
           style={{
             marginTop: 16,
             width: "100%",
