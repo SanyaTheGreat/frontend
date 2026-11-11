@@ -10,8 +10,9 @@
 // потребления RNG и все константы обязаны совпадать 1:1 с сервером.
 
 export const GRID_SIZE = 4;
-const DUROV_CHANCE = 0.08;
-const DUROV_COOLDOWN_MOVES = 5;
+const DUROV_CHANCE = 0.10;
+const DUROV_MIN_TILE = 1024;
+const DUROV_COOLDOWN_MOVES = 6;
 const MASK64 = (1n << 64n) - 1n;
 
 function splitmix64(x) {
@@ -182,9 +183,10 @@ export function stepMove(st, dir) {
   let durov_event = null;
   let cooldown = Number(st.cooldown ?? 0);
   if (!Number.isFinite(cooldown) || cooldown < 0) cooldown = 0;
-  cooldown = Math.max(0, cooldown - 1);
-
-  if (cooldown === 0) {
+  // Skip six complete successful moves after an intervention.
+  if (cooldown > 0) {
+    cooldown -= 1;
+  } else if (movedGrid.some(row => row.some(value => value >= DUROV_MIN_TILE))) {
     if (rng.next01() < DUROV_CHANCE) {
       durov_event = durovSwap(movedGrid, rng);
       if (durov_event) cooldown = DUROV_COOLDOWN_MOVES;
