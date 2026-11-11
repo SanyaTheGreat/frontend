@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './Profile.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,7 +13,6 @@ const DEPOSIT_PRESETS = [1, 5, 10];
 export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [nowTick, setNowTick] = useState(Date.now());
 
   const [ludo, setLudo] = useState({ participations: 0, wins: 0 });
   const [claiming, setClaiming] = useState(false);
@@ -86,10 +85,6 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   // авто-привязка кошелька при подключении TonConnect
   useEffect(() => {
@@ -286,14 +281,10 @@ export default function Profile() {
   const avatarLetter = profile?.username ? profile.username[0].toUpperCase() : '?';
 
   const g = profile?.game2048 ?? {};
-  const attempts = g?.attempts ?? {};
   const bestAll = Number(g?.best_all_time ?? 0);
   const bestWeek = Number(g?.best_week ?? 0);
   const weekPlace = g?.week_place ?? null;
   const gamesPlayed = Number(g?.games_played ?? 0);
-  const dailyRemaining = Number(attempts?.daily_attempts_remaining ?? 0);
-  const refRemaining = Number(attempts?.referral_attempts_balance ?? 0);
-  const resetsAt = attempts?.resets_at_utc ? new Date(attempts.resets_at_utc) : null;
 
   const balance = Number(profile?.tickets ?? 0);
   const refTotal = Number(profile?.referral_total ?? 0);
@@ -301,16 +292,6 @@ export default function Profile() {
   const refFrozen = Number(profile?.referral_frozen ?? 0);
   const canWithdraw = Boolean(profile?.withdraw_available);
 
-  const timeLeft = useMemo(() => {
-    if (!resetsAt || Number.isNaN(resetsAt.getTime())) return null;
-    const diff = resetsAt.getTime() - nowTick;
-    if (diff <= 0) return '00:00:00';
-    const totalSec = Math.floor(diff / 1000);
-    const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const ss = String(totalSec % 60).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
-  }, [resetsAt, nowTick]);
 
   if (loading) {
     return (
@@ -411,16 +392,8 @@ export default function Profile() {
 
           <div className="attempts-row" style={{ marginTop: 12 }}>
             <div className="attempts-item">
-              <div className="attempts-label">Попытки</div>
-              <div className="attempts-value">{dailyRemaining}</div>
-            </div>
-            <div className="attempts-item">
-              <div className="attempts-label">От рефералов</div>
-              <div className="attempts-value">{refRemaining}</div>
-            </div>
-            <div className="attempts-item">
-              <div className="attempts-label">Обновление</div>
-              <div className="attempts-value attempts-timer">{timeLeft ?? '—'}</div>
+              <div className="attempts-label">{"Количество игр"}</div>
+              <div className="attempts-value">{"Без ограничений"}</div>
             </div>
           </div>
 

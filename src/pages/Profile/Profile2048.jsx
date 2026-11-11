@@ -1,6 +1,6 @@
 import HomeBackButton from '../../components/HomeBackButton';
 import { API_BASE } from '../../apiBase';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './Profile.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,7 +9,6 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [nowTick, setNowTick] = useState(Date.now()); // для таймера
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('jwt');
@@ -48,10 +47,6 @@ export default function Profile() {
   useEffect(() => { fetchProfile(); }, []);
 
   // таймер (обновление раз в секунду)
-  useEffect(() => {
-    const id = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const handleCopyRefLink = () => {
     if (!profile?.telegram_id) return;
@@ -62,27 +57,13 @@ export default function Profile() {
   const avatarLetter = profile?.username ? profile.username[0].toUpperCase() : '?';
 
   const g = profile?.game2048 ?? {};
-  const attempts = g?.attempts ?? {};
 
   const bestAll = Number(g?.best_all_time ?? 0);
   const bestWeek = Number(g?.best_week ?? 0);
   const weekPlace = g?.week_place ?? null;
   const gamesPlayed = Number(g?.games_played ?? 0);
 
-  const dailyRemaining = Number(attempts?.daily_attempts_remaining ?? 0);
-  const refRemaining = Number(attempts?.referral_attempts_balance ?? 0);
-  const resetsAt = attempts?.resets_at_utc ? new Date(attempts.resets_at_utc) : null;
 
-  const timeLeft = useMemo(() => {
-    if (!resetsAt || Number.isNaN(resetsAt.getTime())) return null;
-    const diff = resetsAt.getTime() - nowTick;
-    if (diff <= 0) return '00:00:00';
-    const totalSec = Math.floor(diff / 1000);
-    const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const ss = String(totalSec % 60).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
-  }, [resetsAt, nowTick]);
 
   if (loading) {
     return (
@@ -152,26 +133,10 @@ export default function Profile() {
 
           <div className="attempts-row">
             <div className="attempts-item">
-              <div className="attempts-label">Доступно сейчас</div>
-              <div className="attempts-value">{dailyRemaining}</div>
-            </div>
-
-            <div className="attempts-item">
-              <div className="attempts-label">От рефералов</div>
-              <div className="attempts-value">{refRemaining}</div>
-            </div>
-
-            <div className="attempts-item">
-              <div className="attempts-label">Обновление через</div>
-              <div className="attempts-value attempts-timer">{timeLeft ?? '—'}</div>
+              <div className="attempts-label">{"Количество игр"}</div>
+              <div className="attempts-value">{"Без ограничений"}</div>
             </div>
           </div>
-
-          {attempts?.daily_plays_used !== undefined && (
-            <div className="profile-row" style={{ opacity: 0.9, marginTop: 10 }}>
-              Использовано сегодня: <b>{Number(attempts.daily_plays_used ?? 0)}</b> / 20
-            </div>
-          )}
         </div>
 
         {/* ===== Referral link (оставляем) ===== */}

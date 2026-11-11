@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../apiBase";
 
@@ -19,13 +19,14 @@ export default function Leaderboard2048() {
   const [me, setMe] = useState(null);
   const [period, setPeriod] = useState(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setErr("");
 
     try {
       const res = await fetch(`${API_BASE}/game2048/leaderboard/week?limit=50`, {
         method: "GET",
+        cache: "no-store",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
         },
@@ -46,12 +47,26 @@ export default function Leaderboard2048() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [token]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
+
+  useEffect(() => {
+    const end = Date.parse(period?.end_at ?? '');
+    const timer = Number.isFinite(end)
+      ? setTimeout(load, Math.max(1000, Math.min(end - Date.now() + 1000, 2147483647)))
+      : null;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      if (timer !== null) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [period?.end_at, load]);
 
   const meInTop = useMemo(() => {
     if (!me?.user_id) return false;
